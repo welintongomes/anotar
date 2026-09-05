@@ -461,7 +461,7 @@ if (!window.indexedDB) {
 }
 
 /* ---------------- IndexedDB ---------------- */
-const DB_NAME = 'oficinaMemoriaDB';
+const DB_NAME = 'minhasMemoriasDB';
 const DB_VERSION = 1;
 const STORE = 'items';
 
@@ -1235,7 +1235,7 @@ async function openView(itemLight){
     toolbar.style.display = 'flex';
     toolbar.style.gap = '8px';
     toolbar.style.marginBottom = '6px';
-    toolbar.style.justifyContent = 'flex-end';
+    toolbar.style.justifyContent = 'flex-start';
 
     const btnCode = document.createElement('button');
     btnCode.className = 'tag-pill';
