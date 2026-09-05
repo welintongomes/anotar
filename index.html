@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#21242A">
+<title>Memória da Oficina</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👨🏻‍🔧</text></svg>">
+<style>
+  :root{
+    --bg:#21242A;
+    --panel:#2A2E36;
+    --panel-2:#2F343D;
+    --steel:#3A3F49;
+    --chalk:#EDEFF2;
+    --smoke:#9AA0AB;
+    --accent:#E8720C;
+    --accent-ink:#241300;
+    --info:#4FA8D8;
+    --danger:#D64545;
+    --font-display: 'Segoe UI Semibold','Roboto Condensed','Arial Narrow',Arial,sans-serif;
+    --font-body: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--chalk);
+    font-family:var(--font-body);
+    font-size:16px;
+    line-height:1.45;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button,input,select,textarea{font-family:inherit;font-size:16px;color:inherit;}
+  button{cursor:pointer;}
+  h1,h2,h3{font-family:var(--font-display);margin:0;letter-spacing:-0.01em;}
+
+  #app{max-width:900px;margin:0 auto;padding-bottom:112px;}
+
+  /* ---------- Header (agora só informativo) ---------- */
+  header#topbar{
+    position:sticky;top:0;z-index:10;
+    background:var(--bg);
+    border-bottom:1px solid var(--steel);
+    padding:16px 16px 12px;
+  }
+  header#topbar h1{font-size:21px;font-weight:700;}
+  .tagline{margin:4px 0 0;color:var(--smoke);font-size:13.5px;}
+  .result-count-label{margin:12px 16px 0;color:var(--smoke);font-size:13px;}
+
+  .icon-btn{
+    background:var(--panel);
+    border:1px solid var(--steel);
+    color:var(--chalk);
+    width:44px;height:44px;min-width:44px;
+    border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;
+  }
+  .icon-btn:active{background:var(--panel-2);}
+
+  .search-row{display:flex;gap:8px;flex-direction: row-reverse;}
+  .search-wrap{
+    flex:1;position:relative;display:flex;align-items:center;
+    background:var(--panel-2);border:1px solid var(--steel);border-radius:10px;
+  }
+  .search-wrap span.search-ic{padding:0 0 0 12px;color:var(--smoke);font-size:17px;}
+  #searchInput{
+    flex:1;background:transparent;border:none;outline:none;
+    padding:13px 8px;min-width:0;
+  }
+  #searchInput::placeholder{color:var(--smoke);}
+  #btnClearSearch{
+    background:transparent;border:none;color:var(--smoke);width:38px;height:38px;
+    font-size:16px;display:none;align-items:center;justify-content:center;
+  }
+  .mic-btn.listening{
+    background:var(--danger);border-color:var(--danger);color:#fff;
+    animation:pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(214,69,69,0.55);}
+    50%{box-shadow:0 0 0 8px rgba(214,69,69,0);}
+  }
+
+  /* ---------- Cards ---------- */
+  main#cardsContainer{
+    padding:10px 16px 16px;
+    display:grid;grid-template-columns:1fr;gap:12px;
+  }
+  @media(min-width:640px){
+    main#cardsContainer{grid-template-columns:1fr 1fr;}
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--steel);
+    border-left:5px solid var(--tag-color,var(--info));
+    border-radius:6px;
+    padding:14px 14px 10px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .card:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .badge{
+    border:1px solid currentColor;border-radius:5px;
+    padding:2px 9px;font-size:12px;font-weight:600;
+  }
+  .photo-flag{font-size:13px;color:var(--smoke);margin-right:auto;margin-left:8px;}
+  .star-btn{
+    background:transparent;border:none;color:var(--smoke);font-size:22px;
+    width:36px;height:36px;line-height:1;padding:0;
+  }
+  .star-btn.active{color:var(--accent);}
+  .card-title{font-size:17px;font-weight:700;}
+  .card-vehicle{margin:0;color:var(--smoke);font-size:13.5px;}
+  .card-spec{margin:0;color:var(--info);font-weight:700;font-size:15.5px;}
+  .card-snippet{
+    margin:2px 0 0;color:var(--smoke);font-size:14px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .tags-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;}
+  .tag-pill{background:var(--panel-2);color:var(--smoke);border-radius:5px;padding:2px 8px;font-size:12px;}
+  .card-footer{margin:6px 0 0;color:var(--smoke);font-size:12px;}
+
+  #emptyState{
+    display:none;text-align:center;color:var(--smoke);padding:40px 24px;font-size:15px;
+  }
+
+  /* ---------- Barra inferior (zona do polegar) ---------- */
+  #bottomNav{
+    position:fixed;left:0;right:0;bottom:0;z-index:50;
+    background:var(--panel);border-top:1px solid var(--steel);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .bottom-nav-inner{
+    max-width:900px;margin:0 auto;
+    display:flex;align-items:flex-end;justify-content:space-around;
+    padding:6px 8px 8px;
+  }
+  .nav-btn{
+    background:transparent;border:none;color:var(--smoke);
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:6px 4px;min-width:58px;flex:1;border-radius:8px;
+  }
+  .nav-btn .nav-ic{font-size:22px;line-height:1;}
+  .nav-btn .nav-label{font-size:11px;font-weight:600;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .nav-btn.active{color:var(--accent);}
+  .nav-btn:active{background:var(--panel-2);}
+  .nav-add{
+    flex:0 0 auto;width:58px;height:58px;border-radius:50%;
+    background:var(--accent);color:var(--accent-ink);border:none;
+    font-size:30px;font-weight:700;display:flex;align-items:center;justify-content:center;
+    margin:0 6px;transform:translateY(-16px);
+    box-shadow:0 6px 16px rgba(0,0,0,0.45);
+  }
+  .nav-add:active{transform:translateY(-16px) scale(0.95);}
+
+  /* ---------- Modais / gavetas (bottom sheets) ---------- */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(15,16,18,0.68);
+    z-index:100;align-items:flex-end;justify-content:center;padding:0;
+    opacity:0;transition:opacity .2s ease;
+  }
+  .modal-overlay.open{opacity:1;}
+  .modal-box{
+    background:var(--panel);border:1px solid var(--steel);
+    border-radius:16px 16px 0 0;
+    width:100%;max-width:640px;max-height:90vh;overflow-y:auto;
+    display:flex;flex-direction:column;
+    transform:translateY(100%);transition:transform .25s ease;
+  }
+  .modal-overlay.open .modal-box{transform:translateY(0);}
+  @media(min-width:640px){
+    .modal-overlay{align-items:center;padding:14px;}
+    .modal-box{border-radius:14px;transform:translateY(24px);}
+  }
+  .modal-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 18px;border-bottom:1px solid var(--steel);
+    position:sticky;top:0;background:var(--panel);z-index:2;
+  }
+  .modal-header h2{font-size:19px;}
+  .modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px;}
+  .modal-footer{
+    padding:14px 18px calc(18px + env(safe-area-inset-bottom));border-top:1px solid var(--steel);
+    display:flex;gap:10px;flex-wrap:wrap;
+  }
+
+  label{display:flex;flex-direction:column;gap:6px;font-size:13.5px;color:var(--smoke);font-weight:600;}
+  .req{color:var(--danger);margin-left:3px;}
+  input[type=text],select,textarea{
+    background:var(--panel-2);border:1px solid var(--steel);border-radius:8px;
+    padding:12px;color:var(--chalk);font-weight:400;width:100%;
+  }
+  textarea{resize:vertical;min-height:90px;}
+  input[type=text]:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:0;}
+  .textarea-wrap{position:relative;}
+  .textarea-wrap textarea{padding-left:50px;}
+  .textarea-wrap .mic-btn{position:absolute;left:6px;bottom:6px;width:38px;height:38px;min-width:38px;}
+  /* Área do input de arquivo (fundo) */
+  input[type=file] {
+    background: var(--panel-2);
+    border: 1px dashed var(--smoke); /* Borda tracejada dá um ar de app moderno */
+    border-radius: 8px;
+    padding: 8px;
+    color: var(--smoke);
+    width: 100%;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  /* A mágica que transforma o botão "1999" em um botão moderno */
+  input[type=file]::file-selector-button {
+    background: var(--steel);
+    border: none;
+    color: var(--chalk);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    margin-right: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    transition: background 0.2s ease;
+  }
+
+  /* Efeito ao clicar no botão */
+  input[type=file]::file-selector-button:active {
+    background: var(--panel);
+  }
+  .checkbox-row{flex-direction:row;align-items:center;gap:10px;font-size:15px;color:var(--chalk);}
+  .checkbox-row input{width:20px;height:20px;}
+
+  #photoPreviewWrap{display:none;flex-direction:column;gap:8px;}
+  #photoPreview{width:100%;max-height:220px;object-fit:cover;border-radius:8px;border:1px solid var(--steel);}
+
+  .btn-primary,.btn-secondary,.btn-danger{
+    border-radius:8px;padding:13px 18px;font-weight:700;font-size:15px;border:none;min-height:48px;flex:1;
+  }
+  .btn-primary{background:var(--accent);color:var(--accent-ink);}
+  .btn-secondary{background:var(--panel-2);color:var(--chalk);border:1px solid var(--steel);}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+  .view-footer{flex-wrap:wrap;}
+
+  .spec-big{color:var(--info);font-weight:700;font-size:22px;margin:0;}
+  .content-block{white-space:pre-wrap;word-wrap:break-word;line-height:1.6;margin:0;}
+  .meta-line{margin:0;color:var(--smoke);font-size:14px;}
+  .view-meta-footer{color:var(--smoke);font-size:13px;margin-top:6px;}
+  .view-photo{width:100%;border-radius:8px;border:1px solid var(--steel);margin:4px 0;}
+
+  .category-row{
+    display:flex;align-items:center;gap:12px;width:100%;
+    background:transparent;border:none;border-bottom:1px solid var(--steel);
+    color:var(--chalk);padding:14px 4px;text-align:left;font-size:15px;
+  }
+  .category-row:last-child{border-bottom:none;}
+  .category-row.selected{color:var(--accent);font-weight:700;}
+  .cat-dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto;}
+  .cat-count{margin-left:auto;color:var(--smoke);font-size:13px;font-weight:400;}
+
+  hr{border:none;border-top:1px solid var(--steel);width:100%;margin:0;}
+
+  #toast{
+    position:fixed;left:50%;bottom:calc(78px + env(safe-area-inset-bottom));
+    transform:translate(-50%,10px);
+    background:var(--panel-2);border:1px solid var(--steel);color:var(--chalk);
+    padding:12px 18px;border-radius:9px;font-size:14.5px;
+    opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;
+    z-index:200;max-width:90vw;text-align:center;
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0);}
+
+  @media (prefers-reduced-motion:reduce){
+    .modal-overlay,.modal-box{transition:none;}
+    .mic-btn.listening{animation:none;}
+    #toast{transition:none;}
+  }
+  mark {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-radius: 3px;
+    padding: 0 3px;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <h1>📝 Minhas Anotações</h1>
+    <p class="tagline">Anote uma vez. Ache na hora.</p>
+  </header>
+
+  <p id="resultCount" class="result-count-label"></p>
+  <main id="cardsContainer"></main>
+  <p id="emptyState"></p>
+</div>
+
+<!-- Barra inferior fixa -->
+<nav id="bottomNav">
+  <div class="bottom-nav-inner">
+    <button id="navSearch" class="nav-btn" aria-label="Buscar">
+      <span class="nav-ic">🔍</span><span class="nav-label">Buscar</span>
+    </button>
+    <button id="navCategory" class="nav-btn" aria-label="Categorias">
+      <span class="nav-ic">🏷️</span><span class="nav-label" id="navCategoryLabel">Categorias</span>
+    </button>
+    <button id="btnAdd" class="nav-add" aria-label="Adicionar novo registro" title="Adicionar novo registro">+</button>
+    <button id="navFav" class="nav-btn" aria-label="Favoritos">
+      <span class="nav-ic">⭐</span><span class="nav-label">Favoritos</span>
+    </button>
+    <button id="navMore" class="nav-btn" aria-label="Mais opções">
+      <span class="nav-ic">⋮</span><span class="nav-label">Mais</span>
+    </button>
+  </div>
+</nav>
+
+<!-- Gaveta: buscar -->
+<div id="sheetSearch" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Buscar</h2>
+      <button class="icon-btn" id="btnCloseSearch" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="search-row">
+        <div class="search-wrap">
+          <span class="search-ic">🔍</span>
+          <input type="text" id="searchInput" placeholder="Título, assunto, tag, conteúdo..." autocomplete="off">
+          <button id="btnClearSearch" aria-label="Limpar busca">✕</button>
+        </div>
+        <button id="btnMic" class="icon-btn mic-btn" aria-label="Buscar falando" title="Buscar falando">🎤</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn-primary" id="btnApplySearch">Ver <span id="searchResultCount">0</span> resultado(s)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gaveta: categorias -->
+<div id="sheetCategory" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Categorias</h2>
+      <button class="icon-btn" id="btnCloseCategory" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body" id="categoryList"></div>
+  </div>
+</div>
+
+<!-- Gaveta: formulário (adicionar/editar) -->
+<div id="modalForm" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="formTitle">Novo registro</h2>
+      <button class="icon-btn" id="btnCloseForm" aria-label="Fechar">✕</button>
+    </div>
+    <form id="itemForm">
+      <div class="modal-body">
+        <label>Título<span class="req"></span>
+          <input type="text" id="fieldTitle" placeholder="Ex.: Ideia de projeto, Wi-Fi, Medida da sala" maxlength="120">
+        </label>
+
+        <label>O que você quer lembrar
+          <div class="textarea-wrap">
+            <textarea id="fieldContent" rows="5" placeholder="Explique com suas palavras: qual era o problema, o que resolveu, o passo a passo, onde fica a peça..."></textarea>
+            <button type="button" id="btnMicContent" class="icon-btn mic-btn" aria-label="Ditar em voz alta" title="Ditar em voz alta">🎤</button>
+          </div>
+        </label>
+        
+        <label>Foto (opcional)
+          <input type="file" accept="image/*" capture="environment" id="fieldPhoto">
+        </label>
+        <div id="photoPreviewWrap">
+          <img id="photoPreview" alt="Prévia da foto">
+          <button type="button" id="btnRemovePhoto" class="btn-secondary">Remover foto</button>
+        </div>
+        <label>Categoria
+          <select id="fieldCategory"></select>
+        </label>
+        <input type="text" id="fieldCategoryCustom" placeholder="Nome da nova categoria" style="display:none">
+
+        <label>Subtítulo ou Referência (opcional)
+          <input type="text" id="fieldVehicle" placeholder="Ex.: Cliente X, Projeto Site, Banco">
+        </label>
+
+        <label>Valor, Quantidade ou Especificação (opcional)
+          <input type="text" id="fieldSpec" placeholder="Ex.: R$ 150,00 / 220V / 5 litros">
+        </label>
+
+        <label>Palavras-chave para achar depois (separe por vírgula)
+          <input type="text" id="fieldTags" placeholder="Ex.: motor, ignição, sensor">
+        </label>
+
+        <label class="checkbox-row"><input type="checkbox" id="fieldFavorite"> Guardar como favorito ⭐ (aparece sempre no topo)</label>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn-primary" id="btnSave">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Gaveta: visualizar detalhes -->
+<div id="modalView" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="viewTitle"></h2>
+      <button class="icon-btn" id="btnCloseView" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body" id="viewBody"></div>
+    <div class="modal-footer view-footer">
+      <button id="btnEdit" class="btn-secondary">Editar</button>
+      <button id="btnDuplicate" class="btn-secondary">Duplicar</button>
+      <button id="btnDelete" class="btn-danger">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gaveta: mais opções (ordenar + backup) -->
+<div id="sheetMore" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Mais opções</h2>
+      <button class="icon-btn" id="btnCloseMore" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <label style="flex-direction:row;align-items:center;justify-content:space-between;">
+        Ordenar por
+        <select id="sortSelect">
+          <option value="recentes">Mais recentes</option>
+          <option value="usados">Mais consultados</option>
+          <option value="az">Ordem alfabética</option>
+        </select>
+      </label>
+      <hr>
+      <p class="meta-line">Seus dados ficam guardados só neste navegador, neste aparelho. Se trocar de celular, formatar ou limpar os dados do navegador, você perde tudo — por isso vale exportar um backup de vez em quando e guardar o arquivo em algum lugar seguro (e-mail, drive, etc.).</p>
+      <button id="btnExport" class="btn-primary">⬇️ Exportar backup (.json)</button>
+      <label class="btn-secondary" style="display:block;text-align:center;cursor:pointer;">
+        ⬆️ Importar backup
+        <input type="file" accept="application/json" id="fieldImport" style="display:none">
+      </label>
+      <p class="meta-line" id="statsText"></p>
+      <p class="meta-line">Dica: para abrir este app mais rápido, use a opção "Adicionar à tela inicial" do seu navegador.</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+
+if (!window.indexedDB) {
+  document.body.innerHTML = '<div style="padding:40px 24px;color:#EDEFF2;font-family:sans-serif;">Este navegador não é compatível com este app (falta suporte a IndexedDB). Tente um navegador mais recente, como o Chrome.</div>';
+  return;
+}
+
+/* ---------------- IndexedDB ---------------- */
+const DB_NAME = 'oficinaMemoriaDB';
+const DB_VERSION = 1;
+const STORE = 'items';
+
+function openDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('category', 'category', { unique:false });
+        store.createIndex('favorite', 'favorite', { unique:false });
+        store.createIndex('updatedAt', 'updatedAt', { unique:false });
+      }
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+const dbPromise = openDB();
+
+function dbAdd(item){
+  return dbPromise.then(db => new Promise((resolve,reject) => {
+    const tx = db.transaction(STORE,'readwrite');
+    const req = tx.objectStore(STORE).add(item);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  }));
+}
+function dbPut(item){
+  return dbPromise.then(db => new Promise((resolve,reject) => {
+    const tx = db.transaction(STORE,'readwrite');
+    const req = tx.objectStore(STORE).put(item);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  }));
+}
+function dbDelete(id){
+  return dbPromise.then(db => new Promise((resolve,reject) => {
+    const tx = db.transaction(STORE,'readwrite');
+    const req = tx.objectStore(STORE).delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  }));
+}
+function dbGetAll(){
+  return dbPromise.then(db => new Promise((resolve,reject) => {
+    const tx = db.transaction(STORE,'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  }));
+}
+
+/* ---------------- Estado ---------------- */
+const PRESET_CATEGORIES = ['Ideias', 'Senhas/Acessos', 'Referências', 'Procedimento', 'Lembrete', 'Nota geral'];
+const CATEGORY_COLORS = {
+  'Ideias':'#D6A035',
+  'Senhas/Acessos':'#D64545',
+  'Referências':'#8B6FD1',
+  'Procedimento':'#4FA65B',
+  'Lembrete':'#4FA8D8',
+  'Nota geral':'#9AA0AB'
+};
+
+let allItems = [];
+let currentCategory = 'Todos';
+let currentSearch = '';
+let currentSort = 'recentes';
+let editingId = null;
+let currentPhotoBlob = null;
+let photoPreviewURL = null;
+let viewPhotoURL = null;
+let viewingItem = null;
+
+/* ---------------- Elementos ---------------- */
+const searchInput = document.getElementById('searchInput');
+const btnClearSearch = document.getElementById('btnClearSearch');
+const btnMic = document.getElementById('btnMic');
+const sortSelect = document.getElementById('sortSelect');
+const resultCount = document.getElementById('resultCount');
+const cardsContainer = document.getElementById('cardsContainer');
+const emptyState = document.getElementById('emptyState');
+const btnAdd = document.getElementById('btnAdd');
+
+const navSearch = document.getElementById('navSearch');
+const navCategory = document.getElementById('navCategory');
+const navCategoryLabel = document.getElementById('navCategoryLabel');
+const navFav = document.getElementById('navFav');
+const navMore = document.getElementById('navMore');
+
+const sheetSearch = document.getElementById('sheetSearch');
+const btnCloseSearch = document.getElementById('btnCloseSearch');
+const btnApplySearch = document.getElementById('btnApplySearch');
+const searchResultCount = document.getElementById('searchResultCount');
+
+const sheetCategory = document.getElementById('sheetCategory');
+const btnCloseCategory = document.getElementById('btnCloseCategory');
+const categoryList = document.getElementById('categoryList');
+
+const modalForm = document.getElementById('modalForm');
+const formTitle = document.getElementById('formTitle');
+const btnCloseForm = document.getElementById('btnCloseForm');
+const itemForm = document.getElementById('itemForm');
+const fieldTitle = document.getElementById('fieldTitle');
+const fieldCategory = document.getElementById('fieldCategory');
+const fieldCategoryCustom = document.getElementById('fieldCategoryCustom');
+const fieldVehicle = document.getElementById('fieldVehicle');
+const fieldSpec = document.getElementById('fieldSpec');
+const fieldContent = document.getElementById('fieldContent');
+const btnMicContent = document.getElementById('btnMicContent');
+const fieldTags = document.getElementById('fieldTags');
+const fieldPhoto = document.getElementById('fieldPhoto');
+const photoPreviewWrap = document.getElementById('photoPreviewWrap');
+const photoPreview = document.getElementById('photoPreview');
+const btnRemovePhoto = document.getElementById('btnRemovePhoto');
+const fieldFavorite = document.getElementById('fieldFavorite');
+
+const modalView = document.getElementById('modalView');
+const viewTitle = document.getElementById('viewTitle');
+const btnCloseView = document.getElementById('btnCloseView');
+const viewBody = document.getElementById('viewBody');
+const btnEdit = document.getElementById('btnEdit');
+const btnDuplicate = document.getElementById('btnDuplicate');
+const btnDelete = document.getElementById('btnDelete');
+
+const sheetMore = document.getElementById('sheetMore');
+const btnCloseMore = document.getElementById('btnCloseMore');
+const btnExport = document.getElementById('btnExport');
+const fieldImport = document.getElementById('fieldImport');
+const statsText = document.getElementById('statsText');
+
+const toast = document.getElementById('toast');
+
+/* ---------------- Gavetas (abrir/fechar com animação) ---------------- */
+function openSheet(el){
+  el.style.display = 'flex';
+  el.classList.remove('closing');
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
+}
+function closeSheetEl(el){
+  if (!el.classList.contains('open')){ el.style.display = 'none'; return; }
+  el.classList.remove('open');
+  el.classList.add('closing');
+  setTimeout(() => {
+    el.style.display = 'none';
+    el.classList.remove('closing');
+  }, 260);
+}
+
+/* ---------------- Utilidades ---------------- */
+function normalize(s){
+  return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+}
+function debounce(fn, delay){
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+}
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+function timeAgo(ts){
+  if (!ts) return 'agora';
+  const diff = Date.now() - ts;
+  const min=60000, hour=3600000, day=86400000;
+  if (diff < min) return 'agora mesmo';
+  if (diff < hour) return `há ${Math.max(1,Math.floor(diff/min))} min`;
+  if (diff < day) return `há ${Math.floor(diff/hour)}h`;
+  const days = Math.floor(diff/day);
+  if (days < 30) return days===1 ? 'há 1 dia' : `há ${days} dias`;
+  const months = Math.floor(days/30);
+  if (months < 12) return months===1 ? 'há 1 mês' : `há ${months} meses`;
+  const years = Math.floor(months/12);
+  return years===1 ? 'há 1 ano' : `há ${years} anos`;
+}
+function categoryColor(cat){
+  if (CATEGORY_COLORS[cat]) return CATEGORY_COLORS[cat];
+  let hash = 0;
+  for (let i=0;i<cat.length;i++){ hash = cat.charCodeAt(i) + ((hash<<5)-hash); }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 55%, 58%)`;
+}
+function blobToDataURL(blob){
+  return new Promise((resolve,reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+function dataURLToBlob(dataUrl){
+  return fetch(dataUrl).then(res => res.blob());
+}
+// Adicione junto com suas funções de utilidade
+function compressImage(file, maxWidth = 1200, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = event => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          resolve(blob);
+        }, 'image/jpeg', quality);
+      };
+    };
+    reader.onerror = error => reject(error);
+  });
+}
+// Previne que códigos estranhos quebrem o design (Segurança)
+function escapeHTML(str) {
+  return (str || '').toString().replace(/[&<>'"]/g, tag => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+  }[tag])).replace(/\r?\n/g, '<br>'); // <--- Essa é a mágica do pulo de linha!
+}
+
+// Faz o marcador entender que "oleo" e "óleo" são a mesma coisa
+function createFuzzyRegex(word) {
+  return word
+    .replace(/[aáàãâä]/gi, '[aáàãâä]')
+    .replace(/[eéèêë]/gi, '[eéèêë]')
+    .replace(/[iíìîï]/gi, '[iíìîï]')
+    .replace(/[oóòõôö]/gi, '[oóòõôö]')
+    .replace(/[uúùûü]/gi, '[uúùûü]')
+    .replace(/[cç]/gi, '[cç]');
+}
+
+// Procura as palavras da pesquisa e envolve na tag <mark>
+function highlightHTML(text, query) {
+  if (!text) return '';
+  let safeText = escapeHTML(text);
+  const q = (query || '').trim();
+  if (!q) return safeText;
+
+  const words = q.split(' ').filter(Boolean)
+    .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escapa símbolos estranhos
+    .map(w => createFuzzyRegex(w)) // Aceita falta de acentos
+    .sort((a, b) => b.length - a.length); // Pinta as palavras maiores primeiro
+
+  if (words.length > 0) {
+    const regex = new RegExp(`(${words.join('|')})`, 'gi');
+    safeText = safeText.replace(regex, '<mark>$1</mark>');
+  }
+  return safeText;
+}
+/* ---------------- Reconhecimento de voz ---------------- */
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function startVoiceInput(targetEl, button, appendMode){
+  if (!SpeechRecognitionAPI){
+    showToast('Busca por voz não é compatível com este navegador.');
+    return;
+  }
+  const rec = new SpeechRecognitionAPI();
+  rec.lang = 'pt-BR';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  button.classList.add('listening');
+  rec.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    if (appendMode){
+      targetEl.value = (targetEl.value ? targetEl.value.trim() + ' ' : '') + text;
+    } else {
+      targetEl.value = text;
+      targetEl.dispatchEvent(new Event('input'));
+    }
+  };
+  rec.onerror = () => { button.classList.remove('listening'); };
+  rec.onend = () => { button.classList.remove('listening'); };
+  try { rec.start(); } catch(err){ button.classList.remove('listening'); }
+}
+
+/* ---------------- Carregar e renderizar ---------------- */
+function loadAndRender(){
+  return dbGetAll().then(items => {
+    allItems = items;
+    renderCategoryList();
+    renderCards();
+  });
+}
+
+function updateNavIndicators(){
+  if (currentSearch.trim()){
+    navSearch.classList.add('active');
+    const label = navSearch.querySelector('.nav-label');
+    label.textContent = currentSearch.length > 10 ? currentSearch.slice(0,9) + '…' : currentSearch;
+  } else {
+    navSearch.classList.remove('active');
+    navSearch.querySelector('.nav-label').textContent = 'Buscar';
+  }
+
+  if (currentCategory !== 'Todos' && currentCategory !== 'Favoritos'){
+    navCategory.classList.add('active');
+    navCategoryLabel.textContent = currentCategory.length > 10 ? currentCategory.slice(0,9) + '…' : currentCategory;
+  } else {
+    navCategory.classList.remove('active');
+    navCategoryLabel.textContent = 'Categorias';
+  }
+
+  if (currentCategory === 'Favoritos') navFav.classList.add('active');
+  else navFav.classList.remove('active');
+}
+
+function renderCategoryList(){
+  const cats = [];
+  const seen = new Set();
+  PRESET_CATEGORIES.forEach(c => {
+    if (allItems.some(i => i.category === c) && !seen.has(c)){ cats.push(c); seen.add(c); }
+  });
+  const customCats = [...new Set(allItems.map(i => i.category))]
+    .filter(c => !seen.has(c))
+    .sort((a,b) => a.localeCompare(b,'pt-BR'));
+  customCats.forEach(c => { cats.push(c); seen.add(c); });
+
+  const allCats = ['Todos', ...cats];
+  if (currentCategory !== 'Favoritos' && !allCats.includes(currentCategory)) currentCategory = 'Todos';
+
+  categoryList.innerHTML = '';
+  allCats.forEach(c => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'category-row' + (c === currentCategory ? ' selected' : '');
+    const dot = document.createElement('span'); dot.className = 'cat-dot';
+    dot.style.background = c === 'Todos' ? 'var(--smoke)' : categoryColor(c);
+    row.appendChild(dot);
+    const label = document.createElement('span'); label.textContent = c;
+    row.appendChild(label);
+    const count = document.createElement('span'); count.className = 'cat-count';
+    count.textContent = c === 'Todos' ? allItems.length : allItems.filter(i => i.category === c).length;
+    row.appendChild(count);
+    row.addEventListener('click', () => {
+      currentCategory = c;
+      renderCategoryList();
+      renderCards();
+      closeSheetEl(sheetCategory);
+    });
+    categoryList.appendChild(row);
+  });
+}
+
+function scoreMatch(item, q) {
+  let score = 0;
+  
+  const nTitle = normalize(item.title);
+  const nVehicle = normalize(item.vehicle);
+  const nSpec = normalize(item.spec);
+  const nContent = normalize(item.content);
+  const nTags = normalize((item.tags||[]).join(' '));
+  const nCategory = normalize(item.category);
+
+  // Junta todos os textos do item num lugar só para facilitar a checagem
+  const allText = `${nTitle} ${nVehicle} ${nSpec} ${nContent} ${nTags} ${nCategory}`;
+
+  // Quebra o que você pesquisou em palavras separadas (ex: "moto", "honda", "rolamento")
+  const words = q.split(' ').filter(w => w.trim() !== '');
+
+  // Regra de Ouro (Filtro AND): Todas as palavras pesquisadas TÊM que existir no item.
+  // Se faltar uma palavra, ele não mostra (retorna 0), o que garante que a busca não traga lixo.
+  for (const word of words) {
+    if (!allText.includes(word)) {
+      return 0; // Desclassifica o registro imediatamente
+    }
+  }
+
+  // Se passou pelo filtro acima, significa que o registro tem todas as palavras!
+  // Agora vamos calcular os pontos para ver quem aparece primeiro na lista:
+  for (const word of words) {
+    if (nTitle.includes(word)) score += 5;     // Peso maior se a palavra estiver no título
+    if (nTags.includes(word)) score += 4;      // Peso forte para as tags
+    if (nVehicle.includes(word)) score += 3;   // Peso médio para veículo
+    if (nSpec.includes(word)) score += 3;      // Peso médio para especificação
+    if (nCategory.includes(word)) score += 2;  // Peso menor para categoria
+    if (nContent.includes(word)) score += 1;   // Peso básico para o conteúdo geral
+  }
+
+  return score;
+}
+function getFilteredSorted(){
+  let items = allItems.slice();
+  if (currentCategory === 'Favoritos'){
+    items = items.filter(i => i.favorite);
+  } else if (currentCategory !== 'Todos'){
+    items = items.filter(i => i.category === currentCategory);
+  }
+  const q = normalize(currentSearch.trim());
+  if (q){
+    items = items
+      .map(i => ({ item:i, score: scoreMatch(i,q) }))
+      .filter(x => x.score > 0)
+      .sort((a,b) => (b.score - a.score) || ((b.item.favorite?1:0) - (a.item.favorite?1:0)) || (b.item.updatedAt - a.item.updatedAt))
+      .map(x => x.item);
+    return items;
+  }
+  items.sort((a,b) => {
+    const favA = a.favorite ? 1 : 0, favB = b.favorite ? 1 : 0;
+    if (favA !== favB) return favB - favA;
+    if (currentSort === 'usados') return (b.useCount||0) - (a.useCount||0);
+    if (currentSort === 'az') return a.title.localeCompare(b.title,'pt-BR');
+    return (b.updatedAt||0) - (a.updatedAt||0);
+  });
+  return items;
+}
+
+function buildFooterText(item){
+  const rel = timeAgo(item.updatedAt);
+  if (item.useCount && item.useCount > 0){
+    return `Atualizado ${rel}, consultado ${item.useCount}x`;
+  }
+  return `Atualizado ${rel}`;
+}
+
+function buildCard(item){
+  const card = document.createElement('article');
+  card.className = 'card';
+  card.tabIndex = 0;
+  card.setAttribute('role','button');
+  card.setAttribute('aria-label', 'Ver detalhes de ' + item.title);
+  card.style.setProperty('--tag-color', categoryColor(item.category));
+  card.addEventListener('click', () => openView(item));
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openView(item); }
+  });
+
+  const top = document.createElement('div'); top.className = 'card-top';
+  const badge = document.createElement('span'); badge.className = 'badge';
+  badge.textContent = item.category; badge.style.color = categoryColor(item.category);
+  top.appendChild(badge);
+
+  if (item.photo){
+    const flag = document.createElement('span'); flag.className = 'photo-flag'; flag.textContent = '📷';
+    top.appendChild(flag);
+  }
+
+  const star = document.createElement('button');
+  star.type = 'button';
+  star.className = 'star-btn' + (item.favorite ? ' active' : '');
+  star.textContent = item.favorite ? '★' : '☆';
+  star.setAttribute('aria-label', item.favorite ? 'Remover dos favoritos' : 'Marcar como favorito');
+  star.addEventListener('click', (e) => { e.stopPropagation(); toggleFavorite(item); });
+  top.appendChild(star);
+  card.appendChild(top);
+
+  // --- MÁGICA DO HIGHLIGHT AQUI ---
+  // Se tem pesquisa, pinta o texto. Se não tem, só exibe normal.
+  const renderText = (text) => currentSearch ? highlightHTML(text, currentSearch) : escapeHTML(text);
+
+  const title = document.createElement('h3'); title.className = 'card-title'; 
+  title.innerHTML = renderText(item.title);
+  card.appendChild(title);
+
+  if (item.vehicle){
+    const v = document.createElement('p'); v.className = 'card-vehicle'; 
+    v.innerHTML = renderText(item.vehicle);
+    card.appendChild(v);
+  }
+  if (item.spec){
+    const s = document.createElement('p'); s.className = 'card-spec'; 
+    s.innerHTML = renderText(item.spec);
+    card.appendChild(s);
+  }
+  if (item.content){
+    const c = document.createElement('p'); c.className = 'card-snippet'; 
+    c.innerHTML = renderText(item.content);
+    card.appendChild(c);
+  }
+  if (item.tags && item.tags.length){
+    const tw = document.createElement('div'); tw.className = 'tags-wrap';
+    item.tags.slice(0,6).forEach(t => {
+      const pill = document.createElement('span'); pill.className = 'tag-pill'; 
+      pill.innerHTML = '#' + renderText(t);
+      tw.appendChild(pill);
+    });
+    card.appendChild(tw);
+  }
+  const footer = document.createElement('p'); footer.className = 'card-footer'; footer.textContent = buildFooterText(item);
+  card.appendChild(footer);
+  return card;
+}
+function renderCards(){
+  updateNavIndicators();
+  const items = getFilteredSorted();
+  resultCount.textContent = items.length === 1 ? '1 registro' : `${items.length} registros`;
+  searchResultCount.textContent = items.length;
+  cardsContainer.innerHTML = '';
+  if (items.length === 0){
+    emptyState.style.display = 'block';
+    emptyState.textContent = allItems.length === 0
+      ? 'Nada guardado ainda. Toque no + e registre a primeira coisa que você não pode esquecer.'
+      : 'Nada encontrado com esses termos. Tente outra palavra ou categoria.';
+    return;
+  }
+  emptyState.style.display = 'none';
+  items.forEach(item => cardsContainer.appendChild(buildCard(item)));
+}
+
+function toggleFavorite(item){
+  item.favorite = !item.favorite;
+  item.updatedAt = Date.now();
+  dbPut(item).then(() => { renderCategoryList(); renderCards(); });
+}
+
+/* ---------------- Formulário (adicionar/editar/duplicar) ---------------- */
+function populateCategorySelect(selected){
+  const categoriesSet = new Set(PRESET_CATEGORIES);
+  allItems.forEach(i => categoriesSet.add(i.category));
+  fieldCategory.innerHTML = '';
+  categoriesSet.forEach(cat => {
+    const opt = document.createElement('option'); opt.value = cat; opt.textContent = cat;
+    fieldCategory.appendChild(opt);
+  });
+  const customOpt = document.createElement('option'); customOpt.value = '__custom__'; customOpt.textContent = '+ Nova categoria...';
+  fieldCategory.appendChild(customOpt);
+
+  if (selected && categoriesSet.has(selected)){
+    fieldCategory.value = selected;
+    fieldCategoryCustom.style.display = 'none';
+    fieldCategoryCustom.value = '';
+  } else {
+    fieldCategory.value = PRESET_CATEGORIES[0];
+    fieldCategoryCustom.style.display = 'none';
+    fieldCategoryCustom.value = '';
+  }
+}
+
+function updatePhotoPreview(){
+  if (photoPreviewURL){ URL.revokeObjectURL(photoPreviewURL); photoPreviewURL = null; }
+  if (currentPhotoBlob){
+    photoPreviewURL = URL.createObjectURL(currentPhotoBlob);
+    photoPreview.src = photoPreviewURL;
+    photoPreviewWrap.style.display = 'flex';
+  } else {
+    photoPreviewWrap.style.display = 'none';
+    photoPreview.removeAttribute('src');
+  }
+}
+
+function openForm(item, mode){
+  formTitle.textContent = mode === 'edit' ? 'Editar registro' : 'Novo registro';
+  editingId = mode === 'edit' ? item.id : null;
+
+  fieldTitle.value = item ? (mode === 'duplicate' ? item.title + ' (cópia)' : item.title) : '';
+  populateCategorySelect(item ? item.category : null);
+  fieldVehicle.value = item ? (item.vehicle || '') : '';
+  fieldSpec.value = item ? (item.spec || '') : '';
+  fieldContent.value = item ? (item.content || '') : '';
+  fieldTags.value = item ? (item.tags||[]).join(', ') : '';
+  fieldFavorite.checked = item ? !!item.favorite : false;
+  currentPhotoBlob = item && item.photo ? item.photo : null;
+  fieldPhoto.value = '';
+  updatePhotoPreview();
+
+  openSheet(modalForm);
+  setTimeout(() => fieldTitle.focus(), 260);
+}
+
+function closeForm(){
+  closeSheetEl(modalForm);
+  editingId = null;
+  currentPhotoBlob = null;
+  if (photoPreviewURL){ URL.revokeObjectURL(photoPreviewURL); photoPreviewURL = null; }
+}
+function handleSave(){
+  let title = fieldTitle.value.trim();
+  const content = fieldContent.value.trim(); // Puxa o conteúdo logo no início
+
+  // 1. Validação: Precisa de pelo menos UMA das três coisas (Título, Foto ou Anotação)
+  if (!title && !currentPhotoBlob && !content) { 
+    showToast('Dê um título, foto ou digite uma anotação.'); 
+    fieldContent.focus(); 
+    return; 
+  }
+  
+  // 2. Títulos Automáticos
+  if (!title) {
+    if (content) {
+      // Se tem texto, usa as primeiras 30 letras como título
+      title = content.length > 30 ? content.substring(0, 30) + '...' : content;
+    } else if (currentPhotoBlob) {
+      // Se só tem foto, usa a data
+      const dataLocal = new Date().toLocaleString('pt-BR').substring(0, 10);
+      title = `Foto rápida - ${dataLocal}`; 
+    }
+  }
+
+  // 3. Categoria
+  let category = fieldCategory.value;
+  if (category === '__custom__'){
+    category = fieldCategoryCustom.value.trim();
+    if (!category){ 
+      showToast('Digite o nome da nova categoria.'); 
+      fieldCategoryCustom.focus(); 
+      return; 
+    }
+  }
+
+  // 4. Monta os dados
+  const tags = fieldTags.value.split(',').map(t => t.trim()).filter(Boolean);
+  const now = Date.now();
+  
+  const item = {
+    title: title,
+    category: category,
+    vehicle: fieldVehicle.value.trim(),
+    spec: fieldSpec.value.trim(),
+    content: content, // Salva o conteúdo aqui
+    tags: tags,
+    favorite: fieldFavorite.checked,
+    photo: currentPhotoBlob || null,
+    updatedAt: now
+  };
+
+  // 5. Salva no banco (IndexedDB)
+  const savePromise = (async () => {
+    if (editingId){
+      const existing = allItems.find(i => i.id === editingId);
+      item.id = editingId;
+      item.createdAt = existing ? existing.createdAt : now;
+      item.useCount = existing ? (existing.useCount||0) : 0;
+      await dbPut(item);
+    } else {
+      item.createdAt = now;
+      item.useCount = 0;
+      await dbAdd(item);
+    }
+  })();
+
+  savePromise.then(() => {
+    closeForm();
+    showToast('Salvo com sucesso!');
+    loadAndRender();
+  });
+}
+/* ---------------- Visualizar detalhes ---------------- */
+function openView(item){
+  viewingItem = item;
+  viewTitle.textContent = item.title;
+  viewBody.innerHTML = '';
+  if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
+
+  const badge = document.createElement('span'); badge.className = 'badge';
+  badge.textContent = item.category; badge.style.color = categoryColor(item.category);
+  viewBody.appendChild(badge);
+
+  // Usa a mesma mágica da tela inicial para destacar o texto e aplicar as quebras de linha
+  const renderText = (text) => currentSearch ? highlightHTML(text, currentSearch) : escapeHTML(text);
+
+  if (item.vehicle){
+    const p = document.createElement('p'); p.className = 'meta-line'; 
+    p.innerHTML = '📌 ' + renderText(item.vehicle);
+    viewBody.appendChild(p);
+  }
+  if (item.spec){
+    const p = document.createElement('p'); p.className = 'spec-big'; 
+    p.innerHTML = renderText(item.spec);
+    viewBody.appendChild(p);
+  }
+  if (item.photo){
+    const img = document.createElement('img'); img.className = 'view-photo';
+    viewPhotoURL = URL.createObjectURL(item.photo);
+    img.src = viewPhotoURL;
+    img.alt = 'Foto anexada';
+    viewBody.appendChild(img);
+  }
+  if (item.content){
+    const c = document.createElement('p'); c.className = 'content-block'; 
+    c.innerHTML = renderText(item.content); // Aqui o <br> entra em ação!
+    viewBody.appendChild(c);
+  }
+  if (item.tags && item.tags.length){
+    const tw = document.createElement('div'); tw.className = 'tags-wrap';
+    item.tags.forEach(t => {
+      const pill = document.createElement('span'); pill.className = 'tag-pill'; 
+      pill.innerHTML = '#' + renderText(t);
+      tw.appendChild(pill);
+    });
+    viewBody.appendChild(tw);
+  }
+  const footer = document.createElement('p'); footer.className = 'view-meta-footer';
+  footer.textContent = `Criado ${timeAgo(item.createdAt)}, atualizado ${timeAgo(item.updatedAt)} e consultado ${item.useCount||0} vez(es).`;
+  viewBody.appendChild(footer);
+
+  openSheet(modalView);
+
+  item.useCount = (item.useCount||0) + 1;
+  dbPut(item).then(() => renderCards());
+}
+function closeView(){
+  closeSheetEl(modalView);
+  if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
+  viewingItem = null;
+}
+
+/* ---------------- Backup ---------------- */
+async function exportBackup(){
+  const items = await dbGetAll();
+  const serializable = [];
+  for (const it of items){
+    let photoBase64 = null, photoType = null;
+    if (it.photo){
+      photoBase64 = await blobToDataURL(it.photo);
+      photoType = it.photo.type || null;
+    }
+    const copy = Object.assign({}, it);
+    delete copy.photo;
+    copy.photoBase64 = photoBase64;
+    copy.photoType = photoType;
+    serializable.push(copy);
+  }
+  const payload = { app:'memoria-oficina', version:1, exportedAt: Date.now(), items: serializable };
+  const blob = new Blob([JSON.stringify(payload)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `backup-oficina-${dateStr}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Backup exportado.');
+}
+
+async function importBackup(file){
+  let payload;
+  try {
+    const text = await file.text();
+    payload = JSON.parse(text);
+  } catch(e){
+    showToast('Arquivo inválido.');
+    return;
+  }
+  const items = Array.isArray(payload) ? payload : (payload.items || []);
+  if (!items.length){ showToast('Nenhum registro encontrado no arquivo.'); return; }
+
+  const ok = confirm(`Isso vai ADICIONAR ${items.length} registro(s) do backup aos que você já tem, sem apagar nada. Continuar?`);
+  if (!ok) return;
+
+  let count = 0;
+  for (const raw of items){
+    const newItem = {
+      title: raw.title || 'Sem título',
+      category: raw.category || 'Nota geral',
+      vehicle: raw.vehicle || '',
+      spec: raw.spec || '',
+      content: raw.content || '',
+      tags: raw.tags || [],
+      favorite: !!raw.favorite,
+      useCount: raw.useCount || 0,
+      createdAt: raw.createdAt || Date.now(),
+      updatedAt: raw.updatedAt || Date.now(),
+      photo: null
+    };
+    if (raw.photoBase64){
+      try { newItem.photo = await dataURLToBlob(raw.photoBase64); } catch(e){ /* ignora foto quebrada */ }
+    }
+    try { await dbAdd(newItem); count++; } catch(e){ /* pula item com erro */ }
+  }
+  showToast(`${count} registro(s) importado(s).`);
+  loadAndRender();
+}
+
+/* ---------------- Dados de exemplo (primeira vez) ---------------- */
+async function seedIfEmpty(){
+  const items = await dbGetAll();
+  if (items.length > 0) return;
+  const now = Date.now();
+  const examples = [
+    {
+      title:'Exemplo: torque do cabeçote (você pode apagar)',
+      category:'Torque/Aperto',
+      vehicle:'VW Gol 1.0 8V (motor AP)',
+      spec:'9,5 kgf·m (95 Nm) + 1/4 de volta',
+      content:'Sequência de aperto em cruz, em 3 etapas, sempre com o motor frio. Este é um registro de exemplo — edite ou apague quando quiser.',
+      tags:['motor','cabecote','ap'],
+      favorite:true, photo:null, useCount:0, createdAt:now, updatedAt:now
+    },
+    {
+      title:'Exemplo: carro não pega só de manhã',
+      category:'Diagnóstico',
+      vehicle:'Honda Civic 2015 1.8',
+      spec:'',
+      content:'Causa encontrada: válvula do IAC suja, motor engasgando a frio. A limpeza resolveu. Vale checar esse componente antes de trocar sensor.',
+      tags:['partida a frio','iac','injecao'],
+      favorite:false, photo:null, useCount:0, createdAt:now, updatedAt:now
+    },
+    {
+      title:'Exemplo: relé da bomba de combustível',
+      category:'Componente',
+      vehicle:'Fiat Palio 1.0 Fire',
+      spec:'',
+      content:'Fica na caixa de fusíveis do compartimento do motor, posição 3, relé azul.',
+      tags:['combustivel','rele','fusivel'],
+      favorite:false, photo:null, useCount:0, createdAt:now, updatedAt:now
+    }
+  ];
+  for (const ex of examples) await dbAdd(ex);
+}
+
+/* ---------------- Eventos ---------------- */
+function setupEventListeners(){
+  searchInput.addEventListener('input', debounce(() => {
+    currentSearch = searchInput.value;
+    btnClearSearch.style.display = currentSearch ? 'flex' : 'none';
+    renderCards();
+  }, 120));
+
+  btnClearSearch.addEventListener('click', () => {
+    searchInput.value = ''; currentSearch = '';
+    btnClearSearch.style.display = 'none';
+    renderCards(); searchInput.focus();
+  });
+
+  btnMic.addEventListener('click', () => startVoiceInput(searchInput, btnMic, false));
+  btnMicContent.addEventListener('click', () => startVoiceInput(fieldContent, btnMicContent, true));
+
+  sortSelect.addEventListener('change', () => { currentSort = sortSelect.value; renderCards(); });
+
+  navSearch.addEventListener('click', () => {
+    openSheet(sheetSearch);
+    setTimeout(() => searchInput.focus(), 260);
+  });
+  btnCloseSearch.addEventListener('click', () => closeSheetEl(sheetSearch));
+  btnApplySearch.addEventListener('click', () => closeSheetEl(sheetSearch));
+  sheetSearch.addEventListener('click', (e) => { if (e.target === sheetSearch) closeSheetEl(sheetSearch); });
+
+  navCategory.addEventListener('click', () => { renderCategoryList(); openSheet(sheetCategory); });
+  btnCloseCategory.addEventListener('click', () => closeSheetEl(sheetCategory));
+  sheetCategory.addEventListener('click', (e) => { if (e.target === sheetCategory) closeSheetEl(sheetCategory); });
+
+  navFav.addEventListener('click', () => {
+    currentCategory = currentCategory === 'Favoritos' ? 'Todos' : 'Favoritos';
+    renderCategoryList();
+    renderCards();
+  });
+
+  btnAdd.addEventListener('click', () => openForm(null, 'add'));
+
+  fieldCategory.addEventListener('change', () => {
+    const isCustom = fieldCategory.value === '__custom__';
+    fieldCategoryCustom.style.display = isCustom ? 'block' : 'none';
+    if (isCustom) fieldCategoryCustom.focus();
+  });
+
+  fieldPhoto.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    showToast('Comprimindo foto...');
+    try {
+      currentPhotoBlob = await compressImage(file);
+      updatePhotoPreview();
+    } catch (error) {
+      showToast('Erro ao processar foto.');
+    }
+  }
+});
+
+  itemForm.addEventListener('submit', (e) => { e.preventDefault(); handleSave(); });
+  btnCloseForm.addEventListener('click', closeForm);
+  modalForm.addEventListener('click', (e) => { if (e.target === modalForm) closeForm(); });
+
+  btnCloseView.addEventListener('click', closeView);
+  modalView.addEventListener('click', (e) => { if (e.target === modalView) closeView(); });
+
+  btnEdit.addEventListener('click', () => {
+    const item = viewingItem; closeView(); openForm(item, 'edit');
+  });
+  btnDuplicate.addEventListener('click', () => {
+    const item = viewingItem; closeView(); openForm(item, 'duplicate');
+  });
+  btnDelete.addEventListener('click', () => {
+    const item = viewingItem;
+    if (!item) return;
+    const ok = confirm(`Excluir "${item.title}"? Essa ação não pode ser desfeita.`);
+    if (!ok) return;
+    dbDelete(item.id).then(() => {
+      closeView();
+      showToast('Excluído.');
+      loadAndRender();
+    });
+  });
+
+  navMore.addEventListener('click', async () => {
+    const items = await dbGetAll();
+    statsText.textContent = items.length === 1 ? '1 registro salvo neste navegador.' : `${items.length} registros salvos neste navegador.`;
+    openSheet(sheetMore);
+  });
+  btnCloseMore.addEventListener('click', () => closeSheetEl(sheetMore));
+  sheetMore.addEventListener('click', (e) => { if (e.target === sheetMore) closeSheetEl(sheetMore); });
+
+  btnExport.addEventListener('click', () => exportBackup());
+  fieldImport.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) importBackup(file);
+    fieldImport.value = '';
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (modalForm.classList.contains('open')) closeForm();
+    else if (modalView.classList.contains('open')) closeView();
+    else if (sheetSearch.classList.contains('open')) closeSheetEl(sheetSearch);
+    else if (sheetCategory.classList.contains('open')) closeSheetEl(sheetCategory);
+    else if (sheetMore.classList.contains('open')) closeSheetEl(sheetMore);
+  });
+
+  if (!SpeechRecognitionAPI){
+    document.querySelectorAll('.mic-btn').forEach(b => b.style.display = 'none');
+  }
+}
+
+/* ---------------- Início ---------------- */
+(async function init(){
+  setupEventListeners();
+  await seedIfEmpty();
+  await loadAndRender();
+})();
+
+})();
+</script>
+</body>
+</html>
