@@ -515,7 +515,40 @@ function dbGetAll(){
     req.onerror = () => reject(req.error);
   }));
 }
+// Puxa apenas UM registro completo do banco (com a foto pesada)
+function dbGet(id){
+  return dbPromise.then(db => new Promise((resolve,reject) => {
+    const tx = db.transaction(STORE,'readonly');
+    const req = tx.objectStore(STORE).get(id);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  }));
+}
 
+// Puxa toda a lista, mas ESVAZIA as fotos para poupar a memória RAM
+function dbGetAllLight(){
+  return dbPromise.then(db => new Promise((resolve,reject) => {
+    const tx = db.transaction(STORE,'readonly');
+    const store = tx.objectStore(STORE);
+    const req = store.openCursor();
+    const results = [];
+    req.onsuccess = (e) => {
+      const cursor = e.target.result;
+      if(cursor) {
+        const item = cursor.value;
+        if (item.photo) {
+          item.hasPhoto = true; // Avisa que tem foto
+          delete item.photo;    // Apaga o arquivo gigante da memória
+        }
+        results.push(item);
+        cursor.continue();
+      } else {
+        resolve(results);
+      }
+    };
+    req.onerror = () => reject(req.error);
+  }));
+}
 /* ---------------- Estado ---------------- */
 const PRESET_CATEGORIES = ['Ideias', 'Senhas/Acessos', 'Referências', 'Procedimento', 'Lembrete', 'Nota geral'];
 const CATEGORY_COLORS = {
@@ -536,6 +569,8 @@ let currentPhotoBlob = null;
 let photoPreviewURL = null;
 let viewPhotoURL = null;
 let viewingItem = null;
+let currentRenderLimit = 20; // O número mágico: desenha 20 itens por vez
+let lastRenderState = ''; // Ajuda o sistema a saber quando você fez uma nova busca
 
 /* ---------------- Elementos ---------------- */
 const searchInput = document.getElementById('searchInput');
@@ -754,7 +789,7 @@ function startVoiceInput(targetEl, button, appendMode){
 
 /* ---------------- Carregar e renderizar ---------------- */
 function loadAndRender(){
-  return dbGetAll().then(items => {
+  return dbGetAllLight().then(items => {
     allItems = items;
     renderCategoryList();
     renderCards();
@@ -908,7 +943,7 @@ function buildCard(item){
   badge.textContent = item.category; badge.style.color = categoryColor(item.category);
   top.appendChild(badge);
 
-  if (item.photo){
+  if (item.photo || item.hasPhoto){
     const flag = document.createElement('span'); flag.className = 'photo-flag'; flag.textContent = '📷';
     top.appendChild(flag);
   }
@@ -960,10 +995,21 @@ function buildCard(item){
 }
 function renderCards(){
   updateNavIndicators();
+  
+  // 1. O CÉREBRO DO LIMITE: Verifica se você digitou uma busca nova, mudou a aba ou a ordenação.
+  // Se mudou, ele reseta o limite de volta para 20.
+  const currentState = `${currentCategory}|${currentSearch}|${currentSort}`;
+  if (lastRenderState !== currentState) {
+    currentRenderLimit = 20;
+    lastRenderState = currentState;
+  }
+
+  // Busca os dados filtrados na memória RAM (processo instantâneo)
   const items = getFilteredSorted();
   resultCount.textContent = items.length === 1 ? '1 registro' : `${items.length} registros`;
   searchResultCount.textContent = items.length;
   cardsContainer.innerHTML = '';
+  
   if (items.length === 0){
     emptyState.style.display = 'block';
     emptyState.textContent = allItems.length === 0
@@ -972,13 +1018,48 @@ function renderCards(){
     return;
   }
   emptyState.style.display = 'none';
-  items.forEach(item => cardsContainer.appendChild(buildCard(item)));
-}
 
-function toggleFavorite(item){
-  item.favorite = !item.favorite;
-  item.updatedAt = Date.now();
-  dbPut(item).then(() => { renderCategoryList(); renderCards(); });
+  // 2. A PROTEÇÃO: Corta a lista gigante e pega só a quantidade permitida (ex: os 20 primeiros)
+  const itemsToRender = items.slice(0, currentRenderLimit);
+  
+  // Desenha no HTML apenas o que foi cortado, poupando a placa de vídeo do celular
+  itemsToRender.forEach(item => cardsContainer.appendChild(buildCard(item)));
+
+  // 3. O BOTÃO "MOSTRAR MAIS": Se a lista original for maior que o limite, cria o botão no final
+  if (items.length > currentRenderLimit) {
+    const btnMoreContainer = document.createElement('div');
+    // Faz o botão ocupar a largura toda caso você abra no computador
+    btnMoreContainer.style.gridColumn = '1 / -1'; 
+    
+    const btnMore = document.createElement('button');
+    btnMore.className = 'btn-secondary';
+    btnMore.style.width = '100%';
+    btnMore.style.padding = '14px';
+    btnMore.style.marginTop = '10px';
+    btnMore.textContent = `Mostrar mais (restam ${items.length - currentRenderLimit})`;
+    
+    // Quando clicar, aumenta a cota em 20 e desenha de novo
+    btnMore.addEventListener('click', () => {
+      currentRenderLimit += 20; 
+      renderCards(); 
+    });
+    
+    btnMoreContainer.appendChild(btnMore);
+    cardsContainer.appendChild(btnMoreContainer);
+  }
+}
+async function toggleFavorite(itemLight){
+  itemLight.favorite = !itemLight.favorite;
+  itemLight.updatedAt = Date.now();
+  
+  // CRÍTICO: Puxa o original com a foto antes de salvar, para não perdê-la!
+  const fullItem = await dbGet(itemLight.id);
+  fullItem.favorite = itemLight.favorite;
+  fullItem.updatedAt = itemLight.updatedAt;
+  
+  await dbPut(fullItem);
+  renderCategoryList(); 
+  renderCards();
 }
 
 /* ---------------- Formulário (adicionar/editar/duplicar) ---------------- */
@@ -1113,7 +1194,10 @@ function handleSave(){
   });
 }
 /* ---------------- Visualizar detalhes ---------------- */
-function openView(item){
+async function openView(itemLight){
+  // 1. Puxa do banco a nota COMPLETA (com a foto) só na hora do clique
+  const item = await dbGet(itemLight.id);
+  
   viewingItem = item;
   viewTitle.textContent = item.title;
   viewBody.innerHTML = '';
@@ -1143,26 +1227,22 @@ function openView(item){
     viewBody.appendChild(img);
   }
 
-  // --- NOVA LÓGICA DO CONTEÚDO COM BOTÕES (CÓDIGO E COPIAR) ---
   if (item.content){
     const contentWrap = document.createElement('div');
     contentWrap.style.marginTop = '12px';
 
-    // Cria a barrinha de ferramentas à direita
     const toolbar = document.createElement('div');
     toolbar.style.display = 'flex';
     toolbar.style.gap = '8px';
     toolbar.style.marginBottom = '6px';
     toolbar.style.justifyContent = 'flex-end';
 
-    // Botão de Alternar Formato
     const btnCode = document.createElement('button');
     btnCode.className = 'tag-pill';
     btnCode.style.border = 'none';
     btnCode.style.cursor = 'pointer';
     btnCode.innerHTML = '💻 Ver Código';
 
-    // Botão de Copiar
     const btnCopy = document.createElement('button');
     btnCopy.className = 'tag-pill';
     btnCopy.style.border = 'none';
@@ -1173,15 +1253,13 @@ function openView(item){
     toolbar.appendChild(btnCopy);
     contentWrap.appendChild(toolbar);
 
-    // O bloco de texto
     const c = document.createElement('p'); 
     c.className = 'content-block'; 
-    c.innerHTML = renderText(item.content); // Padrão: com pulos de linha e destaques em amarelo
+    c.innerHTML = renderText(item.content); 
     contentWrap.appendChild(c);
     
     viewBody.appendChild(contentWrap);
 
-    // Ação 1: Copiar para a área de transferência
     btnCopy.addEventListener('click', () => {
       navigator.clipboard.writeText(item.content).then(() => {
         showToast('Texto copiado para a área de transferência!');
@@ -1190,35 +1268,27 @@ function openView(item){
       });
     });
 
-    // Ação 2: Alternar entre visualização Normal e Código
     let isCode = false;
     btnCode.addEventListener('click', () => {
       isCode = !isCode;
       if (isCode) {
         btnCode.innerHTML = '📝 Texto Normal';
-        
-        // Aplica o visual de um editor de código (VS Code style)
         c.style.fontFamily = 'monospace';
         c.style.background = 'var(--panel-2)';
         c.style.padding = '12px';
         c.style.borderRadius = '8px';
         c.style.fontSize = '13.5px';
-        c.style.overflowX = 'auto'; // Cria barra de rolagem horizontal se a linha for muito longa
-        c.style.whiteSpace = 'pre'; // Força o navegador a respeitar perfeitamente o seu código
-        
-        // Joga o texto cru (ignora destaques de pesquisa e o <br>)
+        c.style.overflowX = 'auto'; 
+        c.style.whiteSpace = 'pre'; 
         c.textContent = item.content; 
       } else {
         btnCode.innerHTML = '💻 Ver Código';
-        
-        // Limpa os estilos e volta para a leitura confortável
         c.style = '';
         c.className = 'content-block';
         c.innerHTML = renderText(item.content); 
       }
     });
   }
-  // -------------------------------------------------------------
 
   if (item.tags && item.tags.length){
     const tw = document.createElement('div'); tw.className = 'tags-wrap';
