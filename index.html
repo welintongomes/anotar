@@ -172,7 +172,7 @@
   .modal-overlay.open .modal-box{transform:translateY(0);}
   @media(min-width:640px){
     .modal-overlay{align-items:center;padding:14px;}
-    .modal-box{border-radius:14px;transform:translateY(24px);}
+    .modal-box{border-radius:14px;transform:translateY(24px); scrollbar-color: rgb(139 139 139) rgba(255, 255, 255, .05); scrollbar-width: thin;}
   }
   .modal-header{
     display:flex;align-items:center;justify-content:space-between;
@@ -243,7 +243,7 @@
   .view-footer{flex-wrap:wrap;}
 
   .spec-big{color:var(--info);font-weight:700;font-size:22px;margin:0;}
-  .content-block{white-space:pre-wrap;word-wrap:break-word;line-height:1.6;margin:0;}
+  .content-block{ overflow-y: auto; max-height: 65vh;scrollbar-width: thin; scrollbar-color: rgb(139 139 139) rgba(255, 255, 255, .05); white-space:pre-wrap;word-wrap:break-word;line-height:1.6;margin:0;}
   .meta-line{margin:0;color:var(--smoke);font-size:14px;}
   .view-meta-footer{color:var(--smoke);font-size:13px;margin-top:6px;}
   .view-photo{width:100%;border-radius:8px;border:1px solid var(--steel);margin:4px 0;}
@@ -1120,7 +1120,6 @@ function openView(item){
   badge.textContent = item.category; badge.style.color = categoryColor(item.category);
   viewBody.appendChild(badge);
 
-  // Usa a mesma mágica da tela inicial para destacar o texto e aplicar as quebras de linha
   const renderText = (text) => currentSearch ? highlightHTML(text, currentSearch) : escapeHTML(text);
 
   if (item.vehicle){
@@ -1140,11 +1139,84 @@ function openView(item){
     img.alt = 'Foto anexada';
     viewBody.appendChild(img);
   }
+
+  // --- NOVA LÓGICA DO CONTEÚDO COM BOTÕES (CÓDIGO E COPIAR) ---
   if (item.content){
-    const c = document.createElement('p'); c.className = 'content-block'; 
-    c.innerHTML = renderText(item.content); // Aqui o <br> entra em ação!
-    viewBody.appendChild(c);
+    const contentWrap = document.createElement('div');
+    contentWrap.style.marginTop = '12px';
+
+    // Cria a barrinha de ferramentas à direita
+    const toolbar = document.createElement('div');
+    toolbar.style.display = 'flex';
+    toolbar.style.gap = '8px';
+    toolbar.style.marginBottom = '6px';
+    toolbar.style.justifyContent = 'flex-end';
+
+    // Botão de Alternar Formato
+    const btnCode = document.createElement('button');
+    btnCode.className = 'tag-pill';
+    btnCode.style.border = 'none';
+    btnCode.style.cursor = 'pointer';
+    btnCode.innerHTML = '💻 Ver Código';
+
+    // Botão de Copiar
+    const btnCopy = document.createElement('button');
+    btnCopy.className = 'tag-pill';
+    btnCopy.style.border = 'none';
+    btnCopy.style.cursor = 'pointer';
+    btnCopy.innerHTML = '📋 Copiar';
+
+    toolbar.appendChild(btnCode);
+    toolbar.appendChild(btnCopy);
+    contentWrap.appendChild(toolbar);
+
+    // O bloco de texto
+    const c = document.createElement('p'); 
+    c.className = 'content-block'; 
+    c.innerHTML = renderText(item.content); // Padrão: com pulos de linha e destaques em amarelo
+    contentWrap.appendChild(c);
+    
+    viewBody.appendChild(contentWrap);
+
+    // Ação 1: Copiar para a área de transferência
+    btnCopy.addEventListener('click', () => {
+      navigator.clipboard.writeText(item.content).then(() => {
+        showToast('Texto copiado para a área de transferência!');
+      }).catch(() => {
+        showToast('Erro ao copiar.');
+      });
+    });
+
+    // Ação 2: Alternar entre visualização Normal e Código
+    let isCode = false;
+    btnCode.addEventListener('click', () => {
+      isCode = !isCode;
+      if (isCode) {
+        btnCode.innerHTML = '📝 Texto Normal';
+        
+        // Aplica o visual de um editor de código (VS Code style)
+        c.style.fontFamily = 'monospace';
+        c.style.background = 'var(--panel-2)';
+        c.style.padding = '12px';
+        c.style.borderRadius = '8px';
+        c.style.fontSize = '13.5px';
+        c.style.overflowX = 'auto'; // Cria barra de rolagem horizontal se a linha for muito longa
+        c.style.whiteSpace = 'pre'; // Força o navegador a respeitar perfeitamente o seu código
+        
+        // Joga o texto cru (ignora destaques de pesquisa e o <br>)
+        c.textContent = item.content; 
+      } else {
+        btnCode.innerHTML = '💻 Ver Código';
+        
+        // Limpa os estilos e volta para a leitura confortável
+        c.style = '';
+        c.className = 'content-block';
+        c.innerHTML = renderText(item.content); 
+      }
+    });
   }
+  // -------------------------------------------------------------
+
   if (item.tags && item.tags.length){
     const tw = document.createElement('div'); tw.className = 'tags-wrap';
     item.tags.forEach(t => {
