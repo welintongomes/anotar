@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#21242A">
-<title>Memória da Oficina</title>
+<title>Memórias</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📑</text></svg>">
 <style>
   :root{
@@ -290,7 +290,7 @@
 <body>
 <div id="app">
   <header id="topbar">
-    <h1>📝 Minhas Anotações</h1>
+    <h1>📝 Memórias</h1>
     <p class="tagline">Anote uma vez. Ache na hora.</p>
   </header>
 
@@ -614,7 +614,6 @@ let mediaRecorder = null;
 let recordedChunks = [];
 let recordingInterval = null;
 const btnRemoveAudio = document.getElementById('btnRemoveAudio'); // declarar de verdade
-// btnRemoveAudio já deve estar aí, mas se não tiver: const btnRemoveAudio = document.getElementById('btnRemoveAudio');
 
 const navSearch = document.getElementById('navSearch');
 const navCategory = document.getElementById('navCategory');
@@ -1638,12 +1637,12 @@ async function exportBackup(){
     copy.audioType = audioType;
     serializable.push(copy);
   }
-  const payload = { app:'memoria-oficina', version:1, exportedAt: Date.now(), items: serializable };
+  const payload = { app:'memorias', version:1, exportedAt: Date.now(), items: serializable };
   const blob = new Blob([JSON.stringify(payload)], { type:'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   const dateStr = new Date().toISOString().slice(0,10);
-  a.href = url; a.download = `backup-oficina-${dateStr}.json`;
+  a.href = url; a.download = `backup-memorias-${dateStr}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
   showToast('Backup exportado.');
