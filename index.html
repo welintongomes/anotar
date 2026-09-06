@@ -439,29 +439,30 @@
       <button class="icon-btn" id="btnCloseMore" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body">
-      <label style="flex-direction:row;align-items:center;justify-content:space-between;">
-        Ordenar por
-        <select id="sortSelect">
-          <option value="recentes">Mais recentes</option>
-          <option value="usados">Mais consultados</option>
-          <option value="az">Ordem alfabética</option>
-        </select>
-      </label>
+      
       <p class="meta-line" id="statsText"></p>
-<hr>
-<p class="meta-line" id="budgetSummaryText"></p>
-<button id="btnSendBudget" class="btn-primary">📲 Enviar orçamento por WhatsApp</button>
-<button id="btnClearBudget" class="btn-danger">🗑️ Limpar todos os itens de orçamento</button>
-<p class="meta-line">Dica: para abrir este app mais rápido...</p>
       <hr>
-      <p class="meta-line">Seus dados ficam guardados só neste navegador, neste aparelho. Se trocar de celular, formatar ou limpar os dados do navegador, você perde tudo — por isso vale exportar um backup de vez em quando e guardar o arquivo em algum lugar seguro (e-mail, drive, etc.).</p>
+      <p class="meta-line" id="budgetSummaryText"></p>
+      <button id="btnCopyGlobalBudget" class="btn-secondary">📋 Copiar orçamento global</button>
+      <button id="btnSendBudget" class="btn-primary">📲 Enviar orçamento por WhatsApp</button>
+      <button id="btnClearBudget" class="btn-danger">🗑️ Limpar todos os itens de orçamento</button>
+      <p class="meta-line">faça backup regularmente para guardar o arquivo.</p>
+      <hr>
+      <p class="meta-line"></p>
       <button id="btnExport" class="btn-primary">⬇️ Exportar backup (.json)</button>
       <label class="btn-secondary" style="display:block;text-align:center;cursor:pointer;">
         ⬆️ Importar backup
         <input type="file" accept="application/json" id="fieldImport" style="display:none">
       </label>
       <p class="meta-line" id="statsText"></p>
-      <p class="meta-line">Dica: para abrir este app mais rápido, use a opção "Adicionar à tela inicial" do seu navegador.</p>
+      <label style="flex-direction:row;align-items:center;justify-content:space-between;">
+        Ordenar
+        <select id="sortSelect">
+          <option value="recentes">Mais recentes</option>
+          <option value="usados">Mais consultados</option>
+          <option value="az">Ordem alfabética</option>
+        </select>
+      </label>
     </div>
   </div>
 </div>
@@ -608,6 +609,7 @@ const audioPreviewWrap = document.getElementById('audioPreviewWrap');
 const audioPreview = document.getElementById('audioPreview');
 const btnRecordAudio = document.getElementById('btnRecordAudio');
 const recordingTimer = document.getElementById('recordingTimer');
+const btnCopyGlobalBudget = document.getElementById('btnCopyGlobalBudget');
 let mediaRecorder = null;
 let recordedChunks = [];
 let recordingInterval = null;
@@ -1405,13 +1407,13 @@ async function openView(itemLight){
     viewBody.appendChild(aud);
   }
 
-  if (item.content){
+    if (item.content){
     const contentWrap = document.createElement('div');
     contentWrap.style.marginTop = '12px';
 
     const toolbar = document.createElement('div');
     toolbar.style.display = 'flex'; toolbar.style.gap = '8px';
-    toolbar.style.marginBottom = '6px'; toolbar.style.justifyContent = 'flex-end';
+    toolbar.style.marginBottom = '25px'; toolbar.style.justifyContent = 'flex-start';
 
     // Se tiver '[]', libera o botão de Orçamento Mágico!
     const hasChecklist = item.content.includes('[');
@@ -1419,53 +1421,121 @@ async function openView(itemLight){
       const btnBudget = document.createElement('button');
       btnBudget.className = 'tag-pill'; btnBudget.style.border = 'none';
       btnBudget.style.background = '#4FA65B'; btnBudget.style.color = '#fff';
-      btnBudget.style.fontWeight = 'bold'; btnBudget.innerHTML = '💸 Orçamento Whats';
+      btnBudget.style.fontWeight = 'bold'; btnBudget.innerHTML = '💸 Enviar';
       toolbar.appendChild(btnBudget);
 
       // LÓGICA DO ORÇAMENTO
       btnBudget.addEventListener('click', async () => {
         let total = 0; let desc = [];
         const lines = item.content.split('\n');
-        
         lines.forEach(line => {
-          const checkMatch = line.match(/^\[[xX]\](.*)/); // Acha só os marcados com X
+          const checkMatch = line.match(/^\[[xX]\](.*)/);
           if (checkMatch) {
             const textPart = checkMatch[1].trim();
-            // Procura todos os números da frase. Pega o último número (que geralmente é o preço).
             const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g);
             let price = 0;
             if (numMatches && numMatches.length > 0) {
-              const lastNumStr = numMatches[numMatches.length - 1];
-              price = parseFloat(lastNumStr.replace(',', '.')); // Ex: 170,50 vira 170.50
+              price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
             }
-            if (price > 0) {
-              total += price;
-              desc.push(`✅ ${textPart}`);
-            }
+            if (price > 0) { total += price; desc.push(`✅ ${textPart}`); }
           }
         });
-
-        if (desc.length === 0) {
-          showToast('Marque as caixinhas ([x]) que têm valor em dinheiro!'); return;
-        }
-
+        if (desc.length === 0) { showToast('Marque as caixinhas ([x]) que têm valor em dinheiro!'); return; }
         const tituloMsg = item.vehicle || item.title;
         let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
       });
     }
+    const btnCopyBudget = document.createElement('button');
+btnCopyBudget.className = 'tag-pill'; 
+btnCopyBudget.style.border = 'none';
+btnCopyBudget.style.background = '#25D366'; // Cor verde estilo WhatsApp (opcional)
+btnCopyBudget.style.color = '#fff';
+btnCopyBudget.style.fontWeight = 'bold'; 
+btnCopyBudget.innerHTML = '📋 Copiar Orçamento';
+toolbar.appendChild(btnCopyBudget);
+
+btnCopyBudget.addEventListener('click', () => {
+  let total = 0; 
+  let desc = [];
+  const lines = item.content.split('\n');
+  lines.forEach(line => {
+    const checkMatch = line.match(/^\[[xX]\](.*)/);
+    if (checkMatch) {
+      const textPart = checkMatch[1].trim();
+      const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g);
+      let price = 0;
+      if (numMatches && numMatches.length > 0) {
+        price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
+      }
+      if (price > 0) { 
+        total += price; 
+        desc.push(`✅ ${textPart}`); 
+      }
+    }
+  });
+  
+  if (desc.length === 0) { 
+    showToast('Marque as caixinhas ([x]) que têm valor em dinheiro!'); 
+    return; 
+  }
+  
+  const tituloMsg = item.vehicle || item.title;
+  let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+  
+  navigator.clipboard.writeText(msg).then(() => {
+    showToast('Orçamento copiado com sucesso!');
+  });
+});
+    // --- Botão de resetar checklist comum (sem valor em dinheiro) ---
+    function hasPlainChecklistNow(){
+      return item.content.split('\n').some(line => {
+        const m = line.match(/^\[[xX]\](.*)/);
+        if (!m) return false;
+        const nums = m[1].match(/\d+(?:[.,]\d+)?/g);
+        const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
+        return !hasPrice;
+      });
+    }
+    const btnResetPlain = document.createElement('button');
+    btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none';
+    btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff';
+    btnResetPlain.innerHTML = '🔄 Limpar checklist';
+    btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
+    toolbar.appendChild(btnResetPlain);
+
+    btnResetPlain.addEventListener('click', async () => {
+      const ok = confirm('Desmarcar os itens do checklist sem valor nesta nota?');
+      if (!ok) return;
+      const lines = item.content.split('\n').map(line => {
+        const m = line.match(/^\[[xX]\](.*)/);
+        if (!m) return line;
+        const nums = m[1].match(/\d+(?:[.,]\d+)?/g);
+        const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
+        return hasPrice ? line : ('[ ]' + m[1]);
+      });
+      item.content = lines.join('\n');
+      item.updatedAt = Date.now();
+      await dbPut(item);
+      const ram = allItems.find(i => i.id === item.id);
+      if (ram){ ram.content = item.content; ram.updatedAt = item.updatedAt; }
+      renderContent(isCode);
+      btnResetPlain.style.display = 'none';
+      showToast('Checklist resetado.');
+      renderCards();
+    });
 
     const btnCode = document.createElement('button');
-    btnCode.className = 'tag-pill'; btnCode.style.border = 'none'; btnCode.innerHTML = '💻 Ver Código';
+    btnCode.className = 'tag-pill'; btnCode.style.border = 'none'; btnCode.innerHTML = '💻 Código';
     const btnCopy = document.createElement('button');
     btnCopy.className = 'tag-pill'; btnCopy.style.border = 'none'; btnCopy.innerHTML = '📋 Copiar';
-
     toolbar.appendChild(btnCode);
     toolbar.appendChild(btnCopy);
     contentWrap.appendChild(toolbar);
 
     const textContainer = document.createElement('div');
     textContainer.className = 'content-block';
+    let isCode = false;
 
     // FUNÇÃO QUE DESENHA O TEXTO OU O CHECKLIST
     const renderContent = (isCodeMode) => {
@@ -1473,50 +1543,41 @@ async function openView(itemLight){
       if (isCodeMode) {
         textContainer.style.fontFamily = 'monospace'; textContainer.style.background = 'var(--panel-2)';
         textContainer.style.padding = '12px'; textContainer.style.borderRadius = '8px';
-        textContainer.style.fontSize = '13.5px'; textContainer.style.overflowX = 'auto'; 
-        textContainer.style.whiteSpace = 'pre'; textContainer.textContent = item.content; 
+        textContainer.style.fontSize = '13.5px'; textContainer.style.overflowX = 'auto';
+        textContainer.style.whiteSpace = 'pre'; textContainer.textContent = item.content;
       } else {
         textContainer.style = ''; textContainer.className = 'content-block';
-        
         const lines = item.content.split('\n');
         lines.forEach((line, index) => {
-          const checkMatch = line.match(/^\[([ xX]?)\](.*)/); // Acha [] ou [x] no início da frase
-          
+          const checkMatch = line.match(/^\[([ xX]?)\](.*)/);
           if (checkMatch) {
             const isChecked = checkMatch[1].toLowerCase() === 'x';
             const textPart = checkMatch[2];
-
             const label = document.createElement('label');
             label.className = 'checkbox-row';
             label.style.display = 'flex'; label.style.alignItems = 'center';
             label.style.marginTop = '6px'; label.style.marginBottom = '6px';
-
             const cb = document.createElement('input');
             cb.type = 'checkbox'; cb.checked = isChecked;
             cb.style.width = '20px'; cb.style.height = '20px'; cb.style.marginRight = '8px';
-
             const span = document.createElement('span');
             span.innerHTML = renderText(textPart);
             if (isChecked) { span.style.textDecoration = 'line-through'; span.style.opacity = '0.6'; }
-
             label.appendChild(cb); label.appendChild(span); textContainer.appendChild(label);
 
-            // A MÁGICA DE SALVAR QUANDO VOCÊ CLICA
             cb.addEventListener('change', async () => {
               span.style.textDecoration = cb.checked ? 'line-through' : 'none';
               span.style.opacity = cb.checked ? '0.6' : '1';
-              
-              // Modifica o texto e salva no banco sem precisar clicar em Editar
               const marker = cb.checked ? '[x]' : '[ ]';
               const freshLines = item.content.split('\n');
               freshLines[index] = freshLines[index].replace(/^\[[ xX]?\]/, marker);
               item.content = freshLines.join('\n');
               item.updatedAt = Date.now();
-              
-              await dbPut(item); // Salva no banco
-              
+              await dbPut(item);
               const ramItem = allItems.find(i => i.id === item.id);
               if (ramItem) { ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; }
+              btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
+              renderCards();
             });
           } else {
             const p = document.createElement('div');
@@ -1527,7 +1588,7 @@ async function openView(itemLight){
       }
     };
 
-    renderContent(false); // Inicia desenhando os checklists
+    renderContent(false);
     contentWrap.appendChild(textContainer);
     viewBody.appendChild(contentWrap);
 
@@ -1535,53 +1596,12 @@ async function openView(itemLight){
       navigator.clipboard.writeText(item.content).then(() => showToast('Copiado!'));
     });
 
-    let isCode = false;
     btnCode.addEventListener('click', () => {
       isCode = !isCode;
-      btnCode.innerHTML = isCode ? '📝 Texto Normal' : '💻 Ver Código';
+      btnCode.innerHTML = isCode ? '📝 Texto' : '💻 Código';
       renderContent(isCode);
     });
-    // --- Botão para resetar checklist comum (sem valor em dinheiro) ---
-function hasPlainChecklistNow(){
-  return item.content.split('\n').some(line => {
-    const m = line.match(/^\[[xX]\](.*)/);
-    if (!m) return false;
-    const nums = m[1].match(/\d+(?:[.,]\d+)?/g);
-    const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
-    return !hasPrice;
-  });
-}
-
-const btnResetPlain = document.createElement('button');
-btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none';
-btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff';
-btnResetPlain.innerHTML = '🔄 Resetar checklist';
-btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
-renderCards();
-toolbar.appendChild(btnResetPlain);
-
-btnResetPlain.addEventListener('click', async () => {
-  const ok = confirm('Desmarcar os itens do checklist sem valor nesta nota?');
-  if (!ok) return;
-  const lines = item.content.split('\n').map(line => {
-    const m = line.match(/^\[[xX]\](.*)/);
-    if (!m) return line;
-    const nums = m[1].match(/\d+(?:[.,]\d+)?/g);
-    const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
-    return hasPrice ? line : ('[ ]' + m[1]);
-  });
-  item.content = lines.join('\n');
-  item.updatedAt = Date.now();
-  await dbPut(item);
-  const ram = allItems.find(i => i.id === item.id);
-  if (ram){ ram.content = item.content; ram.updatedAt = item.updatedAt; }
-  renderContent(isCode);
-  btnResetPlain.style.display = 'none';
-  showToast('Checklist resetado.');
-  renderCards();
-});
   }
-
   openSheet(modalView);
   item.useCount = (item.useCount||0) + 1;
   dbPut(item).then(() => renderCards());
@@ -1830,7 +1850,16 @@ btnRemovePhoto.addEventListener('click', () => {
   const msg = `*Orçamento*\n\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 });
-
+btnCopyGlobalBudget.addEventListener('click', () => {
+  const { list, total } = getGlobalBudgetData();
+  if (!list.length) return;
+  const desc = list.map(i => `✅ ${i.text} (${i.itemTitle})`);
+  const msg = `*Orçamento*\n\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+  
+  navigator.clipboard.writeText(msg).then(() => {
+    showToast('Orçamento global copiado!');
+  });
+});
 btnClearBudget.addEventListener('click', async () => {
   const { list } = getGlobalBudgetData();
   if (!list.length) return;
