@@ -383,7 +383,17 @@
           <select id="fieldCategory"></select>
         </label>
         <input type="text" id="fieldCategoryCustom" placeholder="Nome da nova categoria" style="display:none">
-        
+        <label>Áudio (opcional)
+  <input type="file" accept="audio/*" capture="microphone" id="fieldAudio">
+</label>
+<div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+  <button type="button" id="btnRecordAudio" class="btn-secondary">🎙️ Gravar áudio pelo microfone</button>
+  <span id="recordingTimer" style="display:none; font-weight:bold; color:#D64545;">● 00:00</span>
+</div>
+        <div id="audioPreviewWrap" style="display:none; flex-direction:column; gap:8px; margin-bottom:12px;">
+          <audio id="audioPreview" controls style="width:100%;"></audio>
+          <button type="button" id="btnRemoveAudio" class="btn-secondary">Remover áudio</button>
+        </div>
         <label>Palavras-chave para achar depois (separe por vírgula)
           <input type="text" id="fieldTags" placeholder="Ex.: motor, ignição, sensor">
         </label>
@@ -437,6 +447,12 @@
           <option value="az">Ordem alfabética</option>
         </select>
       </label>
+      <p class="meta-line" id="statsText"></p>
+<hr>
+<p class="meta-line" id="budgetSummaryText"></p>
+<button id="btnSendBudget" class="btn-primary">📲 Enviar orçamento por WhatsApp</button>
+<button id="btnClearBudget" class="btn-danger">🗑️ Limpar todos os itens de orçamento</button>
+<p class="meta-line">Dica: para abrir este app mais rápido...</p>
       <hr>
       <p class="meta-line">Seus dados ficam guardados só neste navegador, neste aparelho. Se trocar de celular, formatar ou limpar os dados do navegador, você perde tudo — por isso vale exportar um backup de vez em quando e guardar o arquivo em algum lugar seguro (e-mail, drive, etc.).</p>
       <button id="btnExport" class="btn-primary">⬇️ Exportar backup (.json)</button>
@@ -449,7 +465,6 @@
     </div>
   </div>
 </div>
-
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -540,6 +555,10 @@ function dbGetAllLight(){
           item.hasPhoto = true; // Avisa que tem foto
           delete item.photo;    // Apaga o arquivo gigante da memória
         }
+        if (item.audio) {
+          item.hasAudio = true;
+          delete item.audio;
+        }
         results.push(item);
         cursor.continue();
       } else {
@@ -571,6 +590,9 @@ let viewPhotoURL = null;
 let viewingItem = null;
 let currentRenderLimit = 20; // O número mágico: desenha 20 itens por vez
 let lastRenderState = ''; // Ajuda o sistema a saber quando você fez uma nova busca
+let currentAudioBlob = null;
+let formAudioURL = null; // Para tocar o áudio antes de salvar
+let viewAudioURL = null; // Para tocar o áudio na visualização
 
 /* ---------------- Elementos ---------------- */
 const searchInput = document.getElementById('searchInput');
@@ -581,6 +603,16 @@ const resultCount = document.getElementById('resultCount');
 const cardsContainer = document.getElementById('cardsContainer');
 const emptyState = document.getElementById('emptyState');
 const btnAdd = document.getElementById('btnAdd');
+const fieldAudio = document.getElementById('fieldAudio');
+const audioPreviewWrap = document.getElementById('audioPreviewWrap');
+const audioPreview = document.getElementById('audioPreview');
+const btnRecordAudio = document.getElementById('btnRecordAudio');
+const recordingTimer = document.getElementById('recordingTimer');
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordingInterval = null;
+const btnRemoveAudio = document.getElementById('btnRemoveAudio'); // declarar de verdade
+// btnRemoveAudio já deve estar aí, mas se não tiver: const btnRemoveAudio = document.getElementById('btnRemoveAudio');
 
 const navSearch = document.getElementById('navSearch');
 const navCategory = document.getElementById('navCategory');
@@ -629,6 +661,10 @@ const btnExport = document.getElementById('btnExport');
 const fieldImport = document.getElementById('fieldImport');
 const statsText = document.getElementById('statsText');
 
+const budgetSummaryText = document.getElementById('budgetSummaryText');
+const btnSendBudget = document.getElementById('btnSendBudget');
+const btnClearBudget = document.getElementById('btnClearBudget');
+
 const toast = document.getElementById('toast');
 
 /* ---------------- Gavetas (abrir/fechar com animação) ---------------- */
@@ -648,6 +684,55 @@ function closeSheetEl(el){
 }
 
 /* ---------------- Utilidades ---------------- */
+async function toggleRecording(){
+  if (mediaRecorder && mediaRecorder.state === 'recording'){
+    mediaRecorder.stop();
+    return;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
+    showToast('Seu navegador não permite gravar pelo microfone.');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let mimeType = 'audio/webm';
+    if (window.MediaRecorder.isTypeSupported && !MediaRecorder.isTypeSupported(mimeType)){
+      mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
+    }
+    recordedChunks = [];
+    mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop()); // libera o microfone de verdade
+      clearInterval(recordingInterval);
+      recordingTimer.style.display = 'none';
+      btnRecordAudio.textContent = '🎙️ Gravar áudio pelo microfone';
+      btnRecordAudio.style.background = '';
+      if (recordedChunks.length){
+        currentAudioBlob = new Blob(recordedChunks, { type: mimeType || 'audio/webm' });
+        fieldAudio.value = '';
+        updateAudioPreview();
+      }
+    };
+
+    mediaRecorder.start();
+    let seconds = 0;
+    recordingTimer.style.display = 'inline';
+    recordingTimer.textContent = '● 00:00';
+    btnRecordAudio.textContent = '⏹️ Parar gravação';
+    btnRecordAudio.style.background = '#D64545';
+    recordingInterval = setInterval(() => {
+      seconds++;
+      const m = String(Math.floor(seconds/60)).padStart(2,'0');
+      const s = String(seconds%60).padStart(2,'0');
+      recordingTimer.textContent = `● ${m}:${s}`;
+    }, 1000);
+  } catch(err){
+    showToast('Não foi possível acessar o microfone. Verifique a permissão do navegador.');
+  }
+}
 function normalize(s){
   return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 }
@@ -720,6 +805,7 @@ function compressImage(file, maxWidth = 1200, quality = 0.8) {
           resolve(blob);
         }, 'image/jpeg', quality);
       };
+      img.onerror = () => reject(new Error('Não foi possível carregar a imagem.'));
     };
     reader.onerror = error => reject(error);
   });
@@ -947,7 +1033,10 @@ function buildCard(item){
     const flag = document.createElement('span'); flag.className = 'photo-flag'; flag.textContent = '📷';
     top.appendChild(flag);
   }
-
+  if (item.audio || item.hasAudio){
+  const audioFlag = document.createElement('span'); audioFlag.className = 'photo-flag'; audioFlag.textContent = '🎵';
+  top.appendChild(audioFlag);
+}
   const star = document.createElement('button');
   star.type = 'button';
   star.className = 'star-btn' + (item.favorite ? ' active' : '');
@@ -1050,18 +1139,72 @@ function renderCards(){
 }
 async function toggleFavorite(itemLight){
   itemLight.favorite = !itemLight.favorite;
-  itemLight.updatedAt = Date.now();
+  //itemLight.updatedAt = Date.now();
   
   // CRÍTICO: Puxa o original com a foto antes de salvar, para não perdê-la!
   const fullItem = await dbGet(itemLight.id);
   fullItem.favorite = itemLight.favorite;
-  fullItem.updatedAt = itemLight.updatedAt;
+  //fullItem.updatedAt = itemLight.updatedAt;
   
   await dbPut(fullItem);
   renderCategoryList(); 
   renderCards();
 }
+function getGlobalBudgetData(){
+  const list = [];
+  let total = 0;
+  allItems.forEach(item => {
+    if (!item.content) return;
+    item.content.split('\n').forEach(line => {
+      const m = line.match(/^\[[xX]\](.*)/);
+      if (!m) return;
+      const textPart = m[1].trim();
+      const nums = textPart.match(/\d+(?:[.,]\d+)?/g);
+      if (!nums || !nums.length) return;
+      const price = parseFloat(nums[nums.length - 1].replace(',', '.'));
+      if (price > 0){
+        list.push({ itemId: item.id, itemTitle: item.title, text: textPart, price });
+        total += price;
+      }
+    });
+  });
+  return { list, total };
+}
 
+function refreshBudgetSummary(){
+  const { list, total } = getGlobalBudgetData();
+  if (!list.length){
+    budgetSummaryText.textContent = 'Nenhum item de orçamento marcado no momento.';
+    btnSendBudget.disabled = true;
+    btnClearBudget.disabled = true;
+  } else {
+    budgetSummaryText.textContent = `Orçamento atual: ${list.length} item(ns) — R$ ${total.toFixed(2).replace('.', ',')}`;
+    btnSendBudget.disabled = false;
+    btnClearBudget.disabled = false;
+  }
+}
+
+async function clearAllBudgetCheckboxes(){
+  const { list } = getGlobalBudgetData();
+  const affectedIds = [...new Set(list.map(i => i.itemId))];
+  for (const id of affectedIds){
+    const full = await dbGet(id);
+    if (!full || !full.content) continue;
+    const lines = full.content.split('\n').map(line => {
+      const m = line.match(/^\[[xX]\](.*)/);
+      if (!m) return line;
+      const textPart = m[1];
+      const nums = textPart.match(/\d+(?:[.,]\d+)?/g);
+      const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',', '.')) > 0;
+      return hasPrice ? ('[ ]' + textPart) : line;
+    });
+    full.content = lines.join('\n');
+    await dbPut(full);
+    const ram = allItems.find(i => i.id === id);
+    if (ram) ram.content = full.content;
+  }
+  return affectedIds;
+}
 /* ---------------- Formulário (adicionar/editar/duplicar) ---------------- */
 function populateCategorySelect(selected){
   const categoriesSet = new Set(PRESET_CATEGORIES);
@@ -1096,6 +1239,32 @@ function updatePhotoPreview(){
     photoPreview.removeAttribute('src');
   }
 }
+function updateAudioPreview(){
+  if (formAudioURL){ URL.revokeObjectURL(formAudioURL); formAudioURL = null; }
+  if (currentAudioBlob){
+    formAudioURL = URL.createObjectURL(currentAudioBlob);
+    audioPreview.src = formAudioURL;
+    audioPreviewWrap.style.display = 'flex';
+  } else {
+    audioPreviewWrap.style.display = 'none';
+    audioPreview.removeAttribute('src');
+  }
+}
+function closeForm(){
+  if (mediaRecorder && mediaRecorder.state === 'recording'){ mediaRecorder.stop(); }
+  closeSheetEl(modalForm);
+  editingId = null;
+  
+  // Limpa foto
+  currentPhotoBlob = null;
+  fieldPhoto.value = '';
+  updatePhotoPreview();
+  
+  // Limpa áudio
+  currentAudioBlob = null;
+  fieldAudio.value = '';
+  updateAudioPreview();
+}
 
 function openForm(item, mode){
   formTitle.textContent = mode === 'edit' ? 'Editar registro' : 'Novo registro';
@@ -1108,42 +1277,44 @@ function openForm(item, mode){
   fieldContent.value = item ? (item.content || '') : '';
   fieldTags.value = item ? (item.tags||[]).join(', ') : '';
   fieldFavorite.checked = item ? !!item.favorite : false;
+  
   currentPhotoBlob = item && item.photo ? item.photo : null;
   fieldPhoto.value = '';
   updatePhotoPreview();
 
+  currentAudioBlob = item && item.audio ? item.audio : null;
+  fieldAudio.value = '';
+  updateAudioPreview();
+
   openSheet(modalForm);
   setTimeout(() => fieldTitle.focus(), 260);
 }
-
-function closeForm(){
-  closeSheetEl(modalForm);
-  editingId = null;
-  currentPhotoBlob = null;
-  if (photoPreviewURL){ URL.revokeObjectURL(photoPreviewURL); photoPreviewURL = null; }
-}
 function handleSave(){
+  if (mediaRecorder && mediaRecorder.state === 'recording'){
+    showToast('Pare a gravação antes de salvar.');
+    return;
+  }
   let title = fieldTitle.value.trim();
   const content = fieldContent.value.trim(); // Puxa o conteúdo logo no início
 
   // 1. Validação: Precisa de pelo menos UMA das três coisas (Título, Foto ou Anotação)
-  if (!title && !currentPhotoBlob && !content) { 
-    showToast('Dê um título, foto ou digite uma anotação.'); 
-    fieldContent.focus(); 
-    return; 
+  if (!title && !currentPhotoBlob && !currentAudioBlob && !content) { 
+  showToast('Dê um título, foto, áudio ou digite uma anotação.'); 
+  fieldContent.focus(); 
+  return; 
+}
+
+if (!title) {
+  if (content) {
+    title = content.length > 30 ? content.substring(0, 30) + '...' : content;
+  } else if (currentPhotoBlob) {
+    const dataLocal = new Date().toLocaleString('pt-BR').substring(0, 10);
+    title = `Foto rápida - ${dataLocal}`; 
+  } else if (currentAudioBlob) {
+    const dataLocal = new Date().toLocaleString('pt-BR').substring(0, 10);
+    title = `Áudio rápido - ${dataLocal}`;
   }
-  
-  // 2. Títulos Automáticos
-  if (!title) {
-    if (content) {
-      // Se tem texto, usa as primeiras 30 letras como título
-      title = content.length > 30 ? content.substring(0, 30) + '...' : content;
-    } else if (currentPhotoBlob) {
-      // Se só tem foto, usa a data
-      const dataLocal = new Date().toLocaleString('pt-BR').substring(0, 10);
-      title = `Foto rápida - ${dataLocal}`; 
-    }
-  }
+}
 
   // 3. Categoria
   let category = fieldCategory.value;
@@ -1169,6 +1340,7 @@ function handleSave(){
     tags: tags,
     favorite: fieldFavorite.checked,
     photo: currentPhotoBlob || null,
+    audio: currentAudioBlob || null,
     updatedAt: now
   };
 
@@ -1195,13 +1367,13 @@ function handleSave(){
 }
 /* ---------------- Visualizar detalhes ---------------- */
 async function openView(itemLight){
-  // 1. Puxa do banco a nota COMPLETA (com a foto) só na hora do clique
-  const item = await dbGet(itemLight.id);
+  const item = await dbGet(itemLight.id); // Puxa tudo pesado do banco
   
   viewingItem = item;
   viewTitle.textContent = item.title;
   viewBody.innerHTML = '';
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
+  if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
 
   const badge = document.createElement('span'); badge.className = 'badge';
   badge.textContent = item.category; badge.style.color = categoryColor(item.category);
@@ -1223,8 +1395,14 @@ async function openView(itemLight){
     const img = document.createElement('img'); img.className = 'view-photo';
     viewPhotoURL = URL.createObjectURL(item.photo);
     img.src = viewPhotoURL;
-    img.alt = 'Foto anexada';
     viewBody.appendChild(img);
+  }
+  if (item.audio){
+    const aud = document.createElement('audio'); aud.controls = true;
+    aud.style.width = '100%'; aud.style.marginTop = '8px';
+    viewAudioURL = URL.createObjectURL(item.audio);
+    aud.src = viewAudioURL;
+    viewBody.appendChild(aud);
   }
 
   if (item.content){
@@ -1232,85 +1410,187 @@ async function openView(itemLight){
     contentWrap.style.marginTop = '12px';
 
     const toolbar = document.createElement('div');
-    toolbar.style.display = 'flex';
-    toolbar.style.gap = '8px';
-    toolbar.style.marginBottom = '6px';
-    toolbar.style.justifyContent = 'flex-start';
+    toolbar.style.display = 'flex'; toolbar.style.gap = '8px';
+    toolbar.style.marginBottom = '6px'; toolbar.style.justifyContent = 'flex-end';
+
+    // Se tiver '[]', libera o botão de Orçamento Mágico!
+    const hasChecklist = item.content.includes('[');
+    if (hasChecklist) {
+      const btnBudget = document.createElement('button');
+      btnBudget.className = 'tag-pill'; btnBudget.style.border = 'none';
+      btnBudget.style.background = '#4FA65B'; btnBudget.style.color = '#fff';
+      btnBudget.style.fontWeight = 'bold'; btnBudget.innerHTML = '💸 Orçamento Whats';
+      toolbar.appendChild(btnBudget);
+
+      // LÓGICA DO ORÇAMENTO
+      btnBudget.addEventListener('click', async () => {
+        let total = 0; let desc = [];
+        const lines = item.content.split('\n');
+        
+        lines.forEach(line => {
+          const checkMatch = line.match(/^\[[xX]\](.*)/); // Acha só os marcados com X
+          if (checkMatch) {
+            const textPart = checkMatch[1].trim();
+            // Procura todos os números da frase. Pega o último número (que geralmente é o preço).
+            const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g);
+            let price = 0;
+            if (numMatches && numMatches.length > 0) {
+              const lastNumStr = numMatches[numMatches.length - 1];
+              price = parseFloat(lastNumStr.replace(',', '.')); // Ex: 170,50 vira 170.50
+            }
+            if (price > 0) {
+              total += price;
+              desc.push(`✅ ${textPart}`);
+            }
+          }
+        });
+
+        if (desc.length === 0) {
+          showToast('Marque as caixinhas ([x]) que têm valor em dinheiro!'); return;
+        }
+
+        const tituloMsg = item.vehicle || item.title;
+        let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+      });
+    }
 
     const btnCode = document.createElement('button');
-    btnCode.className = 'tag-pill';
-    btnCode.style.border = 'none';
-    btnCode.style.cursor = 'pointer';
-    btnCode.innerHTML = '💻 Ver Código';
-
+    btnCode.className = 'tag-pill'; btnCode.style.border = 'none'; btnCode.innerHTML = '💻 Ver Código';
     const btnCopy = document.createElement('button');
-    btnCopy.className = 'tag-pill';
-    btnCopy.style.border = 'none';
-    btnCopy.style.cursor = 'pointer';
-    btnCopy.innerHTML = '📋 Copiar';
+    btnCopy.className = 'tag-pill'; btnCopy.style.border = 'none'; btnCopy.innerHTML = '📋 Copiar';
 
     toolbar.appendChild(btnCode);
     toolbar.appendChild(btnCopy);
     contentWrap.appendChild(toolbar);
 
-    const c = document.createElement('p'); 
-    c.className = 'content-block'; 
-    c.innerHTML = renderText(item.content); 
-    contentWrap.appendChild(c);
-    
+    const textContainer = document.createElement('div');
+    textContainer.className = 'content-block';
+
+    // FUNÇÃO QUE DESENHA O TEXTO OU O CHECKLIST
+    const renderContent = (isCodeMode) => {
+      textContainer.innerHTML = '';
+      if (isCodeMode) {
+        textContainer.style.fontFamily = 'monospace'; textContainer.style.background = 'var(--panel-2)';
+        textContainer.style.padding = '12px'; textContainer.style.borderRadius = '8px';
+        textContainer.style.fontSize = '13.5px'; textContainer.style.overflowX = 'auto'; 
+        textContainer.style.whiteSpace = 'pre'; textContainer.textContent = item.content; 
+      } else {
+        textContainer.style = ''; textContainer.className = 'content-block';
+        
+        const lines = item.content.split('\n');
+        lines.forEach((line, index) => {
+          const checkMatch = line.match(/^\[([ xX]?)\](.*)/); // Acha [] ou [x] no início da frase
+          
+          if (checkMatch) {
+            const isChecked = checkMatch[1].toLowerCase() === 'x';
+            const textPart = checkMatch[2];
+
+            const label = document.createElement('label');
+            label.className = 'checkbox-row';
+            label.style.display = 'flex'; label.style.alignItems = 'center';
+            label.style.marginTop = '6px'; label.style.marginBottom = '6px';
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox'; cb.checked = isChecked;
+            cb.style.width = '20px'; cb.style.height = '20px'; cb.style.marginRight = '8px';
+
+            const span = document.createElement('span');
+            span.innerHTML = renderText(textPart);
+            if (isChecked) { span.style.textDecoration = 'line-through'; span.style.opacity = '0.6'; }
+
+            label.appendChild(cb); label.appendChild(span); textContainer.appendChild(label);
+
+            // A MÁGICA DE SALVAR QUANDO VOCÊ CLICA
+            cb.addEventListener('change', async () => {
+              span.style.textDecoration = cb.checked ? 'line-through' : 'none';
+              span.style.opacity = cb.checked ? '0.6' : '1';
+              
+              // Modifica o texto e salva no banco sem precisar clicar em Editar
+              const marker = cb.checked ? '[x]' : '[ ]';
+              const freshLines = item.content.split('\n');
+              freshLines[index] = freshLines[index].replace(/^\[[ xX]?\]/, marker);
+              item.content = freshLines.join('\n');
+              item.updatedAt = Date.now();
+              
+              await dbPut(item); // Salva no banco
+              
+              const ramItem = allItems.find(i => i.id === item.id);
+              if (ramItem) { ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; }
+            });
+          } else {
+            const p = document.createElement('div');
+            p.style.minHeight = '1.4em'; p.innerHTML = renderText(line);
+            textContainer.appendChild(p);
+          }
+        });
+      }
+    };
+
+    renderContent(false); // Inicia desenhando os checklists
+    contentWrap.appendChild(textContainer);
     viewBody.appendChild(contentWrap);
 
     btnCopy.addEventListener('click', () => {
-      navigator.clipboard.writeText(item.content).then(() => {
-        showToast('Texto copiado para a área de transferência!');
-      }).catch(() => {
-        showToast('Erro ao copiar.');
-      });
+      navigator.clipboard.writeText(item.content).then(() => showToast('Copiado!'));
     });
 
     let isCode = false;
     btnCode.addEventListener('click', () => {
       isCode = !isCode;
-      if (isCode) {
-        btnCode.innerHTML = '📝 Texto Normal';
-        c.style.fontFamily = 'monospace';
-        c.style.background = 'var(--panel-2)';
-        c.style.padding = '12px';
-        c.style.borderRadius = '8px';
-        c.style.fontSize = '13.5px';
-        c.style.overflowX = 'auto'; 
-        c.style.whiteSpace = 'pre'; 
-        c.textContent = item.content; 
-      } else {
-        btnCode.innerHTML = '💻 Ver Código';
-        c.style = '';
-        c.className = 'content-block';
-        c.innerHTML = renderText(item.content); 
-      }
+      btnCode.innerHTML = isCode ? '📝 Texto Normal' : '💻 Ver Código';
+      renderContent(isCode);
     });
-  }
+    // --- Botão para resetar checklist comum (sem valor em dinheiro) ---
+function hasPlainChecklistNow(){
+  return item.content.split('\n').some(line => {
+    const m = line.match(/^\[[xX]\](.*)/);
+    if (!m) return false;
+    const nums = m[1].match(/\d+(?:[.,]\d+)?/g);
+    const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
+    return !hasPrice;
+  });
+}
 
-  if (item.tags && item.tags.length){
-    const tw = document.createElement('div'); tw.className = 'tags-wrap';
-    item.tags.forEach(t => {
-      const pill = document.createElement('span'); pill.className = 'tag-pill'; 
-      pill.innerHTML = '#' + renderText(t);
-      tw.appendChild(pill);
-    });
-    viewBody.appendChild(tw);
+const btnResetPlain = document.createElement('button');
+btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none';
+btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff';
+btnResetPlain.innerHTML = '🔄 Resetar checklist';
+btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
+renderCards();
+toolbar.appendChild(btnResetPlain);
+
+btnResetPlain.addEventListener('click', async () => {
+  const ok = confirm('Desmarcar os itens do checklist sem valor nesta nota?');
+  if (!ok) return;
+  const lines = item.content.split('\n').map(line => {
+    const m = line.match(/^\[[xX]\](.*)/);
+    if (!m) return line;
+    const nums = m[1].match(/\d+(?:[.,]\d+)?/g);
+    const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
+    return hasPrice ? line : ('[ ]' + m[1]);
+  });
+  item.content = lines.join('\n');
+  item.updatedAt = Date.now();
+  await dbPut(item);
+  const ram = allItems.find(i => i.id === item.id);
+  if (ram){ ram.content = item.content; ram.updatedAt = item.updatedAt; }
+  renderContent(isCode);
+  btnResetPlain.style.display = 'none';
+  showToast('Checklist resetado.');
+  renderCards();
+});
   }
-  const footer = document.createElement('p'); footer.className = 'view-meta-footer';
-  footer.textContent = `Criado ${timeAgo(item.createdAt)}, atualizado ${timeAgo(item.updatedAt)} e consultado ${item.useCount||0} vez(es).`;
-  viewBody.appendChild(footer);
 
   openSheet(modalView);
-
   item.useCount = (item.useCount||0) + 1;
   dbPut(item).then(() => renderCards());
 }
+
 function closeView(){
   closeSheetEl(modalView);
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
+  if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
   viewingItem = null;
 }
 
@@ -1319,15 +1599,23 @@ async function exportBackup(){
   const items = await dbGetAll();
   const serializable = [];
   for (const it of items){
-    let photoBase64 = null, photoType = null;
+        let photoBase64 = null, photoType = null;
     if (it.photo){
       photoBase64 = await blobToDataURL(it.photo);
       photoType = it.photo.type || null;
     }
+    let audioBase64 = null, audioType = null;
+    if (it.audio){
+      audioBase64 = await blobToDataURL(it.audio);
+      audioType = it.audio.type || null;
+    }
     const copy = Object.assign({}, it);
     delete copy.photo;
+    delete copy.audio;
     copy.photoBase64 = photoBase64;
     copy.photoType = photoType;
+    copy.audioBase64 = audioBase64;
+    copy.audioType = audioType;
     serializable.push(copy);
   }
   const payload = { app:'memoria-oficina', version:1, exportedAt: Date.now(), items: serializable };
@@ -1369,10 +1657,14 @@ async function importBackup(file){
       useCount: raw.useCount || 0,
       createdAt: raw.createdAt || Date.now(),
       updatedAt: raw.updatedAt || Date.now(),
-      photo: null
+      photo: null,
+      audio: null
     };
     if (raw.photoBase64){
       try { newItem.photo = await dataURLToBlob(raw.photoBase64); } catch(e){ /* ignora foto quebrada */ }
+    }
+    if (raw.audioBase64){
+      try { newItem.audio = await dataURLToBlob(raw.audioBase64); } catch(e){ /* ignora áudio quebrado */ }
     }
     try { await dbAdd(newItem); count++; } catch(e){ /* pula item com erro */ }
   }
@@ -1418,6 +1710,24 @@ async function seedIfEmpty(){
 }
 
 /* ---------------- Eventos ---------------- */
+fieldAudio.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file){ 
+      currentAudioBlob = file; 
+      updateAudioPreview(); 
+    }
+  });
+  btnRecordAudio.addEventListener('click', toggleRecording);
+
+if (!window.MediaRecorder || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+  btnRecordAudio.style.display = 'none';
+}
+  btnRemoveAudio.addEventListener('click', () => {
+    currentAudioBlob = null; 
+    fieldAudio.value = ''; 
+    updateAudioPreview();
+  });
+
 function setupEventListeners(){
   searchInput.addEventListener('input', debounce(() => {
     currentSearch = searchInput.value;
@@ -1461,7 +1771,11 @@ function setupEventListeners(){
     fieldCategoryCustom.style.display = isCustom ? 'block' : 'none';
     if (isCustom) fieldCategoryCustom.focus();
   });
-
+btnRemovePhoto.addEventListener('click', () => {
+  currentPhotoBlob = null;
+  fieldPhoto.value = '';
+  updatePhotoPreview();
+});
   fieldPhoto.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (file) {
@@ -1503,10 +1817,31 @@ function setupEventListeners(){
   navMore.addEventListener('click', async () => {
     const items = await dbGetAll();
     statsText.textContent = items.length === 1 ? '1 registro salvo neste navegador.' : `${items.length} registros salvos neste navegador.`;
+    refreshBudgetSummary();
     openSheet(sheetMore);
   });
   btnCloseMore.addEventListener('click', () => closeSheetEl(sheetMore));
   sheetMore.addEventListener('click', (e) => { if (e.target === sheetMore) closeSheetEl(sheetMore); });
+
+  btnSendBudget.addEventListener('click', () => {
+  const { list, total } = getGlobalBudgetData();
+  if (!list.length) return;
+  const desc = list.map(i => `✅ ${i.text} (${i.itemTitle})`);
+  const msg = `*Orçamento*\n\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+});
+
+btnClearBudget.addEventListener('click', async () => {
+  const { list } = getGlobalBudgetData();
+  if (!list.length) return;
+  const ok = confirm(`Isso vai desmarcar ${list.length} item(ns) de orçamento em todas as notas (checklists sem valor não são afetados). Continuar?`);
+  if (!ok) return;
+  const affectedIds = await clearAllBudgetCheckboxes();
+  if (viewingItem && affectedIds.includes(viewingItem.id)) closeView();
+  showToast('Orçamento limpo.');
+  refreshBudgetSummary();
+  renderCards();
+});
 
   btnExport.addEventListener('click', () => exportBackup());
   fieldImport.addEventListener('change', (e) => {
