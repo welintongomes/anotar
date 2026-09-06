@@ -366,11 +366,16 @@
         </label>
 
         <label>O que você quer lembrar
-          <div class="textarea-wrap">
-            <textarea id="fieldContent" rows="5" placeholder="Explique com suas palavras: qual era o problema, o que resolveu, o passo a passo, onde fica a peça..."></textarea>
-            <button type="button" id="btnMicContent" class="icon-btn mic-btn" aria-label="Ditar em voz alta" title="Ditar em voz alta">🎤</button>
-          </div>
-        </label>
+  <div style="display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+  <button type="button" id="btnInsertCheckbox" class="tag-pill" style="border:none; cursor:pointer;">☑️ Inserir [ ]</button>
+  <button type="button" id="btnInsertArrow" class="tag-pill" style="border:none; cursor:pointer;">➡️ Inserir >></button>
+  <button type="button" id="btnInsertDivider" class="tag-pill" style="border:none; cursor:pointer;">➖ Inserir separador</button>
+</div>
+  <div class="textarea-wrap">
+    <textarea id="fieldContent" rows="5" placeholder="Explique com suas palavras: qual era o problema, o que resolveu, o passo a passo, onde fica a peça..."></textarea>
+    <button type="button" id="btnMicContent" class="icon-btn mic-btn" aria-label="Ditar em voz alta" title="Ditar em voz alta">🎤</button>
+  </div>
+</label>
         
         <label>Foto (opcional)
           <input type="file" accept="image/*" capture="environment" id="fieldPhoto">
@@ -641,6 +646,9 @@ const fieldVehicle = document.getElementById('fieldVehicle');
 const fieldSpec = document.getElementById('fieldSpec');
 const fieldContent = document.getElementById('fieldContent');
 const btnMicContent = document.getElementById('btnMicContent');
+const btnInsertCheckbox = document.getElementById('btnInsertCheckbox');
+const btnInsertArrow = document.getElementById('btnInsertArrow');
+const btnInsertDivider = document.getElementById('btnInsertDivider');
 const fieldTags = document.getElementById('fieldTags');
 const fieldPhoto = document.getElementById('fieldPhoto');
 const photoPreviewWrap = document.getElementById('photoPreviewWrap');
@@ -741,6 +749,17 @@ function debounce(fn, delay){
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
 }
+function insertAtCursor(textarea, textToInsert){
+  const start = textarea.selectionStart ?? textarea.value.length;
+  const end = textarea.selectionEnd ?? textarea.value.length;
+  const before = textarea.value.slice(0, start);
+  const after = textarea.value.slice(end);
+  textarea.value = before + textToInsert + after;
+  const newPos = start + textToInsert.length;
+  textarea.focus();
+  textarea.setSelectionRange(newPos, newPos);
+  textarea.dispatchEvent(new Event('input'));
+}
 function showToast(msg){
   toast.textContent = msg;
   toast.classList.add('show');
@@ -817,7 +836,10 @@ function escapeHTML(str) {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   }[tag])).replace(/\r?\n/g, '<br>'); // <--- Essa é a mágica do pulo de linha!
 }
-
+function stripFlowSuffix(text){
+  const idx = (text||'').indexOf('>>');
+  return idx === -1 ? text : text.slice(0, idx);
+}
 // Faz o marcador entender que "oleo" e "óleo" são a mesma coisa
 function createFuzzyRegex(word) {
   return word
@@ -1159,7 +1181,7 @@ function getGlobalBudgetData(){
     item.content.split('\n').forEach(line => {
       const m = line.match(/^\[[xX]\](.*)/);
       if (!m) return;
-      const textPart = m[1].trim();
+      const textPart = stripFlowSuffix(m[1]).trim();
       const nums = textPart.match(/\d+(?:[.,]\d+)?/g);
       if (!nums || !nums.length) return;
       const price = parseFloat(nums[nums.length - 1].replace(',', '.'));
@@ -1194,10 +1216,10 @@ async function clearAllBudgetCheckboxes(){
     const lines = full.content.split('\n').map(line => {
       const m = line.match(/^\[[xX]\](.*)/);
       if (!m) return line;
-      const textPart = m[1];
-      const nums = textPart.match(/\d+(?:[.,]\d+)?/g);
-      const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',', '.')) > 0;
-      return hasPrice ? ('[ ]' + textPart) : line;
+      const visible = stripFlowSuffix(m[1]);
+      const nums = visible.match(/\d+(?:[.,]\d+)?/g);
+      const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
+      return hasPrice ? ('[ ]' + m[1]) : line;
     });
     full.content = lines.join('\n');
     await dbPut(full);
@@ -1406,15 +1428,14 @@ async function openView(itemLight){
     viewBody.appendChild(aud);
   }
 
-    if (item.content){
+  if (item.content){
     const contentWrap = document.createElement('div');
     contentWrap.style.marginTop = '12px';
 
     const toolbar = document.createElement('div');
     toolbar.style.display = 'flex'; toolbar.style.gap = '8px';
-    toolbar.style.marginBottom = '25px'; toolbar.style.justifyContent = 'flex-start';
+    toolbar.style.marginBottom = '22px'; toolbar.style.justifyContent = 'flex-end';
 
-    // Se tiver '[]', libera o botão de Orçamento Mágico!
     const hasChecklist = item.content.includes('[');
     if (hasChecklist) {
       const btnBudget = document.createElement('button');
@@ -1423,14 +1444,13 @@ async function openView(itemLight){
       btnBudget.style.fontWeight = 'bold'; btnBudget.innerHTML = '💸 Zap';
       toolbar.appendChild(btnBudget);
 
-      // LÓGICA DO ORÇAMENTO
       btnBudget.addEventListener('click', async () => {
         let total = 0; let desc = [];
         const lines = item.content.split('\n');
         lines.forEach(line => {
           const checkMatch = line.match(/^\[[xX]\](.*)/);
           if (checkMatch) {
-            const textPart = checkMatch[1].trim();
+            const textPart = stripFlowSuffix(checkMatch[1]).trim();
             const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g);
             let price = 0;
             if (numMatches && numMatches.length > 0) {
@@ -1445,7 +1465,7 @@ async function openView(itemLight){
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
       });
     }
-    const btnCopyBudget = document.createElement('button');
+const btnCopyBudget = document.createElement('button');
 btnCopyBudget.className = 'tag-pill'; 
 btnCopyBudget.style.border = 'none';
 btnCopyBudget.style.background = '#25D366'; // Cor verde estilo WhatsApp (opcional)
@@ -1491,7 +1511,8 @@ btnCopyBudget.addEventListener('click', () => {
       return item.content.split('\n').some(line => {
         const m = line.match(/^\[[xX]\](.*)/);
         if (!m) return false;
-        const nums = m[1].match(/\d+(?:[.,]\d+)?/g);
+        const visible = stripFlowSuffix(m[1]);
+        const nums = visible.match(/\d+(?:[.,]\d+)?/g);
         const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
         return !hasPrice;
       });
@@ -1499,7 +1520,7 @@ btnCopyBudget.addEventListener('click', () => {
     const btnResetPlain = document.createElement('button');
     btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none';
     btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff';
-    btnResetPlain.innerHTML = '🔄 limpar';
+    btnResetPlain.innerHTML = '🔄 Limpar';
     btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
     toolbar.appendChild(btnResetPlain);
 
@@ -1509,7 +1530,8 @@ btnCopyBudget.addEventListener('click', () => {
       const lines = item.content.split('\n').map(line => {
         const m = line.match(/^\[[xX]\](.*)/);
         if (!m) return line;
-        const nums = m[1].match(/\d+(?:[.,]\d+)?/g);
+        const visible = stripFlowSuffix(m[1]);
+        const nums = visible.match(/\d+(?:[.,]\d+)?/g);
         const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
         return hasPrice ? line : ('[ ]' + m[1]);
       });
@@ -1536,7 +1558,6 @@ btnCopyBudget.addEventListener('click', () => {
     textContainer.className = 'content-block';
     let isCode = false;
 
-    // FUNÇÃO QUE DESENHA O TEXTO OU O CHECKLIST
     const renderContent = (isCodeMode) => {
       textContainer.innerHTML = '';
       if (isCodeMode) {
@@ -1544,47 +1565,101 @@ btnCopyBudget.addEventListener('click', () => {
         textContainer.style.padding = '12px'; textContainer.style.borderRadius = '8px';
         textContainer.style.fontSize = '13.5px'; textContainer.style.overflowX = 'auto';
         textContainer.style.whiteSpace = 'pre'; textContainer.textContent = item.content;
-      } else {
-        textContainer.style = ''; textContainer.className = 'content-block';
-        const lines = item.content.split('\n');
-        lines.forEach((line, index) => {
-          const checkMatch = line.match(/^\[([ xX]?)\](.*)/);
-          if (checkMatch) {
-            const isChecked = checkMatch[1].toLowerCase() === 'x';
-            const textPart = checkMatch[2];
-            const label = document.createElement('label');
-            label.className = 'checkbox-row';
-            label.style.display = 'flex'; label.style.alignItems = 'center';
-            label.style.marginTop = '6px'; label.style.marginBottom = '6px';
-            const cb = document.createElement('input');
-            cb.type = 'checkbox'; cb.checked = isChecked;
-            cb.style.width = '20px'; cb.style.height = '20px'; cb.style.marginRight = '8px';
-            const span = document.createElement('span');
-            span.innerHTML = renderText(textPart);
-            if (isChecked) { span.style.textDecoration = 'line-through'; span.style.opacity = '0.6'; }
-            label.appendChild(cb); label.appendChild(span); textContainer.appendChild(label);
+        return;
+      }
+      textContainer.style = ''; textContainer.className = 'content-block';
+      const lines = item.content.split('\n');
 
-            cb.addEventListener('change', async () => {
-              span.style.textDecoration = cb.checked ? 'line-through' : 'none';
-              span.style.opacity = cb.checked ? '0.6' : '1';
-              const marker = cb.checked ? '[x]' : '[ ]';
-              const freshLines = item.content.split('\n');
-              freshLines[index] = freshLines[index].replace(/^\[[ xX]?\]/, marker);
-              item.content = freshLines.join('\n');
-              item.updatedAt = Date.now();
-              await dbPut(item);
-              const ramItem = allItems.find(i => i.id === item.id);
-              if (ramItem) { ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; }
-              btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
-              renderCards();
-            });
+      const lineSearchNorm = lines.map(l => {
+        const m = l.match(/^\[[ xX]?\](.*)/);
+        const raw = m ? m[1] : l;
+        return normalize(stripFlowSuffix(raw));
+      });
+      const lineEls = [];
+
+      lines.forEach((line, index) => {
+        const checkMatch = line.match(/^\[([ xX]?)\](.*)/);
+        if (checkMatch) {
+          const isChecked = checkMatch[1].toLowerCase() === 'x';
+          const rawText = checkMatch[2];
+          const arrowIdx = rawText.indexOf('>>');
+          const visibleText = (arrowIdx === -1 ? rawText : rawText.slice(0, arrowIdx)).trim();
+          const nextStepRaw = arrowIdx === -1 ? null : rawText.slice(arrowIdx + 2).trim();
+
+          const label = document.createElement('label');
+          label.className = 'checkbox-row';
+          label.style.display = 'flex'; label.style.alignItems = 'center';
+          label.style.marginTop = '6px'; label.style.marginBottom = '6px';
+
+          const cb = document.createElement('input');
+          cb.type = 'checkbox'; cb.checked = isChecked;
+          cb.style.width = '20px'; cb.style.height = '20px'; cb.style.marginRight = '8px';
+
+          const span = document.createElement('span');
+          span.innerHTML = renderText(visibleText);
+          if (isChecked) { span.style.textDecoration = 'line-through'; span.style.opacity = '0.6'; }
+
+          label.appendChild(cb); label.appendChild(span);
+
+          if (nextStepRaw){
+            const hint = document.createElement('span');
+            hint.textContent = ' ➡️';
+            hint.title = 'Se marcar: sugere "' + nextStepRaw + '"';
+            hint.style.opacity = '0.55'; hint.style.fontSize = '0.85em';
+            label.appendChild(hint);
+          }
+
+          textContainer.appendChild(label);
+          lineEls[index] = label;
+
+          cb.addEventListener('change', async () => {
+            span.style.textDecoration = cb.checked ? 'line-through' : 'none';
+            span.style.opacity = cb.checked ? '0.6' : '1';
+            const marker = cb.checked ? '[x]' : '[ ]';
+            const freshLines = item.content.split('\n');
+            freshLines[index] = freshLines[index].replace(/^\[[ xX]?\]/, marker);
+            item.content = freshLines.join('\n');
+            item.updatedAt = Date.now();
+            await dbPut(item);
+            const ramItem = allItems.find(i => i.id === item.id);
+            if (ramItem) { ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; }
+            btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
+            renderCards();
+
+            if (cb.checked && nextStepRaw){
+              const targetNorm = normalize(nextStepRaw);
+              const foundIdx = lineSearchNorm.findIndex((t, j) => j !== index && t && t.includes(targetNorm));
+              if (foundIdx !== -1 && lineEls[foundIdx]){
+                const el = lineEls[foundIdx];
+                el.scrollIntoView({ behavior:'smooth', block:'center' });
+                const oldBg = el.style.background, oldRadius = el.style.borderRadius;
+                el.style.transition = 'background 0.3s';
+                el.style.background = '#4FA8D8'; el.style.borderRadius = '6px';
+                setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
+                showToast('➡️ Próximo passo: ' + nextStepRaw);
+              } else {
+                showToast('➡️ Próximo passo sugerido: "' + nextStepRaw + '" (não encontrei esse texto na lista)');
+              }
+            }
+          });
+                } else {
+          const trimmed = line.trim();
+          const isDivider = /^(.)\1{2,}$/.test(trimmed) && /^[-=#*]+$/.test(trimmed);
+          if (isDivider){
+            const hr = document.createElement('hr');
+            hr.style.border = 'none';
+            hr.style.borderTop = '2px dashed var(--smoke, #9AA0AB)';
+            hr.style.margin = '14px 0';
+            textContainer.appendChild(hr);
+            lineEls[index] = hr;
           } else {
             const p = document.createElement('div');
             p.style.minHeight = '1.4em'; p.innerHTML = renderText(line);
             textContainer.appendChild(p);
+            lineEls[index] = p;
           }
-        });
-      }
+        }
+      });
     };
 
     renderContent(false);
@@ -1763,6 +1838,22 @@ function setupEventListeners(){
   btnMic.addEventListener('click', () => startVoiceInput(searchInput, btnMic, false));
   btnMicContent.addEventListener('click', () => startVoiceInput(fieldContent, btnMicContent, true));
 
+  btnInsertCheckbox.addEventListener('click', () => {
+  const start = fieldContent.selectionStart ?? fieldContent.value.length;
+  const value = fieldContent.value;
+  const atLineStart = start === 0 || value[start - 1] === '\n';
+  insertAtCursor(fieldContent, (atLineStart ? '' : '\n') + '[] ');
+});
+
+btnInsertArrow.addEventListener('click', () => {
+  insertAtCursor(fieldContent, ' >> ');
+});
+btnInsertDivider.addEventListener('click', () => {
+  const start = fieldContent.selectionStart ?? fieldContent.value.length;
+  const value = fieldContent.value;
+  const atLineStart = start === 0 || value[start - 1] === '\n';
+  insertAtCursor(fieldContent, (atLineStart ? '' : '\n') + '----\n');
+});
   sortSelect.addEventListener('change', () => { currentSort = sortSelect.value; renderCards(); });
 
   navSearch.addEventListener('click', () => {
