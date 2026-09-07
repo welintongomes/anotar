@@ -385,17 +385,13 @@
           <img id="photoPreview" alt="Prévia da foto">
           <button type="button" id="btnRemovePhoto" class="btn-secondary">Remover foto</button>
         </div>
-        <label>Categoria
-          <select id="fieldCategory"></select>
-        </label>
-        <input type="text" id="fieldCategoryCustom" placeholder="Nome da nova categoria" style="display:none">
         <label>Áudio (opcional)
-  <input type="file" accept="audio/*" capture="microphone" id="fieldAudio">
-</label>
-<div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-  <button type="button" id="btnRecordAudio" class="btn-secondary">🎙️ Gravar áudio pelo microfone</button>
-  <span id="recordingTimer" style="display:none; font-weight:bold; color:#D64545;">● 00:00</span>
-</div>
+        <input type="file" accept="audio/*" capture="microphone" id="fieldAudio">
+      </label>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+        <button type="button" id="btnRecordAudio" class="btn-secondary">🎙️ Gravar áudio pelo microfone</button>
+        <span id="recordingTimer" style="display:none; font-weight:bold; color:#D64545;">● 00:00</span>
+      </div>
         <div id="audioPreviewWrap" style="display:none; flex-direction:column; gap:8px; margin-bottom:12px;">
           <audio id="audioPreview" controls style="width:100%;"></audio>
           <button type="button" id="btnRemoveAudio" class="btn-secondary">Remover áudio</button>
@@ -403,6 +399,10 @@
         <label>Palavras-chave para achar depois (separe por vírgula)
           <input type="text" id="fieldTags" placeholder="Ex.: motor, ignição, sensor">
         </label>
+        <label>Categoria
+          <select id="fieldCategory"></select>
+        </label>
+        <input type="text" id="fieldCategoryCustom" placeholder="Nome da nova categoria" style="display:none">
         
         <label>📌 Subtítulo ou Referência (opcional)
           <input type="text" id="fieldVehicle" placeholder="Ex.: Cliente X, Projeto Site, Banco">
