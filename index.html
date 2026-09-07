@@ -118,7 +118,7 @@
     margin:2px 0 0;color:var(--smoke);font-size:14px;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   }
-  .tags-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;}
+  .tags-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px; scrollbar-width: none; }
   .tag-pill{background:var(--panel-2);color:var(--smoke);border-radius:5px;padding:2px 8px;font-size:12px;}
   .card-footer{margin:6px 0 0;color:var(--smoke);font-size:12px;}
 
@@ -1161,28 +1161,52 @@ function buildCard(item){
     c.innerHTML = renderText(item.content);
     card.appendChild(c);
   }
-  if (item.tags && item.tags.length){
-    const tw = document.createElement('div'); tw.className = 'tags-wrap';
-    item.tags.slice(0,6).forEach(t => {
-      const pill = document.createElement('span'); pill.className = 'tag-pill'; 
+if (item.tags && item.tags.length){
+    const tw = document.createElement('div'); 
+    tw.className = 'tags-wrap';
+    
+    // --- CORREÇÃO DO "CARD ESTICADO" ---
+    tw.style.display = 'flex';
+    tw.style.flexWrap = 'nowrap';
+    tw.style.overflowX = 'auto';
+    
+    // Estas duas linhas são a trava! Elas proíbem a div de esticar o card
+    tw.style.maxWidth = '100%'; 
+    tw.style.width = '100%'; 
+    
+    tw.style.paddingBottom = '4px';
+    tw.style.WebkitOverflowScrolling = 'touch';
+    // --- FIM DA CORREÇÃO ---
+
+    item.tags.forEach(t => {
+      const pill = document.createElement('span'); 
+      pill.className = 'tag-pill'; 
       pill.innerHTML = '#' + renderText(t);
       
-      // --- INÍCIO DA MELHORIA: CLIQUE NA TAG DO CARD ---
-      pill.style.cursor = 'pointer'; // Mostra a mãozinha de clique
+      // Impede a tag de esmagar, mantendo o tamanho original
+      pill.style.flexShrink = '0';
+      pill.style.whiteSpace = 'nowrap';
+      
+      // Clique da tag
+      pill.style.cursor = 'pointer'; 
       pill.addEventListener('click', (e) => {
-        e.stopPropagation(); // O SEGREDO: Impede que o clique na tag abra o card inteiro
+        e.stopPropagation(); 
         searchInput.value = t;
         currentSearch = t;
         btnClearSearch.style.display = 'flex';
-        renderCards(); // Refaz a lista só com essa tag
-        window.scrollTo({ top: 0, behavior: 'smooth' }); // Joga a tela pro topo
+        renderCards(); 
+        window.scrollTo({ top: 0, behavior: 'smooth' }); 
         showToast(`Buscando pela tag: ${t}`);
       });
-      // --- FIM DA MELHORIA ---
       
       tw.appendChild(pill);
     });
     card.appendChild(tw);
+
+    // HACK DE SEGURANÇA: Se o card estiver usando flexbox/grid no seu CSS, 
+    // isso aqui garante de uma vez por todas que ele não vai estourar a tela.
+    card.style.minWidth = '0';
+    card.style.maxWidth = '100%';
   }
   const footer = document.createElement('p'); footer.className = 'card-footer'; footer.textContent = buildFooterText(item);
   card.appendChild(footer);
