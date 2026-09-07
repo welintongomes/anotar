@@ -1157,6 +1157,20 @@ function buildCard(item){
     item.tags.slice(0,6).forEach(t => {
       const pill = document.createElement('span'); pill.className = 'tag-pill'; 
       pill.innerHTML = '#' + renderText(t);
+      
+      // --- INÍCIO DA MELHORIA: CLIQUE NA TAG DO CARD ---
+      pill.style.cursor = 'pointer'; // Mostra a mãozinha de clique
+      pill.addEventListener('click', (e) => {
+        e.stopPropagation(); // O SEGREDO: Impede que o clique na tag abra o card inteiro
+        searchInput.value = t;
+        currentSearch = t;
+        btnClearSearch.style.display = 'flex';
+        renderCards(); // Refaz a lista só com essa tag
+        window.scrollTo({ top: 0, behavior: 'smooth' }); // Joga a tela pro topo
+        showToast(`Buscando pela tag: ${t}`);
+      });
+      // --- FIM DA MELHORIA ---
+      
       tw.appendChild(pill);
     });
     card.appendChild(tw);
@@ -1463,6 +1477,34 @@ async function openView(itemLight){
   const badge = document.createElement('span'); badge.className = 'badge';
   badge.textContent = item.category; badge.style.color = categoryColor(item.category);
   viewBody.appendChild(badge);
+  // --- INÍCIO DA MELHORIA: TAGS DENTRO DA NOTA ---
+  if (item.tags && item.tags.length) {
+    const tagsContainer = document.createElement('div');
+    tagsContainer.style.display = 'flex'; tagsContainer.style.gap = '6px'; 
+    tagsContainer.style.flexWrap = 'wrap'; tagsContainer.style.marginTop = '10px';
+    
+    item.tags.forEach(t => {
+      const pill = document.createElement('span'); 
+      pill.className = 'tag-pill';
+      pill.textContent = '#' + t;
+      pill.style.cursor = 'pointer';
+      pill.style.background = 'var(--panel-2)'; // Destaca levemente do fundo
+      
+      pill.addEventListener('click', () => {
+        closeView(); // Fecha a nota atual
+        searchInput.value = t; // Preenche a barra de busca
+        currentSearch = t;
+        btnClearSearch.style.display = 'flex';
+        renderCards(); // Filtra tudo
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        showToast(`Buscando pela tag: ${t}`);
+      });
+      
+      tagsContainer.appendChild(pill);
+    });
+    viewBody.appendChild(tagsContainer);
+  }
+  // --- FIM DA MELHORIA ---
 
   const renderText = (text) => currentSearch ? highlightHTML(text, currentSearch) : escapeHTML(text);
 
