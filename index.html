@@ -1699,6 +1699,9 @@ btnCopyBudget.addEventListener('click', () => {
     textContainer.className = 'content-block';
     let isCode = false;
 
+    // --- NOVA LINHA: Cria o cache para guardar a ordem embaralhada ---
+    const quizShuffleCache = {};
+
     const renderContent = (isCodeMode) => {
       textContainer.innerHTML = '';
       if (isCodeMode) {
@@ -1751,6 +1754,10 @@ btnCopyBudget.addEventListener('click', () => {
             const record = normalizeQuizRecord((item.quizAnswers || {})[questionLineIndex]);
             const due = isRecordDue(record);       // já respondeu antes, mas está na hora de revisar de novo
             const locked = !!record && !due;       // respondeu e ainda não venceu o prazo
+            // --- NOVA REGRA: SE NÃO ESTIVER RESPONDIDA, GANHA UMA CLASSE ---
+            if (!locked) {
+              qBlock.classList.add('quiz-unanswered');
+            }
 
             if (due){
               const dueTag = document.createElement('div');
@@ -1759,7 +1766,23 @@ btnCopyBudget.addEventListener('click', () => {
               qBlock.appendChild(dueTag);
             }
 
-            options.forEach((opt, optIdx) => {
+            // --- INÍCIO DA MELHORIA: EMBARALHAR OPÇÕES (COM CACHE) E ROLAGEM AUTOMATICA---
+            
+            // 1. Verifica se já embaralhamos essa pergunta desde que o card abriu
+            if (!quizShuffleCache[questionLineIndex]) {
+              // Se ainda não, embaralha agora e salva no cache!
+              const shuffled = options.map((opt, originalIndex) => {
+                return { ...opt, originalIndex };
+              });
+              shuffled.sort(() => Math.random() - 0.5);
+              quizShuffleCache[questionLineIndex] = shuffled; 
+            }
+
+            // 2. Puxa as opções na ordem que está salva na memória temporária
+            const shuffledOptions = quizShuffleCache[questionLineIndex];
+
+            // 3. Renderiza os botões (exatamente como antes)
+            shuffledOptions.forEach((opt) => {
               const optBtn = document.createElement('button');
               optBtn.type = 'button';
               optBtn.className = 'btn-secondary';
@@ -1772,15 +1795,16 @@ btnCopyBudget.addEventListener('click', () => {
               if (locked){
                 optBtn.disabled = true;
                 if (opt.correct){ optBtn.style.background = '#4FA65B'; optBtn.style.color = '#fff'; }
-                else if (optIdx === record.chosen){ optBtn.style.background = '#D64545'; optBtn.style.color = '#fff'; }
+                else if (opt.originalIndex === record.chosen){ optBtn.style.background = '#D64545'; optBtn.style.color = '#fff'; }
               }
 
               optBtn.addEventListener('click', async () => {
                 if (locked) return;
                 const isCorrect = opt.correct;
-                const prevForSm2 = due ? record : null; // se já tinha histórico (venceu), continua a curva; se é a 1ª vez, começa do zero
+                const prevForSm2 = due ? record : null; 
                 const updated = sm2Update(prevForSm2, isCorrect);
-                updated.chosen = optIdx;
+
+                updated.chosen = opt.originalIndex;
 
                 if (!item.quizAnswers) item.quizAnswers = {};
                 item.quizAnswers[questionLineIndex] = updated;
@@ -1793,11 +1817,30 @@ btnCopyBudget.addEventListener('click', () => {
                 showToast((isCorrect ? '✅ Certo! ' : '❌ Errado. ') + `Vai revisar de novo em ${dias}.`);
                 refreshQuizScoreLabel();
                 renderContent(isCode);
+
+                // Rolagem automática
+                setTimeout(() => {
+                  const nextQuiz = textContainer.querySelector('.quiz-unanswered');
+                  if (nextQuiz) {
+                    nextQuiz.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    const oldBg = nextQuiz.style.background;
+                    const oldRadius = nextQuiz.style.borderRadius;
+                    nextQuiz.style.transition = 'background 0.3s';
+                    nextQuiz.style.background = '#4FA8D8'; 
+                    nextQuiz.style.borderRadius = '6px';
+                    
+                    setTimeout(() => { 
+                      nextQuiz.style.background = oldBg; 
+                      nextQuiz.style.borderRadius = oldRadius; 
+                    }, 2200);
+                  }
+                }, 800);
               });
 
               qBlock.appendChild(optBtn);
             });
-
+            // --- FIM DA MELHORIA ---
             textContainer.appendChild(qBlock);
             for (let k = i; k < j; k++) lineEls[k] = qBlock;
             i = j;
@@ -1916,6 +1959,28 @@ btnCopyBudget.addEventListener('click', () => {
   openSheet(modalView);
   item.useCount = (item.useCount||0) + 1;
   dbPut(item).then(() => renderCards());
+  // --- INÍCIO DA MELHORIA: FOCAR NA PRIMEIRA PERGUNTA PENDENTE AO ABRIR ---
+  setTimeout(() => {
+    // Mudamos de textContainer para viewBody
+    const firstUnanswered = viewBody.querySelector('.quiz-unanswered');
+    
+    if (firstUnanswered) {
+      firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      const oldBg = firstUnanswered.style.background;
+      const oldRadius = firstUnanswered.style.borderRadius;
+      firstUnanswered.style.transition = 'background 0.3s';
+      firstUnanswered.style.background = '#4FA8D8'; 
+      firstUnanswered.style.borderRadius = '6px';
+      
+      setTimeout(() => { 
+        firstUnanswered.style.background = oldBg; 
+        firstUnanswered.style.borderRadius = oldRadius; 
+      }, 2200);
+    }
+  }, 300);
+  // --- FIM DA MELHORIA ---
+
 }
 
 function closeView(){
