@@ -1471,17 +1471,160 @@ async function openView(itemLight){
   viewingItem = item;
   viewTitle.textContent = item.title;
   viewBody.innerHTML = '';
+  // --- INÍCIO DA MELHORIA: LEITURA INTELIGENTE E SEPARADA ---
+  let readingWakeLock = null;
+  let activeSpeechTarget = null; // Guarda quem está falando agora (se é o titulo principal ou o quiz)
+  let restorePreviousVisuals = null; // Guarda a função que devolve o ícone ❓ original
+
+  // Limpa o texto da nota inteira
+  function getCleanTextToRead() {
+    let text = item.title + ". ";
+    if (item.vehicle) text += item.vehicle + ". ";
+    if (item.spec) text += item.spec + ". ";
+    if (item.content) {
+      text += item.content
+        .replace(/\[[xX ]?\]/g, '') 
+        .replace(/^\?\?\s*/gm, 'Pergunta: ') 
+        .replace(/^\(\s*[xX]?\s*\)/gm, 'Alternativa: ') 
+        .replace(/>>/g, ' próximo passo ') 
+        .replace(/[-=#*]{3,}/g, ''); 
+    }
+    return text;
+  }
+
+  // O Super Gerenciador de Voz (serve tanto pro título quanto pro Quiz)
+  async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz) {
+    if (!('speechSynthesis' in window)) {
+      showToast('Navegador sem suporte a voz.'); return;
+    }
+    const synth = window.speechSynthesis;
+
+    // Se tocou de novo no MESMO elemento que já está lendo (Pausa ou Retoma)
+    if (activeSpeechTarget === targetId) {
+      if (synth.speaking && !synth.paused) {
+        synth.pause();
+        element.style.opacity = '0.5';
+        showToast('Leitura pausada.'); return;
+      }
+      if (synth.speaking && synth.paused) {
+        synth.resume();
+        element.style.opacity = '1';
+        showToast('Leitura retomada.'); return;
+      }
+    }
+
+    // Se tocou em um NOVO elemento, MANDA CALAR A BOCA e para o anterior
+    synth.cancel();
+    if (restorePreviousVisuals) restorePreviousVisuals(); // Devolve o ícone do anterior pro normal
+    
+    activeSpeechTarget = targetId;
+    element.style.opacity = '1';
+
+    // Ensina o sistema como restaurar a tela quando ESTE áudio acabar
+    restorePreviousVisuals = () => {
+      element.innerHTML = originalHtml;
+      element.style.opacity = '1';
+    };
+
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    utterance.lang = 'pt-BR'; // (Mude para 'en-US' se for treinar o inglês)
+    utterance.rate = 0.95;
+
+    utterance.onstart = async () => {
+      if (isQuiz) {
+        element.innerHTML = originalHtml.replace('❓', '🔊');
+      } else {
+        element.innerHTML = '🔊 ' + originalHtml;
+      }
+      
+      // Trava a tela para ela não apagar enquanto lê
+      if ('wakeLock' in navigator && !window.currentWakeLock && !readingWakeLock) {
+        try { readingWakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+      }
+    };
+
+    utterance.onend = () => {
+      if (restorePreviousVisuals) restorePreviousVisuals();
+      restorePreviousVisuals = null;
+      if (activeSpeechTarget === targetId) activeSpeechTarget = null;
+      
+      // Libera a tela
+      if (readingWakeLock) {
+        readingWakeLock.release().catch(()=>{});
+        readingWakeLock = null;
+      }
+    };
+    utterance.onerror = utterance.onend;
+
+    synth.speak(utterance);
+  }
+
+  // LIGA O TÍTULO PRINCIPAL NA VOZ (Lê a nota inteira)
+  viewTitle.style.cursor = 'pointer';
+  const mainTitleOriginal = escapeHTML(item.title);
+  viewTitle.onclick = () => {
+    handleSpeech(getCleanTextToRead(), viewTitle, mainTitleOriginal, 'main', false);
+  };
+  // --- FIM DA MELHORIA ---
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
 
+  // --- INÍCIO DA MELHORIA: TELA VIVA (WAKE LOCK) ---
+  const topRow = document.createElement('div');
+  topRow.style.display = 'flex';
+  topRow.style.justifyContent = 'space-between';
+  topRow.style.alignItems = 'center';
+  topRow.style.marginBottom = '12px';
+
   const badge = document.createElement('span'); badge.className = 'badge';
   badge.textContent = item.category; badge.style.color = categoryColor(item.category);
-  viewBody.appendChild(badge);
+  topRow.appendChild(badge);
+
+  // Verifica se o celular/navegador suporta a tecnologia de travar a tela
+  if ('wakeLock' in navigator) {
+    const btnWake = document.createElement('button');
+    btnWake.className = 'tag-pill';
+    btnWake.style.border = 'none';
+    btnWake.style.background = 'var(--panel-2)'; 
+    btnWake.style.color = '#fff';
+    btnWake.innerHTML = '💡 Tela Viva';
+    
+    btnWake.addEventListener('click', async () => {
+      try {
+        if (window.currentWakeLock) {
+          await window.currentWakeLock.release();
+          window.currentWakeLock = null;
+          btnWake.innerHTML = '💡 Tela Viva';
+          btnWake.style.background = 'var(--panel-2)';
+          showToast('Tela normal (pode apagar).');
+        } else {
+          // Pede permissão e trava a tela acesa
+          window.currentWakeLock = await navigator.wakeLock.request('screen');
+          btnWake.innerHTML = '☀️ Tela Travada';
+          btnWake.style.background = '#D6A035'; // Fica Dourado para avisar que tá ativo
+          showToast('A tela não vai apagar!');
+          
+          // Se você minimizar o navegador, ele solta a trava sozinho por segurança
+          window.currentWakeLock.addEventListener('release', () => {
+            window.currentWakeLock = null;
+            btnWake.innerHTML = '💡 Tela Viva';
+            btnWake.style.background = 'var(--panel-2)';
+          });
+        }
+      } catch (err) {
+        showToast('Erro ao travar tela.');
+      }
+    });
+    topRow.appendChild(btnWake);
+  }
+  viewBody.appendChild(topRow);
+  // --- FIM DA MELHORIA ---
   // --- INÍCIO DA MELHORIA: TAGS DENTRO DA NOTA ---
   if (item.tags && item.tags.length) {
     const tagsContainer = document.createElement('div');
     tagsContainer.style.display = 'flex'; tagsContainer.style.gap = '6px'; 
-    tagsContainer.style.flexWrap = 'wrap'; tagsContainer.style.marginTop = '10px';
+    tagsContainer.style.flexWrap = 'nowrap'; tagsContainer.style.marginTop = '10px';
+    tagsContainer.style.overflowX = 'auto'; tagsContainer.style.scrollbarWidth = 'none';
     
     item.tags.forEach(t => {
       const pill = document.createElement('span'); 
@@ -1522,7 +1665,44 @@ async function openView(itemLight){
     const img = document.createElement('img'); img.className = 'view-photo';
     viewPhotoURL = URL.createObjectURL(item.photo);
     img.src = viewPhotoURL;
+    img.style.cursor = 'zoom-in'; // Muda o cursor do mouse no PC pra uma lupa
     viewBody.appendChild(img);
+
+    // --- INÍCIO DA MELHORIA: ZOOM NA FOTO ---
+    img.addEventListener('click', () => {
+      // Cria o fundo escuro transparente por cima de tudo
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0'; overlay.style.left = '0';
+      overlay.style.width = '100vw'; overlay.style.height = '100vh';
+      overlay.style.backgroundColor = 'rgba(0,0,0,0.95)'; // Quase totalmente preto
+      overlay.style.zIndex = '99999';
+      overlay.style.display = 'flex';
+      overlay.style.justifyContent = 'center';
+      overlay.style.alignItems = 'center';
+      overlay.style.cursor = 'zoom-out';
+      
+      // Cria a imagem gigante
+      const bigImg = document.createElement('img');
+      bigImg.src = viewPhotoURL;
+      bigImg.style.maxWidth = '95%';
+      bigImg.style.maxHeight = '95%';
+      bigImg.style.objectFit = 'contain';
+      bigImg.style.transform = 'scale(0.8)'; // Começa menorzinha...
+      bigImg.style.transition = 'transform 0.2s ease-out'; // ...para dar uma animação suave
+      
+      overlay.appendChild(bigImg);
+      document.body.appendChild(overlay);
+      
+      // Dispara a animação (dá o efeito de "pulo" abrindo)
+      requestAnimationFrame(() => {
+        bigImg.style.transform = 'scale(1)';
+      });
+      
+      // Ao tocar no fundo escuro ou na imagem, ela fecha
+      overlay.addEventListener('click', () => overlay.remove());
+    });
+    // --- FIM DA MELHORIA ---
   }
   if (item.audio){
     const aud = document.createElement('audio'); aud.controls = true;
@@ -1719,14 +1899,32 @@ btnCopyBudget.addEventListener('click', () => {
         showToast('Quiz reiniciado.');
       });
     }
-        function refreshQuizScoreLabel(){
-      if (!quizScoreLabel) return;
-      const { total, mastered, dueForReview, neverAnswered } = getQuizScore();
-      let extra = '';
-      if (dueForReview > 0) extra += ` · ⏰ ${dueForReview} p/ revisar`;
-      if (neverAnswered > 0) extra += ` · ${neverAnswered} nova(s)`;
-      quizScoreLabel.innerHTML = `🧠 ${mastered}/${total} na memória` + extra;
-    }
+    function refreshQuizScoreLabel(){
+          if (!quizScoreLabel) return;
+          const { total, mastered, dueForReview, neverAnswered } = getQuizScore();
+          let extra = '';
+          if (dueForReview > 0) extra += ` · ⏰ ${dueForReview} p/ revisar`;
+          if (neverAnswered > 0) extra += ` · ${neverAnswered} nova(s)`;
+
+          // --- INÍCIO DA MELHORIA: BARRA DE PROGRESSO VISUAL ---
+          // Calcula a porcentagem real (de 0 a 100)
+          const percent = total > 0 ? Math.round((mastered / total) * 100) : 0;
+          
+          let barColor = '#D64545'; // Começa Vermelho (Precisa estudar)
+          if (percent >= 40) barColor = '#D6A035'; // Vai pro Dourado/Amarelo (No caminho)
+          if (percent >= 80) barColor = '#4FA65B'; // Fica Verde (Memorizou quase tudo!)
+
+          // Aqui é o truque: a cor preenche até onde a porcentagem bateu
+          quizScoreLabel.style.background = `linear-gradient(90deg, ${barColor} ${percent}%, var(--smoke, #9AA0AB) ${percent}%)`;
+          
+          quizScoreLabel.style.color = '#fff';
+          // A sombra no texto garante que você consiga ler tanto na parte colorida quanto na cinza
+          quizScoreLabel.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; 
+          
+          quizScoreLabel.innerHTML = `🧠 ${mastered}/${total} (${percent}%)` + extra;
+          // --- FIM DA MELHORIA ---
+        }
+
     refreshQuizScoreLabel();
 
     const btnCode = document.createElement('button');
@@ -1787,11 +1985,29 @@ btnCopyBudget.addEventListener('click', () => {
             qBlock.style.marginTop = '6px';
             qBlock.style.marginBottom = '10px';
 
+            // --- INÍCIO DA MELHORIA: TÍTULO DO QUIZ LÊ SÓ ELE MESMO ---
             const qTitle = document.createElement('div');
             qTitle.style.fontWeight = 'bold';
             qTitle.style.marginBottom = '8px';
-            qTitle.innerHTML = '❓ ' + renderText(qMatch[1].trim());
+            qTitle.style.cursor = 'pointer'; // Mãozinha de clique
+            
+            // Desenha a pergunta limpa com o ponto de interrogação
+            const originalQuizHtml = '❓ ' + renderText(qMatch[1].trim());
+            qTitle.innerHTML = originalQuizHtml;
+            
+            // Monta o texto APENAS desta pergunta e das alternativas dela
+            let quizSpeechText = "Pergunta: " + qMatch[1].trim() + ". ";
+            options.forEach(opt => {
+              quizSpeechText += "Alternativa: " + opt.text + ". ";
+            });
+            
+            // Quando clicar, chama o super gerenciador de voz mandando SÓ a pergunta!
+            qTitle.addEventListener('click', () => {
+              handleSpeech(quizSpeechText, qTitle, originalQuizHtml, 'quiz-' + questionLineIndex, true);
+            });
+            
             qBlock.appendChild(qTitle);
+            // --- FIM DA MELHORIA ---
 
             const record = normalizeQuizRecord((item.quizAnswers || {})[questionLineIndex]);
             const due = isRecordDue(record);       // já respondeu antes, mas está na hora de revisar de novo
@@ -2041,6 +2257,16 @@ function closeView(){
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
   viewingItem = null;
+
+  // --- INÍCIO DA MELHORIA: CALA A BOCA E SOLTA A TELA AO FECHAR ---
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel(); // Manda o robô calar a boca na mesma hora
+  }
+  if (window.currentWakeLock) {
+    window.currentWakeLock.release().catch(() => {});
+    window.currentWakeLock = null;
+  }
+  // --- FIM DA MELHORIA ---
 }
 
 /* ---------------- Backup ---------------- */
