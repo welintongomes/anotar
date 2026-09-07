@@ -118,7 +118,7 @@
     margin:2px 0 0;color:var(--smoke);font-size:14px;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   }
-  .tags-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px; scrollbar-width: none; }
+  .tags-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;scrollbar-width: none;}
   .tag-pill{background:var(--panel-2);color:var(--smoke);border-radius:5px;padding:2px 8px;font-size:12px;}
   .card-footer{margin:6px 0 0;color:var(--smoke);font-size:12px;}
 
@@ -1612,7 +1612,7 @@ async function openView(itemLight){
   topRow.style.display = 'flex';
   topRow.style.justifyContent = 'space-between';
   topRow.style.alignItems = 'center';
-  topRow.style.marginBottom = '12px';
+  topRow.style.marginBottom = '3px';
 
   const badge = document.createElement('span'); badge.className = 'badge';
   badge.textContent = item.category; badge.style.color = categoryColor(item.category);
@@ -1661,7 +1661,7 @@ async function openView(itemLight){
   if (item.tags && item.tags.length) {
     const tagsContainer = document.createElement('div');
     tagsContainer.style.display = 'flex'; tagsContainer.style.gap = '6px'; 
-    tagsContainer.style.flexWrap = 'nowrap'; tagsContainer.style.marginTop = '10px';
+    tagsContainer.style.flexWrap = 'nowrap'; tagsContainer.style.marginTop = '3px';
     tagsContainer.style.overflowX = 'auto'; tagsContainer.style.scrollbarWidth = 'none';
     
     item.tags.forEach(t => {
@@ -1756,7 +1756,7 @@ async function openView(itemLight){
 
     const toolbar = document.createElement('div');
     toolbar.style.display = 'flex'; toolbar.style.gap = '8px';
-    toolbar.style.marginBottom = '20px'; toolbar.style.justifyContent = 'flex-start';
+    toolbar.style.marginBottom = '15px'; toolbar.style.justifyContent = 'flex-start';
     toolbar.style.flexWrap = 'wrap';
 
     const hasChecklist = item.content.includes('[');
