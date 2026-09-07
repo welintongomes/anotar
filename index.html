@@ -455,6 +455,13 @@
       <p class="meta-line">faça backup regularmente para guardar o arquivo.</p>
       <hr>
       <p class="meta-line"></p>
+      <!-- INÍCIO: NOVO BOTÃO DE ÁUDIO -->
+      <label class="checkbox-row" style="margin-bottom: 6px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+        <input type="checkbox" id="toggleGlobalAudio">
+        🔊 Permitir Leitura de Voz (Tocar nos títulos)
+      </label>
+      <hr>
+      <!-- FIM: NOVO BOTÃO DE ÁUDIO -->
       <button id="btnExport" class="btn-primary">⬇️ Exportar backup (.json)</button>
       <label class="btn-secondary" style="display:block;text-align:center;cursor:pointer;">
         ⬆️ Importar backup
@@ -600,6 +607,7 @@ let lastRenderState = ''; // Ajuda o sistema a saber quando você fez uma nova b
 let currentAudioBlob = null;
 let formAudioURL = null; // Para tocar o áudio antes de salvar
 let viewAudioURL = null; // Para tocar o áudio na visualização
+let isAudioEnabled = localStorage.getItem('memorias_audio_global') !== 'false';
 
 /* ---------------- Elementos ---------------- */
 const searchInput = document.getElementById('searchInput');
@@ -672,6 +680,7 @@ const btnCloseMore = document.getElementById('btnCloseMore');
 const btnExport = document.getElementById('btnExport');
 const fieldImport = document.getElementById('fieldImport');
 const statsText = document.getElementById('statsText');
+const toggleGlobalAudio = document.getElementById('toggleGlobalAudio');
 
 const budgetSummaryText = document.getElementById('budgetSummaryText');
 const btnSendBudget = document.getElementById('btnSendBudget');
@@ -1494,6 +1503,11 @@ async function openView(itemLight){
 
   // O Super Gerenciador de Voz (serve tanto pro título quanto pro Quiz)
   async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz) {
+    // --- TRAVA DE SEGURANÇA (MODO SILENCIOSO) ---
+    if (!isAudioEnabled) {
+      showToast('Áudio desativado. Ligue em "Mais opções".');
+      return; // Para a função inteira aqui e não faz mais nada!
+    }
     if (!('speechSynthesis' in window)) {
       showToast('Navegador sem suporte a voz.'); return;
     }
@@ -2581,6 +2595,22 @@ btnClearBudget.addEventListener('click', async () => {
 
   if (!SpeechRecognitionAPI){
     document.querySelectorAll('.mic-btn').forEach(b => b.style.display = 'none');
+  }
+  // --- CONTROLE DE ÁUDIO GLOBAL ---
+  if (toggleGlobalAudio) {
+    toggleGlobalAudio.checked = isAudioEnabled; // Deixa marcado ou desmarcado baseado na memória
+    
+    toggleGlobalAudio.addEventListener('change', (e) => {
+      isAudioEnabled = e.target.checked;
+      localStorage.setItem('memorias_audio_global', isAudioEnabled); // Salva a escolha pra sempre
+      
+      // Se ele desligou o áudio ENQUANTO o robô estava falando, manda calar a boca na hora!
+      if (!isAudioEnabled && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); 
+      }
+      
+      showToast(isAudioEnabled ? 'Áudio liberado.' : 'Modo Silencioso ativado.');
+    });
   }
 }
 
