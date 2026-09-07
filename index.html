@@ -1833,9 +1833,9 @@ btnCopyBudget.addEventListener('click', () => {
                     setTimeout(() => { 
                       nextQuiz.style.background = oldBg; 
                       nextQuiz.style.borderRadius = oldRadius; 
-                    }, 2200);
+                    }, 1700);
                   }
-                }, 800);
+                }, 1600);
               });
 
               qBlock.appendChild(optBtn);
@@ -1959,12 +1959,24 @@ btnCopyBudget.addEventListener('click', () => {
   openSheet(modalView);
   item.useCount = (item.useCount||0) + 1;
   dbPut(item).then(() => renderCards());
-  // --- INÍCIO DA MELHORIA: FOCAR NA PRIMEIRA PERGUNTA PENDENTE AO ABRIR ---
+  // --- INÍCIO DA MELHORIA: FOCO INTELIGENTE (PESQUISA OU QUIZ) ---
   setTimeout(() => {
-    // Mudamos de textContainer para viewBody
-    const firstUnanswered = viewBody.querySelector('.quiz-unanswered');
+    // 1. Procura se tem algum texto destacado pela sua pesquisa (tag <mark>)
+    const firstHighlight = viewBody.querySelector('mark');
     
-    if (firstUnanswered) {
+    // 2. Procura se tem algum quiz precisando de resposta
+    const firstUnanswered = viewBody.querySelector('.quiz-unanswered');
+
+    // REGRA DE PRIORIDADE:
+    if (firstHighlight) {
+      // Se você pesquisou algo e achou no texto, o foco VAI PARA A PESQUISA!
+      firstHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // O <mark> já é destacado pelo navegador (geralmente amarelo), 
+      // então o scroll suave já é o suficiente para seus olhos acharem.
+      
+    } else if (firstUnanswered) {
+      // Se NÃO tem pesquisa, mas TEM quiz pendente, foca no quiz!
       firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
       
       const oldBg = firstUnanswered.style.background;
@@ -1980,8 +1992,7 @@ btnCopyBudget.addEventListener('click', () => {
     }
   }, 300);
   // --- FIM DA MELHORIA ---
-
-}
+} // <--- Fechamento da função openView
 
 function closeView(){
   closeSheetEl(modalView);
