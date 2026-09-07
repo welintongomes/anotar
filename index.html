@@ -367,9 +367,10 @@
 
         <label>O que você quer lembrar
   <div style="display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
-  <button type="button" id="btnInsertCheckbox" class="tag-pill" style="border:none; cursor:pointer;">☑️ Inserir [ ]</button>
-  <button type="button" id="btnInsertArrow" class="tag-pill" style="border:none; cursor:pointer;">➡️ Inserir >></button>
-  <button type="button" id="btnInsertDivider" class="tag-pill" style="border:none; cursor:pointer;">➖ Inserir separador</button>
+  <button type="button" id="btnInsertCheckbox" class="tag-pill" style="border:none; cursor:pointer;">☑️ check [ ]</button>
+  <button type="button" id="btnInsertArrow" class="tag-pill" style="border:none; cursor:pointer;">➡️ fluxo >></button>
+  <button type="button" id="btnInsertDivider" class="tag-pill" style="border:none; cursor:pointer;">➖ separador</button>
+  <button type="button" id="btnInsertQuiz" class="tag-pill" style="border:none; cursor:pointer;">🧠 quiz</button>
 </div>
   <div class="textarea-wrap">
     <textarea id="fieldContent" rows="5" placeholder="Explique com suas palavras: qual era o problema, o que resolveu, o passo a passo, onde fica a peça..."></textarea>
@@ -444,7 +445,7 @@
       <button class="icon-btn" id="btnCloseMore" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body">
-      
+      <p class="meta-line" id="quizDueText"></p>
       <p class="meta-line" id="statsText"></p>
       <hr>
       <p class="meta-line" id="budgetSummaryText"></p>
@@ -649,6 +650,8 @@ const btnMicContent = document.getElementById('btnMicContent');
 const btnInsertCheckbox = document.getElementById('btnInsertCheckbox');
 const btnInsertArrow = document.getElementById('btnInsertArrow');
 const btnInsertDivider = document.getElementById('btnInsertDivider');
+const btnInsertQuiz = document.getElementById('btnInsertQuiz');
+const quizDueText = document.getElementById('quizDueText');
 const fieldTags = document.getElementById('fieldTags');
 const fieldPhoto = document.getElementById('fieldPhoto');
 const photoPreviewWrap = document.getElementById('photoPreviewWrap');
@@ -839,6 +842,59 @@ function escapeHTML(str) {
 function stripFlowSuffix(text){
   const idx = (text||'').indexOf('>>');
   return idx === -1 ? text : text.slice(0, idx);
+}
+function sm2Update(prev, correct){
+  const quality = correct ? 5 : 1; // Adaptação binária: acertou = 5 (fácil), errou = 1 (falhou)
+  let ef = (prev && typeof prev.ef === 'number') ? prev.ef : 2.5;
+  let reps = (prev && typeof prev.reps === 'number') ? prev.reps : 0;
+  let interval = (prev && typeof prev.interval === 'number') ? prev.interval : 0;
+
+  if (quality < 3){
+    reps = 0;
+    interval = 1;
+  } else {
+    if (reps === 0) interval = 1;
+    else if (reps === 1) interval = 6;
+    else interval = Math.round(interval * ef);
+    reps += 1;
+  }
+
+  ef = ef + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+  if (ef < 1.3) ef = 1.3;
+
+  return {
+    chosen: null, // preenchido por quem chama, depois de saber a opção clicada
+    ef, reps, interval,
+    dueAt: Date.now() + interval * 24 * 60 * 60 * 1000,
+    answeredAt: Date.now()
+  };
+}
+
+// Se a nota já tinha resposta salva no formato antigo (só um número), converte pro novo formato
+function normalizeQuizRecord(raw){
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw === 'number'){
+    return { chosen: raw, ef: 2.5, reps: 0, interval: 0, dueAt: 0 }; // dueAt 0 = já considerado "vencido", o relógio do SM-2 começa a contar a partir de agora
+  }
+  return raw;
+}
+
+function isRecordDue(record){
+  return !!record && Date.now() >= record.dueAt;
+}
+
+function getGlobalQuizStatus(){
+  let due = 0, novas = 0;
+  allItems.forEach(it => {
+    if (!it.content) return;
+    it.content.split('\n').forEach((line, idx) => {
+      if (!/^\?\?/.test(line)) return;
+      const record = normalizeQuizRecord((it.quizAnswers || {})[idx]);
+      if (!record) novas++;
+      else if (isRecordDue(record)) due++;
+    });
+  });
+  return { due, novas };
 }
 // Faz o marcador entender que "oleo" e "óleo" são a mesma coisa
 function createFuzzyRegex(word) {
@@ -1060,6 +1116,10 @@ function buildCard(item){
   const audioFlag = document.createElement('span'); audioFlag.className = 'photo-flag'; audioFlag.textContent = '🎵';
   top.appendChild(audioFlag);
 }
+  if (item.content && /^\?\?\s*.+/m.test(item.content)){
+    const quizFlag = document.createElement('span'); quizFlag.className = 'photo-flag'; quizFlag.textContent = '🧠';
+    top.appendChild(quizFlag);
+  }
   const star = document.createElement('button');
   star.type = 'button';
   star.className = 'star-btn' + (item.favorite ? ' active' : '');
@@ -1369,15 +1429,17 @@ if (!title) {
 
   // 5. Salva no banco (IndexedDB)
   const savePromise = (async () => {
-    if (editingId){
+        if (editingId){
       const existing = allItems.find(i => i.id === editingId);
       item.id = editingId;
       item.createdAt = existing ? existing.createdAt : now;
       item.useCount = existing ? (existing.useCount||0) : 0;
+      item.quizAnswers = existing ? (existing.quizAnswers || {}) : {};
       await dbPut(item);
     } else {
       item.createdAt = now;
       item.useCount = 0;
+      item.quizAnswers = {};
       await dbAdd(item);
     }
   })();
@@ -1434,7 +1496,8 @@ async function openView(itemLight){
 
     const toolbar = document.createElement('div');
     toolbar.style.display = 'flex'; toolbar.style.gap = '8px';
-    toolbar.style.marginBottom = '22px'; toolbar.style.justifyContent = 'flex-start';
+    toolbar.style.marginBottom = '20px'; toolbar.style.justifyContent = 'flex-start';
+    toolbar.style.flexWrap = 'wrap';
 
     const hasChecklist = item.content.includes('[');
     if (hasChecklist) {
@@ -1520,7 +1583,7 @@ btnCopyBudget.addEventListener('click', () => {
     const btnResetPlain = document.createElement('button');
     btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none';
     btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff';
-    btnResetPlain.innerHTML = '🔄 Limpar';
+    btnResetPlain.innerHTML = '🔄 Resetar checklist';
     btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
     toolbar.appendChild(btnResetPlain);
 
@@ -1545,6 +1608,84 @@ btnCopyBudget.addEventListener('click', () => {
       showToast('Checklist resetado.');
       renderCards();
     });
+
+    // --- Quiz: placar + botão de reiniciar ---
+    function getQuizQuestions(){
+      const lines = item.content.split('\n');
+      const qs = [];
+      let i = 0;
+      while (i < lines.length){
+        const m = lines[i].match(/^\?\?\s*(.*)/);
+        if (m){
+          const qLineIndex = i;
+          const options = [];
+          let j = i + 1;
+          while (j < lines.length){
+            const om = lines[j].match(/^\(([ xX]?)\)(.*)/);
+            if (!om) break;
+            options.push({ lineIndex:j, correct: om[1].toLowerCase()==='x', text: om[2].trim() });
+            j++;
+          }
+          if (options.length){ qs.push({ lineIndex:qLineIndex, text:m[1].trim(), options }); i = j; continue; }
+        }
+        i++;
+      }
+      return qs;
+    }
+        function getQuizScore(){
+      const qs = getQuizQuestions();
+      const answers = item.quizAnswers || {};
+      let mastered = 0, dueForReview = 0, neverAnswered = 0;
+      qs.forEach(q => {
+        const record = normalizeQuizRecord(answers[q.lineIndex]);
+        if (!record){ neverAnswered++; return; }
+        if (isRecordDue(record)) dueForReview++;
+        else mastered++;
+      });
+      return { total: qs.length, mastered, dueForReview, neverAnswered };
+    }
+
+    const quizQuestionsCount = getQuizQuestions().length;
+    let quizScoreLabel = null;
+    if (quizQuestionsCount > 0){
+      quizScoreLabel = document.createElement('span');
+      quizScoreLabel.className = 'tag-pill';
+      quizScoreLabel.style.border = 'none';
+      quizScoreLabel.style.background = '#4FA8D8';
+      quizScoreLabel.style.color = '#fff';
+      quizScoreLabel.style.fontWeight = 'bold';
+      toolbar.appendChild(quizScoreLabel);
+
+      const btnResetQuiz = document.createElement('button');
+      btnResetQuiz.type = 'button';
+      btnResetQuiz.className = 'tag-pill'; btnResetQuiz.style.border = 'none';
+      btnResetQuiz.style.background = '#9AA0AB'; btnResetQuiz.style.color = '#fff';
+      btnResetQuiz.innerHTML = '🔄 Refazer quiz';
+      toolbar.appendChild(btnResetQuiz);
+
+            btnResetQuiz.addEventListener('click', async () => {
+        const { mastered, dueForReview } = getQuizScore();
+        if (!mastered && !dueForReview){ showToast('Você ainda não respondeu nada neste quiz.'); return; }
+        const ok = confirm('Reiniciar este quiz (apaga todo o histórico de memorização) e responder do zero?');
+        if (!ok) return;
+        item.quizAnswers = {};
+        await dbPut(item);
+        const ram = allItems.find(x => x.id === item.id);
+        if (ram) ram.quizAnswers = {};
+        refreshQuizScoreLabel();
+        renderContent(isCode);
+        showToast('Quiz reiniciado.');
+      });
+    }
+        function refreshQuizScoreLabel(){
+      if (!quizScoreLabel) return;
+      const { total, mastered, dueForReview, neverAnswered } = getQuizScore();
+      let extra = '';
+      if (dueForReview > 0) extra += ` · ⏰ ${dueForReview} p/ revisar`;
+      if (neverAnswered > 0) extra += ` · ${neverAnswered} nova(s)`;
+      quizScoreLabel.innerHTML = `🧠 ${mastered}/${total} na memória` + extra;
+    }
+    refreshQuizScoreLabel();
 
     const btnCode = document.createElement('button');
     btnCode.className = 'tag-pill'; btnCode.style.border = 'none'; btnCode.innerHTML = '💻 Código';
@@ -1577,7 +1718,94 @@ btnCopyBudget.addEventListener('click', () => {
       });
       const lineEls = [];
 
-      lines.forEach((line, index) => {
+      let i = 0;
+      while (i < lines.length){
+        const line = lines[i];
+
+        // --- Bloco de quiz: pergunta ?? seguida de opções () ---
+        const qMatch = line.match(/^\?\?\s*(.*)/);
+        if (qMatch){
+          const options = [];
+          let j = i + 1;
+          while (j < lines.length){
+            const om = lines[j].match(/^\(([ xX]?)\)(.*)/);
+            if (!om) break;
+            options.push({ lineIndex:j, correct: om[1].toLowerCase()==='x', text: om[2].trim() });
+            j++;
+          }
+                    if (options.length){
+            const questionLineIndex = i;
+            const qBlock = document.createElement('div');
+            qBlock.style.background = 'var(--panel-2)';
+            qBlock.style.padding = '12px';
+            qBlock.style.borderRadius = '8px';
+            qBlock.style.marginTop = '6px';
+            qBlock.style.marginBottom = '10px';
+
+            const qTitle = document.createElement('div');
+            qTitle.style.fontWeight = 'bold';
+            qTitle.style.marginBottom = '8px';
+            qTitle.innerHTML = '❓ ' + renderText(qMatch[1].trim());
+            qBlock.appendChild(qTitle);
+
+            const record = normalizeQuizRecord((item.quizAnswers || {})[questionLineIndex]);
+            const due = isRecordDue(record);       // já respondeu antes, mas está na hora de revisar de novo
+            const locked = !!record && !due;       // respondeu e ainda não venceu o prazo
+
+            if (due){
+              const dueTag = document.createElement('div');
+              dueTag.style.fontSize = '0.8em'; dueTag.style.opacity = '0.7'; dueTag.style.marginBottom = '6px';
+              dueTag.textContent = '⏰ Hora de revisar — responda de novo';
+              qBlock.appendChild(dueTag);
+            }
+
+            options.forEach((opt, optIdx) => {
+              const optBtn = document.createElement('button');
+              optBtn.type = 'button';
+              optBtn.className = 'btn-secondary';
+              optBtn.style.display = 'block';
+              optBtn.style.width = '100%';
+              optBtn.style.textAlign = 'left';
+              optBtn.style.marginBottom = '6px';
+              optBtn.innerHTML = renderText(opt.text);
+
+              if (locked){
+                optBtn.disabled = true;
+                if (opt.correct){ optBtn.style.background = '#4FA65B'; optBtn.style.color = '#fff'; }
+                else if (optIdx === record.chosen){ optBtn.style.background = '#D64545'; optBtn.style.color = '#fff'; }
+              }
+
+              optBtn.addEventListener('click', async () => {
+                if (locked) return;
+                const isCorrect = opt.correct;
+                const prevForSm2 = due ? record : null; // se já tinha histórico (venceu), continua a curva; se é a 1ª vez, começa do zero
+                const updated = sm2Update(prevForSm2, isCorrect);
+                updated.chosen = optIdx;
+
+                if (!item.quizAnswers) item.quizAnswers = {};
+                item.quizAnswers[questionLineIndex] = updated;
+                item.updatedAt = Date.now();
+                await dbPut(item);
+                const ram = allItems.find(x => x.id === item.id);
+                if (ram){ ram.quizAnswers = item.quizAnswers; ram.updatedAt = item.updatedAt; }
+
+                const dias = updated.interval === 1 ? '1 dia' : `${updated.interval} dias`;
+                showToast((isCorrect ? '✅ Certo! ' : '❌ Errado. ') + `Vai revisar de novo em ${dias}.`);
+                refreshQuizScoreLabel();
+                renderContent(isCode);
+              });
+
+              qBlock.appendChild(optBtn);
+            });
+
+            textContainer.appendChild(qBlock);
+            for (let k = i; k < j; k++) lineEls[k] = qBlock;
+            i = j;
+            continue;
+          }
+  }
+
+        // --- Checkbox comum ---
         const checkMatch = line.match(/^\[([ xX]?)\](.*)/);
         if (checkMatch) {
           const isChecked = checkMatch[1].toLowerCase() === 'x';
@@ -1610,25 +1838,26 @@ btnCopyBudget.addEventListener('click', () => {
           }
 
           textContainer.appendChild(label);
-          lineEls[index] = label;
+          const currentIndex = i;
+          lineEls[currentIndex] = label;
 
           cb.addEventListener('change', async () => {
             span.style.textDecoration = cb.checked ? 'line-through' : 'none';
             span.style.opacity = cb.checked ? '0.6' : '1';
             const marker = cb.checked ? '[x]' : '[ ]';
             const freshLines = item.content.split('\n');
-            freshLines[index] = freshLines[index].replace(/^\[[ xX]?\]/, marker);
+            freshLines[currentIndex] = freshLines[currentIndex].replace(/^\[[ xX]?\]/, marker);
             item.content = freshLines.join('\n');
             item.updatedAt = Date.now();
             await dbPut(item);
-            const ramItem = allItems.find(i => i.id === item.id);
+            const ramItem = allItems.find(x => x.id === item.id);
             if (ramItem) { ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; }
             btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
             renderCards();
 
             if (cb.checked && nextStepRaw){
               const targetNorm = normalize(nextStepRaw);
-              const foundIdx = lineSearchNorm.findIndex((t, j) => j !== index && t && t.includes(targetNorm));
+              const foundIdx = lineSearchNorm.findIndex((t, idx) => idx !== currentIndex && t && t.includes(targetNorm));
               if (foundIdx !== -1 && lineEls[foundIdx]){
                 const el = lineEls[foundIdx];
                 el.scrollIntoView({ behavior:'smooth', block:'center' });
@@ -1642,24 +1871,32 @@ btnCopyBudget.addEventListener('click', () => {
               }
             }
           });
-                } else {
-          const trimmed = line.trim();
-          const isDivider = /^(.)\1{2,}$/.test(trimmed) && /^[-=#*]+$/.test(trimmed);
-          if (isDivider){
-            const hr = document.createElement('hr');
-            hr.style.border = 'none';
-            hr.style.borderTop = '2px dashed var(--smoke, #9AA0AB)';
-            hr.style.margin = '14px 0';
-            textContainer.appendChild(hr);
-            lineEls[index] = hr;
-          } else {
-            const p = document.createElement('div');
-            p.style.minHeight = '1.4em'; p.innerHTML = renderText(line);
-            textContainer.appendChild(p);
-            lineEls[index] = p;
-          }
+
+          i++;
+          continue;
         }
-      });
+
+        // --- Separador visual ---
+        const trimmed = line.trim();
+        const isDivider = /^(.)\1{2,}$/.test(trimmed) && /^[-=#*]+$/.test(trimmed);
+        if (isDivider){
+          const hr = document.createElement('hr');
+          hr.style.border = 'none';
+          hr.style.borderTop = '2px dashed var(--smoke, #9AA0AB)';
+          hr.style.margin = '14px 0';
+          textContainer.appendChild(hr);
+          lineEls[i] = hr;
+          i++;
+          continue;
+        }
+
+        // --- Linha comum ---
+        const p = document.createElement('div');
+        p.style.minHeight = '1.4em'; p.innerHTML = renderText(line);
+        textContainer.appendChild(p);
+        lineEls[i] = p;
+        i++;
+      }
     };
 
     renderContent(false);
@@ -1752,7 +1989,8 @@ async function importBackup(file){
       createdAt: raw.createdAt || Date.now(),
       updatedAt: raw.updatedAt || Date.now(),
       photo: null,
-      audio: null
+      audio: null,
+      quizAnswers: raw.quizAnswers || {}
     };
     if (raw.photoBase64){
       try { newItem.photo = await dataURLToBlob(raw.photoBase64); } catch(e){ /* ignora foto quebrada */ }
@@ -1854,6 +2092,20 @@ btnInsertDivider.addEventListener('click', () => {
   const atLineStart = start === 0 || value[start - 1] === '\n';
   insertAtCursor(fieldContent, (atLineStart ? '' : '\n') + '----\n');
 });
+btnInsertQuiz.addEventListener('click', () => {
+  const start = fieldContent.selectionStart ?? fieldContent.value.length;
+  const end = fieldContent.selectionEnd ?? start;
+  const value = fieldContent.value;
+  const atLineStart = start === 0 || value[start - 1] === '\n';
+  const prefix = (atLineStart ? '' : '\n') + '?? ';
+  const placeholder = 'Pergunta';
+  const rest = placeholder + '\n() Opção 1\n() Opção 2\n(x) Opção correta\n';
+  fieldContent.value = value.slice(0, start) + prefix + rest + value.slice(end);
+  const selStart = start + prefix.length;
+  fieldContent.focus();
+  fieldContent.setSelectionRange(selStart, selStart + placeholder.length); // já seleciona "Pergunta" pra você digitar por cima
+  fieldContent.dispatchEvent(new Event('input'));
+});
   sortSelect.addEventListener('change', () => { currentSort = sortSelect.value; renderCards(); });
 
   navSearch.addEventListener('click', () => {
@@ -1925,6 +2177,11 @@ btnRemovePhoto.addEventListener('click', () => {
   });
 
   navMore.addEventListener('click', async () => {
+    const { due: nDue, novas: nNovas } = getGlobalQuizStatus();
+    let partes = [];
+    if (nDue > 0) partes.push(`⏰ ${nDue} vencida(s) pra revisar`);
+    if (nNovas > 0) partes.push(`🆕 ${nNovas} nova(s) esperando resposta`);
+    quizDueText.textContent = partes.length ? '🧠 ' + partes.join(' · ') : 'Nenhuma pergunta de quiz pendente agora.';
     const items = await dbGetAll();
     statsText.textContent = items.length === 1 ? '1 registro salvo neste navegador.' : `${items.length} registros salvos neste navegador.`;
     refreshBudgetSummary();
