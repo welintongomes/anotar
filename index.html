@@ -428,12 +428,21 @@
       <h2 id="viewTitle"></h2>
       <button class="icon-btn" id="btnCloseView" aria-label="Fechar">✕</button>
     </div>
+    
     <div class="modal-body" id="viewBody"></div>
     <div class="modal-footer view-footer">
       <button id="btnEdit" class="btn-secondary">Editar</button>
       <button id="btnDuplicate" class="btn-secondary">Duplicar</button>
       <button id="btnDelete" class="btn-danger">Excluir</button>
     </div>
+    <!-- INÍCIO: BARRA DE BUSCA INTERNA -->
+    <div id="internalSearchWrap" style="display:none; z-index: 3; bottom: 0; position: sticky; gap:8px; padding:10px 16px; background:var(--panel-2); border-bottom:1px solid var(--smoke); align-items:center;">
+      <input type="text" id="internalSearchInput" placeholder="Buscar nesta nota..." autocomplete="off" style="flex:1; padding:8px 12px; border-radius:6px; border:none; background:var(--bg); color:var(--text); font-size:15px;">
+      <span id="internalSearchCount" style="font-size:0.85em; opacity:0.7; white-space:nowrap; min-width:35px; text-align:center;">0/0</span>
+      <button type="button" id="btnInternalPrev" class="icon-btn" style="width:34px;height:34px;background:var(--bg);border-radius:6px; font-size:16px;">🔼</button>
+      <button type="button" id="btnInternalNext" class="icon-btn" style="width:34px;height:34px;background:var(--bg);border-radius:6px; font-size:16px;">🔽</button>
+    </div>
+    <!-- FIM: BARRA DE BUSCA INTERNA -->
   </div>
 </div>
 
@@ -455,6 +464,13 @@
       <p class="meta-line">faça backup regularmente para guardar o arquivo.</p>
       <hr>
       <p class="meta-line"></p>
+      <!-- INÍCIO: CONTROLE DE VELOCIDADE DA VOZ -->
+      <label style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+        <span>🏃‍♂️ Velocidade da Voz: <strong id="speedLabel">Normal (0.95x)</strong></span>
+        <input type="range" id="voiceSpeed" min="0.5" max="2.0" step="0.05" value="0.95">
+      </label>
+      <hr>
+      <!-- FIM: CONTROLE DE VELOCIDADE DA VOZ -->
       <!-- INÍCIO: NOVO BOTÃO DE ÁUDIO -->
       <label class="checkbox-row" style="margin-bottom: 6px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
         <input type="checkbox" id="toggleGlobalAudio">
@@ -608,6 +624,8 @@ let currentAudioBlob = null;
 let formAudioURL = null; // Para tocar o áudio antes de salvar
 let viewAudioURL = null; // Para tocar o áudio na visualização
 let isAudioEnabled = localStorage.getItem('memorias_audio_global') !== 'false';
+// Puxa a velocidade salva ou usa 0.95 como padrão
+let currentVoiceSpeed = parseFloat(localStorage.getItem('memorias_voice_speed')) || 0.95;
 
 /* ---------------- Elementos ---------------- */
 const searchInput = document.getElementById('searchInput');
@@ -678,9 +696,17 @@ const btnDelete = document.getElementById('btnDelete');
 const sheetMore = document.getElementById('sheetMore');
 const btnCloseMore = document.getElementById('btnCloseMore');
 const btnExport = document.getElementById('btnExport');
+const internalSearchWrap = document.getElementById('internalSearchWrap');
+const internalSearchInput = document.getElementById('internalSearchInput');
+const internalSearchCount = document.getElementById('internalSearchCount');
+const btnInternalPrev = document.getElementById('btnInternalPrev');
+const btnInternalNext = document.getElementById('btnInternalNext');
+
 const fieldImport = document.getElementById('fieldImport');
 const statsText = document.getElementById('statsText');
 const toggleGlobalAudio = document.getElementById('toggleGlobalAudio');
+const voiceSpeed = document.getElementById('voiceSpeed');
+const speedLabel = document.getElementById('speedLabel');
 
 const budgetSummaryText = document.getElementById('budgetSummaryText');
 const btnSendBudget = document.getElementById('btnSendBudget');
@@ -917,21 +943,42 @@ function createFuzzyRegex(word) {
 }
 
 // Procura as palavras da pesquisa e envolve na tag <mark>
+// Procura as palavras da pesquisa e envolve na tag <mark>
 function highlightHTML(text, query) {
   if (!text) return '';
   let safeText = escapeHTML(text);
   const q = (query || '').trim();
   if (!q) return safeText;
 
-  const words = q.split(' ').filter(Boolean)
+  // As mesmas palavras que queremos ignorar soltas
+  const stopWords = ['o','a','os','as','um','uma','de','do','da','dos','das','em','no','na','nos','nas','para','por','com','e','ou'];
+
+  const rawWords = q.split(' ').filter(Boolean);
+  let phrasesToHighlight = [];
+
+  // 1. O Pintor tenta colorir a frase exata primeiro (ex: "bomba de combustivel")
+  if (rawWords.length > 1) {
+    phrasesToHighlight.push(rawWords.join(' ')); 
+  }
+
+  // 2. O Pintor adiciona as palavras soltas, MAS filtra e joga fora os "de", "para", etc.
+  const meaningfulWords = rawWords.filter(w => !stopWords.includes(normalize(w)));
+  phrasesToHighlight = phrasesToHighlight.concat(meaningfulWords);
+
+  // Se você pesquisar SÓ por "de", ele não tem o que pintar e devolve o texto normal
+  if (phrasesToHighlight.length === 0) return safeText;
+
+  // 3. Prepara a tinta (tira repetições e pinta a frase maior antes das palavras menores)
+  const wordsToRegex = [...new Set(phrasesToHighlight)]
     .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escapa símbolos estranhos
     .map(w => createFuzzyRegex(w)) // Aceita falta de acentos
-    .sort((a, b) => b.length - a.length); // Pinta as palavras maiores primeiro
+    .sort((a, b) => b.length - a.length); // Pinta a frase inteira antes das palavras curtas
 
-  if (words.length > 0) {
-    const regex = new RegExp(`(${words.join('|')})`, 'gi');
+  if (wordsToRegex.length > 0) {
+    const regex = new RegExp(`(${wordsToRegex.join('|')})`, 'gi');
     safeText = safeText.replace(regex, '<mark>$1</mark>');
   }
+  
   return safeText;
 }
 /* ---------------- Reconhecimento de voz ---------------- */
@@ -1039,29 +1086,48 @@ function scoreMatch(item, q) {
   const nTags = normalize((item.tags||[]).join(' '));
   const nCategory = normalize(item.category);
 
-  // Junta todos os textos do item num lugar só para facilitar a checagem
+  // Junta todos os textos
   const allText = `${nTitle} ${nVehicle} ${nSpec} ${nContent} ${nTags} ${nCategory}`;
 
-  // Quebra o que você pesquisou em palavras separadas (ex: "moto", "honda", "rolamento")
-  const words = q.split(' ').filter(w => w.trim() !== '');
+  // Nossas palavras ignoradas
+  const stopWords = ['o','a','os','as','um','uma','de','do','da','dos','das','em','no','na','nos','nas','para','por','com','e','ou'];
 
-  // Regra de Ouro (Filtro AND): Todas as palavras pesquisadas TÊM que existir no item.
-  // Se faltar uma palavra, ele não mostra (retorna 0), o que garante que a busca não traga lixo.
+  // rawWords: A frase EXATAMENTE como você digitou, cortada em pedaços (ex: ['bomba', 'de', 'agua'])
+  const rawWords = q.split(' ').filter(w => w.trim() !== '');
+  
+  // words: As palavras que REALMENTE importam (ex: ['bomba', 'agua'])
+  const words = rawWords.filter(w => !stopWords.includes(w));
+
+  // CORREÇÃO 1: Se você digitou APENAS "de" ou "para", a pesquisa não serve pra nada. Zera tudo.
+  if (words.length === 0) {
+    return 0; 
+  }
+
+  // Filtro AND: Todas as palavras PRINCIPAIS têm que existir na nota
   for (const word of words) {
     if (!allText.includes(word)) {
-      return 0; // Desclassifica o registro imediatamente
+      return 0; 
     }
   }
 
-  // Se passou pelo filtro acima, significa que o registro tem todas as palavras!
-  // Agora vamos calcular os pontos para ver quem aparece primeiro na lista:
+  // Pontuação padrão para as palavras principais soltas
   for (const word of words) {
-    if (nTitle.includes(word)) score += 5;     // Peso maior se a palavra estiver no título
-    if (nTags.includes(word)) score += 4;      // Peso forte para as tags
-    if (nVehicle.includes(word)) score += 3;   // Peso médio para veículo
-    if (nSpec.includes(word)) score += 3;      // Peso médio para especificação
-    if (nCategory.includes(word)) score += 2;  // Peso menor para categoria
-    if (nContent.includes(word)) score += 1;   // Peso básico para o conteúdo geral
+    if (nTitle.includes(word)) score += 5;
+    if (nTags.includes(word)) score += 4;
+    if (nVehicle.includes(word)) score += 3;
+    if (nSpec.includes(word)) score += 3;
+    if (nCategory.includes(word)) score += 2;
+    if (nContent.includes(word)) score += 1;
+  }
+
+  // CORREÇÃO 2: A MÁGICA DA FRASE EXATA
+  // Usa o "rawWords" (que tem o "de" no meio) para não quebrar a frase perfeita!
+  if (rawWords.length > 1) {
+    const exactPhrase = rawWords.join(' ');
+    if (allText.includes(exactPhrase)) {
+      score += 15; // Ganha os 15 pontos de Bigrama
+      if (nTitle.includes(exactPhrase)) score += 10; // Se a frase exata tá no título, é ouro puro!
+    }
   }
 
   return score;
@@ -1504,12 +1570,39 @@ async function openView(itemLight){
   viewingItem = item;
   viewTitle.textContent = item.title;
   viewBody.innerHTML = '';
-  // --- INÍCIO DA MELHORIA: LEITURA INTELIGENTE E SEPARADA ---
-  let readingWakeLock = null;
-  let activeSpeechTarget = null; // Guarda quem está falando agora (se é o titulo principal ou o quiz)
-  let restorePreviousVisuals = null; // Guarda a função que devolve o ícone ❓ original
 
-  // Limpa o texto da nota inteira
+  // --- INÍCIO DA MELHORIA: VARIÁVEIS DA BUSCA INTERNA ---
+  let internalQuery = '';
+  let matchNodes = [];
+  let matchIndex = -1;
+
+  // Garante que a barra aparece zerada ao abrir a nota
+  internalSearchWrap.style.display = 'flex';
+  internalSearchInput.value = '';
+
+  // Função que ilumina a palavra da vez (Laranja) e as outras (Amarelo)
+  function updateMatches() {
+    matchNodes.forEach((node, idx) => {
+      if (idx === matchIndex) {
+        node.style.background = '#D6A035'; 
+        node.style.color = '#fff';
+        node.style.boxShadow = '0 0 0 3px rgba(214, 160, 53, 0.4)';
+        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        node.style.background = 'yellow';
+        node.style.color = '#000';
+        node.style.boxShadow = 'none';
+      }
+    });
+    internalSearchCount.textContent = matchNodes.length > 0 ? `${matchIndex + 1}/${matchNodes.length}` : '0/0';
+  }
+  // --- FIM DA MELHORIA ---
+
+  // --- LEITURA INTELIGENTE E SEPARADA ---
+  let readingWakeLock = null;
+  let activeSpeechTarget = null;
+  let restorePreviousVisuals = null; 
+
   function getCleanTextToRead() {
     let text = item.title + ". ";
     if (item.vehicle) text += item.vehicle + ". ";
@@ -1525,57 +1618,30 @@ async function openView(itemLight){
     return text;
   }
 
-  // O Super Gerenciador de Voz (serve tanto pro título quanto pro Quiz)
   async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz) {
-    // --- TRAVA DE SEGURANÇA (MODO SILENCIOSO) ---
-    if (!isAudioEnabled) {
-      showToast('Áudio desativado. Ligue em "Mais opções".');
-      return; // Para a função inteira aqui e não faz mais nada!
-    }
-    if (!('speechSynthesis' in window)) {
-      showToast('Navegador sem suporte a voz.'); return;
-    }
+    if (!isAudioEnabled) { showToast('Áudio desativado. Ligue em "Mais opções".'); return; }
+    if (!('speechSynthesis' in window)) { showToast('Navegador sem suporte a voz.'); return; }
     const synth = window.speechSynthesis;
 
-    // Se tocou de novo no MESMO elemento que já está lendo (Pausa ou Retoma)
     if (activeSpeechTarget === targetId) {
-      if (synth.speaking && !synth.paused) {
-        synth.pause();
-        element.style.opacity = '0.5';
-        showToast('Leitura pausada.'); return;
-      }
-      if (synth.speaking && synth.paused) {
-        synth.resume();
-        element.style.opacity = '1';
-        showToast('Leitura retomada.'); return;
-      }
+      if (synth.speaking && !synth.paused) { synth.pause(); element.style.opacity = '0.5'; showToast('Leitura pausada.'); return; }
+      if (synth.speaking && synth.paused) { synth.resume(); element.style.opacity = '1'; showToast('Leitura retomada.'); return; }
     }
 
-    // Se tocou em um NOVO elemento, MANDA CALAR A BOCA e para o anterior
     synth.cancel();
-    if (restorePreviousVisuals) restorePreviousVisuals(); // Devolve o ícone do anterior pro normal
+    if (restorePreviousVisuals) restorePreviousVisuals();
     
     activeSpeechTarget = targetId;
     element.style.opacity = '1';
-
-    // Ensina o sistema como restaurar a tela quando ESTE áudio acabar
-    restorePreviousVisuals = () => {
-      element.innerHTML = originalHtml;
-      element.style.opacity = '1';
-    };
+    restorePreviousVisuals = () => { element.innerHTML = originalHtml; element.style.opacity = '1'; };
 
     const utterance = new SpeechSynthesisUtterance(textToRead);
-    utterance.lang = 'pt-BR'; // (Mude para 'en-US' se for treinar o inglês)
-    utterance.rate = 0.95;
+    utterance.lang = 'pt-BR';
+    utterance.rate = currentVoiceSpeed;
 
     utterance.onstart = async () => {
-      if (isQuiz) {
-        element.innerHTML = originalHtml.replace('❓', '🔊');
-      } else {
-        element.innerHTML = '🔊 ' + originalHtml;
-      }
-      
-      // Trava a tela para ela não apagar enquanto lê
+      if (isQuiz) { element.innerHTML = originalHtml.replace('❓', '🔊'); } 
+      else { element.innerHTML = '🔊 ' + originalHtml; }
       if ('wakeLock' in navigator && !window.currentWakeLock && !readingWakeLock) {
         try { readingWakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
       }
@@ -1585,79 +1651,55 @@ async function openView(itemLight){
       if (restorePreviousVisuals) restorePreviousVisuals();
       restorePreviousVisuals = null;
       if (activeSpeechTarget === targetId) activeSpeechTarget = null;
-      
-      // Libera a tela
-      if (readingWakeLock) {
-        readingWakeLock.release().catch(()=>{});
-        readingWakeLock = null;
-      }
+      if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
     };
     utterance.onerror = utterance.onend;
-
     synth.speak(utterance);
   }
 
-  // LIGA O TÍTULO PRINCIPAL NA VOZ (Lê a nota inteira)
   viewTitle.style.cursor = 'pointer';
   const mainTitleOriginal = escapeHTML(item.title);
-  viewTitle.onclick = () => {
-    handleSpeech(getCleanTextToRead(), viewTitle, mainTitleOriginal, 'main', false);
-  };
-  // --- FIM DA MELHORIA ---
+  viewTitle.onclick = () => { handleSpeech(getCleanTextToRead(), viewTitle, mainTitleOriginal, 'main', false); };
+
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
 
-  // --- INÍCIO DA MELHORIA: TELA VIVA (WAKE LOCK) ---
+  // --- TELA VIVA (WAKE LOCK) ---
   const topRow = document.createElement('div');
-  topRow.style.display = 'flex';
-  topRow.style.justifyContent = 'space-between';
-  topRow.style.alignItems = 'center';
-  topRow.style.marginBottom = '3px';
+  topRow.style.display = 'flex'; topRow.style.justifyContent = 'space-between';
+  topRow.style.alignItems = 'center'; topRow.style.marginBottom = '3px';
 
   const badge = document.createElement('span'); badge.className = 'badge';
   badge.textContent = item.category; badge.style.color = categoryColor(item.category);
   topRow.appendChild(badge);
 
-  // Verifica se o celular/navegador suporta a tecnologia de travar a tela
   if ('wakeLock' in navigator) {
     const btnWake = document.createElement('button');
-    btnWake.className = 'tag-pill';
-    btnWake.style.border = 'none';
-    btnWake.style.background = 'var(--panel-2)'; 
-    btnWake.style.color = '#fff';
+    btnWake.className = 'tag-pill'; btnWake.style.border = 'none';
+    btnWake.style.background = 'var(--panel-2)'; btnWake.style.color = '#fff';
     btnWake.innerHTML = '💡 Tela Viva';
     
     btnWake.addEventListener('click', async () => {
       try {
         if (window.currentWakeLock) {
-          await window.currentWakeLock.release();
-          window.currentWakeLock = null;
-          btnWake.innerHTML = '💡 Tela Viva';
-          btnWake.style.background = 'var(--panel-2)';
+          await window.currentWakeLock.release(); window.currentWakeLock = null;
+          btnWake.innerHTML = '💡 Tela Viva'; btnWake.style.background = 'var(--panel-2)';
           showToast('Tela normal (pode apagar).');
         } else {
-          // Pede permissão e trava a tela acesa
           window.currentWakeLock = await navigator.wakeLock.request('screen');
-          btnWake.innerHTML = '☀️ Tela Travada';
-          btnWake.style.background = '#D6A035'; // Fica Dourado para avisar que tá ativo
+          btnWake.innerHTML = '☀️ Tela Travada'; btnWake.style.background = '#D6A035';
           showToast('A tela não vai apagar!');
-          
-          // Se você minimizar o navegador, ele solta a trava sozinho por segurança
           window.currentWakeLock.addEventListener('release', () => {
-            window.currentWakeLock = null;
-            btnWake.innerHTML = '💡 Tela Viva';
-            btnWake.style.background = 'var(--panel-2)';
+            window.currentWakeLock = null; btnWake.innerHTML = '💡 Tela Viva'; btnWake.style.background = 'var(--panel-2)';
           });
         }
-      } catch (err) {
-        showToast('Erro ao travar tela.');
-      }
+      } catch (err) { showToast('Erro ao travar tela.'); }
     });
     topRow.appendChild(btnWake);
   }
   viewBody.appendChild(topRow);
-  // --- FIM DA MELHORIA ---
-  // --- INÍCIO DA MELHORIA: TAGS DENTRO DA NOTA ---
+
+  // --- TAGS DENTRO DA NOTA ---
   if (item.tags && item.tags.length) {
     const tagsContainer = document.createElement('div');
     tagsContainer.style.display = 'flex'; tagsContainer.style.gap = '6px'; 
@@ -1665,88 +1707,67 @@ async function openView(itemLight){
     tagsContainer.style.overflowX = 'auto'; tagsContainer.style.scrollbarWidth = 'none';
     
     item.tags.forEach(t => {
-      const pill = document.createElement('span'); 
-      pill.className = 'tag-pill';
-      pill.textContent = '#' + t;
-      pill.style.cursor = 'pointer';
-      pill.style.background = 'var(--panel-2)'; // Destaca levemente do fundo
-      
+      const pill = document.createElement('span'); pill.className = 'tag-pill';
+      pill.textContent = '#' + t; pill.style.cursor = 'pointer'; pill.style.background = 'var(--panel-2)';
       pill.addEventListener('click', () => {
-        closeView(); // Fecha a nota atual
-        searchInput.value = t; // Preenche a barra de busca
-        currentSearch = t;
-        btnClearSearch.style.display = 'flex';
-        renderCards(); // Filtra tudo
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        showToast(`Buscando pela tag: ${t}`);
+        closeView(); searchInput.value = t; currentSearch = t;
+        btnClearSearch.style.display = 'flex'; renderCards();
+        window.scrollTo({ top: 0, behavior: 'smooth' }); showToast(`Buscando pela tag: ${t}`);
       });
-      
       tagsContainer.appendChild(pill);
     });
     viewBody.appendChild(tagsContainer);
   }
-  // --- FIM DA MELHORIA ---
 
-  const renderText = (text) => currentSearch ? highlightHTML(text, currentSearch) : escapeHTML(text);
+  // --- INÍCIO DA MELHORIA: TEXTO COM PRIORIDADE INTERNA ---
+  const renderText = (text) => {
+    const query = internalQuery || currentSearch;
+    return query ? highlightHTML(text, query) : escapeHTML(text);
+  };
+
+  let pVehicle = null;
+  let pSpec = null;
 
   if (item.vehicle){
-    const p = document.createElement('p'); p.className = 'meta-line'; 
-    p.innerHTML = '📌 ' + renderText(item.vehicle);
-    viewBody.appendChild(p);
+    pVehicle = document.createElement('p'); pVehicle.className = 'meta-line'; 
+    pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
+    viewBody.appendChild(pVehicle);
   }
   if (item.spec){
-    const p = document.createElement('p'); p.className = 'spec-big'; 
-    p.innerHTML = renderText(item.spec);
-    viewBody.appendChild(p);
+    pSpec = document.createElement('p'); pSpec.className = 'spec-big'; 
+    pSpec.innerHTML = renderText(item.spec);
+    viewBody.appendChild(pSpec);
   }
+  // --- FIM DA MELHORIA ---
+
   if (item.photo){
     const img = document.createElement('img'); img.className = 'view-photo';
-    viewPhotoURL = URL.createObjectURL(item.photo);
-    img.src = viewPhotoURL;
-    img.style.cursor = 'zoom-in'; // Muda o cursor do mouse no PC pra uma lupa
-    viewBody.appendChild(img);
+    viewPhotoURL = URL.createObjectURL(item.photo); img.src = viewPhotoURL;
+    img.style.cursor = 'zoom-in'; viewBody.appendChild(img);
 
-    // --- INÍCIO DA MELHORIA: ZOOM NA FOTO ---
     img.addEventListener('click', () => {
-      // Cria o fundo escuro transparente por cima de tudo
       const overlay = document.createElement('div');
-      overlay.style.position = 'fixed';
-      overlay.style.top = '0'; overlay.style.left = '0';
+      overlay.style.position = 'fixed'; overlay.style.top = '0'; overlay.style.left = '0';
       overlay.style.width = '100vw'; overlay.style.height = '100vh';
-      overlay.style.backgroundColor = 'rgba(0,0,0,0.95)'; // Quase totalmente preto
-      overlay.style.zIndex = '99999';
-      overlay.style.display = 'flex';
-      overlay.style.justifyContent = 'center';
-      overlay.style.alignItems = 'center';
-      overlay.style.cursor = 'zoom-out';
+      overlay.style.backgroundColor = 'rgba(0,0,0,0.95)'; overlay.style.zIndex = '99999';
+      overlay.style.display = 'flex'; overlay.style.justifyContent = 'center';
+      overlay.style.alignItems = 'center'; overlay.style.cursor = 'zoom-out';
       
-      // Cria a imagem gigante
       const bigImg = document.createElement('img');
-      bigImg.src = viewPhotoURL;
-      bigImg.style.maxWidth = '95%';
-      bigImg.style.maxHeight = '95%';
-      bigImg.style.objectFit = 'contain';
-      bigImg.style.transform = 'scale(0.8)'; // Começa menorzinha...
-      bigImg.style.transition = 'transform 0.2s ease-out'; // ...para dar uma animação suave
+      bigImg.src = viewPhotoURL; bigImg.style.maxWidth = '95%'; bigImg.style.maxHeight = '95%';
+      bigImg.style.objectFit = 'contain'; bigImg.style.transform = 'scale(0.8)';
+      bigImg.style.transition = 'transform 0.2s ease-out'; 
       
-      overlay.appendChild(bigImg);
-      document.body.appendChild(overlay);
-      
-      // Dispara a animação (dá o efeito de "pulo" abrindo)
-      requestAnimationFrame(() => {
-        bigImg.style.transform = 'scale(1)';
-      });
-      
-      // Ao tocar no fundo escuro ou na imagem, ela fecha
+      overlay.appendChild(bigImg); document.body.appendChild(overlay);
+      requestAnimationFrame(() => { bigImg.style.transform = 'scale(1)'; });
       overlay.addEventListener('click', () => overlay.remove());
     });
-    // --- FIM DA MELHORIA ---
   }
+  
   if (item.audio){
     const aud = document.createElement('audio'); aud.controls = true;
     aud.style.width = '100%'; aud.style.marginTop = '8px';
-    viewAudioURL = URL.createObjectURL(item.audio);
-    aud.src = viewAudioURL;
+    viewAudioURL = URL.createObjectURL(item.audio); aud.src = viewAudioURL;
     viewBody.appendChild(aud);
   }
 
@@ -1768,17 +1789,14 @@ async function openView(itemLight){
       toolbar.appendChild(btnBudget);
 
       btnBudget.addEventListener('click', async () => {
-        let total = 0; let desc = [];
-        const lines = item.content.split('\n');
+        let total = 0; let desc = []; const lines = item.content.split('\n');
         lines.forEach(line => {
           const checkMatch = line.match(/^\[[xX]\](.*)/);
           if (checkMatch) {
             const textPart = stripFlowSuffix(checkMatch[1]).trim();
             const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g);
             let price = 0;
-            if (numMatches && numMatches.length > 0) {
-              price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
-            }
+            if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
             if (price > 0) { total += price; desc.push(`✅ ${textPart}`); }
           }
         });
@@ -1788,48 +1806,32 @@ async function openView(itemLight){
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
       });
     }
-const btnCopyBudget = document.createElement('button');
-btnCopyBudget.className = 'tag-pill'; 
-btnCopyBudget.style.border = 'none';
-btnCopyBudget.style.background = '#25D366'; // Cor verde estilo WhatsApp (opcional)
-btnCopyBudget.style.color = '#fff';
-btnCopyBudget.style.fontWeight = 'bold'; 
-btnCopyBudget.innerHTML = '📋 Zap';
-toolbar.appendChild(btnCopyBudget);
+    
+    const btnCopyBudget = document.createElement('button');
+    btnCopyBudget.className = 'tag-pill'; btnCopyBudget.style.border = 'none';
+    btnCopyBudget.style.background = '#25D366'; btnCopyBudget.style.color = '#fff';
+    btnCopyBudget.style.fontWeight = 'bold'; btnCopyBudget.innerHTML = '📋 Zap';
+    toolbar.appendChild(btnCopyBudget);
 
-btnCopyBudget.addEventListener('click', () => {
-  let total = 0; 
-  let desc = [];
-  const lines = item.content.split('\n');
-  lines.forEach(line => {
-    const checkMatch = line.match(/^\[[xX]\](.*)/);
-    if (checkMatch) {
-      const textPart = checkMatch[1].trim();
-      const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g);
-      let price = 0;
-      if (numMatches && numMatches.length > 0) {
-        price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
-      }
-      if (price > 0) { 
-        total += price; 
-        desc.push(`✅ ${textPart}`); 
-      }
-    }
-  });
-  
-  if (desc.length === 0) { 
-    showToast('Marque as caixinhas ([x]) que têm valor em dinheiro!'); 
-    return; 
-  }
-  
-  const tituloMsg = item.vehicle || item.title;
-  let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
-  
-  navigator.clipboard.writeText(msg).then(() => {
-    showToast('Orçamento copiado com sucesso!');
-  });
-});
-    // --- Botão de resetar checklist comum (sem valor em dinheiro) ---
+    btnCopyBudget.addEventListener('click', () => {
+      let total = 0; let desc = []; const lines = item.content.split('\n');
+      lines.forEach(line => {
+        const checkMatch = line.match(/^\[[xX]\](.*)/);
+        if (checkMatch) {
+          const textPart = checkMatch[1].trim();
+          const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g);
+          let price = 0;
+          if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
+          if (price > 0) { total += price; desc.push(`✅ ${textPart}`); }
+        }
+      });
+      
+      if (desc.length === 0) { showToast('Marque as caixinhas ([x]) que têm valor em dinheiro!'); return; }
+      const tituloMsg = item.vehicle || item.title;
+      let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+      navigator.clipboard.writeText(msg).then(() => showToast('Orçamento copiado com sucesso!'));
+    });
+
     function hasPlainChecklistNow(){
       return item.content.split('\n').some(line => {
         const m = line.match(/^\[[xX]\](.*)/);
@@ -1858,8 +1860,7 @@ btnCopyBudget.addEventListener('click', () => {
         const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
         return hasPrice ? line : ('[ ]' + m[1]);
       });
-      item.content = lines.join('\n');
-      item.updatedAt = Date.now();
+      item.content = lines.join('\n'); item.updatedAt = Date.now();
       await dbPut(item);
       const ram = allItems.find(i => i.id === item.id);
       if (ram){ ram.content = item.content; ram.updatedAt = item.updatedAt; }
@@ -1869,17 +1870,12 @@ btnCopyBudget.addEventListener('click', () => {
       renderCards();
     });
 
-    // --- Quiz: placar + botão de reiniciar ---
     function getQuizQuestions(){
-      const lines = item.content.split('\n');
-      const qs = [];
-      let i = 0;
+      const lines = item.content.split('\n'); const qs = []; let i = 0;
       while (i < lines.length){
         const m = lines[i].match(/^\?\?\s*(.*)/);
         if (m){
-          const qLineIndex = i;
-          const options = [];
-          let j = i + 1;
+          const qLineIndex = i; const options = []; let j = i + 1;
           while (j < lines.length){
             const om = lines[j].match(/^\(([ xX]?)\)(.*)/);
             if (!om) break;
@@ -1892,15 +1888,14 @@ btnCopyBudget.addEventListener('click', () => {
       }
       return qs;
     }
-        function getQuizScore(){
-      const qs = getQuizQuestions();
-      const answers = item.quizAnswers || {};
+    
+    function getQuizScore(){
+      const qs = getQuizQuestions(); const answers = item.quizAnswers || {};
       let mastered = 0, dueForReview = 0, neverAnswered = 0;
       qs.forEach(q => {
         const record = normalizeQuizRecord(answers[q.lineIndex]);
         if (!record){ neverAnswered++; return; }
-        if (isRecordDue(record)) dueForReview++;
-        else mastered++;
+        if (isRecordDue(record)) dueForReview++; else mastered++;
       });
       return { total: qs.length, mastered, dueForReview, neverAnswered };
     }
@@ -1909,75 +1904,56 @@ btnCopyBudget.addEventListener('click', () => {
     let quizScoreLabel = null;
     if (quizQuestionsCount > 0){
       quizScoreLabel = document.createElement('span');
-      quizScoreLabel.className = 'tag-pill';
-      quizScoreLabel.style.border = 'none';
-      quizScoreLabel.style.background = '#4FA8D8';
-      quizScoreLabel.style.color = '#fff';
-      quizScoreLabel.style.fontWeight = 'bold';
+      quizScoreLabel.className = 'tag-pill'; quizScoreLabel.style.border = 'none';
       toolbar.appendChild(quizScoreLabel);
 
       const btnResetQuiz = document.createElement('button');
-      btnResetQuiz.type = 'button';
-      btnResetQuiz.className = 'tag-pill'; btnResetQuiz.style.border = 'none';
+      btnResetQuiz.type = 'button'; btnResetQuiz.className = 'tag-pill'; btnResetQuiz.style.border = 'none';
       btnResetQuiz.style.background = '#9AA0AB'; btnResetQuiz.style.color = '#fff';
       btnResetQuiz.innerHTML = '🔄 Refazer quiz';
       toolbar.appendChild(btnResetQuiz);
 
-            btnResetQuiz.addEventListener('click', async () => {
+      btnResetQuiz.addEventListener('click', async () => {
         const { mastered, dueForReview } = getQuizScore();
         if (!mastered && !dueForReview){ showToast('Você ainda não respondeu nada neste quiz.'); return; }
-        const ok = confirm('Reiniciar este quiz (apaga todo o histórico de memorização) e responder do zero?');
-        if (!ok) return;
-        item.quizAnswers = {};
-        await dbPut(item);
+        if (!confirm('Reiniciar este quiz (apaga histórico) e responder do zero?')) return;
+        item.quizAnswers = {}; await dbPut(item);
         const ram = allItems.find(x => x.id === item.id);
         if (ram) ram.quizAnswers = {};
-        refreshQuizScoreLabel();
-        renderContent(isCode);
+        refreshQuizScoreLabel(); renderContent(isCode);
         showToast('Quiz reiniciado.');
       });
     }
+    
     function refreshQuizScoreLabel(){
-          if (!quizScoreLabel) return;
-          const { total, mastered, dueForReview, neverAnswered } = getQuizScore();
-          let extra = '';
-          if (dueForReview > 0) extra += ` · ⏰ ${dueForReview} p/ revisar`;
-          if (neverAnswered > 0) extra += ` · ${neverAnswered} nova(s)`;
+      if (!quizScoreLabel) return;
+      const { total, mastered, dueForReview, neverAnswered } = getQuizScore();
+      let extra = '';
+      if (dueForReview > 0) extra += ` · ⏰ ${dueForReview} p/ revisar`;
+      if (neverAnswered > 0) extra += ` · ${neverAnswered} nova(s)`;
 
-          // --- INÍCIO DA MELHORIA: BARRA DE PROGRESSO VISUAL ---
-          // Calcula a porcentagem real (de 0 a 100)
-          const percent = total > 0 ? Math.round((mastered / total) * 100) : 0;
-          
-          let barColor = '#D64545'; // Começa Vermelho (Precisa estudar)
-          if (percent >= 40) barColor = '#D6A035'; // Vai pro Dourado/Amarelo (No caminho)
-          if (percent >= 80) barColor = '#4FA65B'; // Fica Verde (Memorizou quase tudo!)
+      const percent = total > 0 ? Math.round((mastered / total) * 100) : 0;
+      let barColor = '#D64545'; 
+      if (percent >= 40) barColor = '#D6A035'; 
+      if (percent >= 80) barColor = '#4FA65B'; 
 
-          // Aqui é o truque: a cor preenche até onde a porcentagem bateu
-          quizScoreLabel.style.background = `linear-gradient(90deg, ${barColor} ${percent}%, var(--smoke, #9AA0AB) ${percent}%)`;
-          
-          quizScoreLabel.style.color = '#fff';
-          // A sombra no texto garante que você consiga ler tanto na parte colorida quanto na cinza
-          quizScoreLabel.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; 
-          
-          quizScoreLabel.innerHTML = `🧠 ${mastered}/${total} (${percent}%)` + extra;
-          // --- FIM DA MELHORIA ---
-        }
-
+      quizScoreLabel.style.background = `linear-gradient(90deg, ${barColor} ${percent}%, var(--smoke, #9AA0AB) ${percent}%)`;
+      quizScoreLabel.style.color = '#fff';
+      quizScoreLabel.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; 
+      quizScoreLabel.innerHTML = `🧠 ${mastered}/${total} (${percent}%)` + extra;
+    }
     refreshQuizScoreLabel();
 
     const btnCode = document.createElement('button');
     btnCode.className = 'tag-pill'; btnCode.style.border = 'none'; btnCode.innerHTML = '💻 Código';
     const btnCopy = document.createElement('button');
     btnCopy.className = 'tag-pill'; btnCopy.style.border = 'none'; btnCopy.innerHTML = '📋 Copiar';
-    toolbar.appendChild(btnCode);
-    toolbar.appendChild(btnCopy);
-    contentWrap.appendChild(toolbar);
+    toolbar.appendChild(btnCode); toolbar.appendChild(btnCopy); contentWrap.appendChild(toolbar);
 
     const textContainer = document.createElement('div');
     textContainer.className = 'content-block';
     let isCode = false;
 
-    // --- NOVA LINHA: Cria o cache para guardar a ordem embaralhada ---
     const quizShuffleCache = {};
 
     const renderContent = (isCodeMode) => {
@@ -2003,57 +1979,39 @@ btnCopyBudget.addEventListener('click', () => {
       while (i < lines.length){
         const line = lines[i];
 
-        // --- Bloco de quiz: pergunta ?? seguida de opções () ---
         const qMatch = line.match(/^\?\?\s*(.*)/);
         if (qMatch){
-          const options = [];
-          let j = i + 1;
+          const options = []; let j = i + 1;
           while (j < lines.length){
             const om = lines[j].match(/^\(([ xX]?)\)(.*)/);
             if (!om) break;
             options.push({ lineIndex:j, correct: om[1].toLowerCase()==='x', text: om[2].trim() });
             j++;
           }
-                    if (options.length){
+          if (options.length){
             const questionLineIndex = i;
             const qBlock = document.createElement('div');
-            qBlock.style.background = 'var(--panel-2)';
-            qBlock.style.padding = '12px';
-            qBlock.style.borderRadius = '8px';
-            qBlock.style.marginTop = '6px';
-            qBlock.style.marginBottom = '10px';
+            qBlock.style.background = 'var(--panel-2)'; qBlock.style.padding = '12px';
+            qBlock.style.borderRadius = '8px'; qBlock.style.marginTop = '6px'; qBlock.style.marginBottom = '10px';
 
-            // --- INÍCIO DA MELHORIA: TÍTULO DO QUIZ LÊ SÓ ELE MESMO ---
             const qTitle = document.createElement('div');
-            qTitle.style.fontWeight = 'bold';
-            qTitle.style.marginBottom = '8px';
-            qTitle.style.cursor = 'pointer'; // Mãozinha de clique
+            qTitle.style.fontWeight = 'bold'; qTitle.style.marginBottom = '8px'; qTitle.style.cursor = 'pointer'; 
             
-            // Desenha a pergunta limpa com o ponto de interrogação
             const originalQuizHtml = '❓ ' + renderText(qMatch[1].trim());
             qTitle.innerHTML = originalQuizHtml;
             
-            // Monta o texto APENAS desta pergunta e das alternativas dela
             let quizSpeechText = "Pergunta: " + qMatch[1].trim() + ". ";
-            options.forEach(opt => {
-              quizSpeechText += "Alternativa: " + opt.text + ". ";
-            });
+            options.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; });
             
-            // Quando clicar, chama o super gerenciador de voz mandando SÓ a pergunta!
             qTitle.addEventListener('click', () => {
               handleSpeech(quizSpeechText, qTitle, originalQuizHtml, 'quiz-' + questionLineIndex, true);
             });
-            
             qBlock.appendChild(qTitle);
-            // --- FIM DA MELHORIA ---
 
             const record = normalizeQuizRecord((item.quizAnswers || {})[questionLineIndex]);
-            const due = isRecordDue(record);       // já respondeu antes, mas está na hora de revisar de novo
-            const locked = !!record && !due;       // respondeu e ainda não venceu o prazo
-            // --- NOVA REGRA: SE NÃO ESTIVER RESPONDIDA, GANHA UMA CLASSE ---
-            if (!locked) {
-              qBlock.classList.add('quiz-unanswered');
-            }
+            const due = isRecordDue(record);       
+            const locked = !!record && !due;       
+            if (!locked) { qBlock.classList.add('quiz-unanswered'); }
 
             if (due){
               const dueTag = document.createElement('div');
@@ -2062,30 +2020,18 @@ btnCopyBudget.addEventListener('click', () => {
               qBlock.appendChild(dueTag);
             }
 
-            // --- INÍCIO DA MELHORIA: EMBARALHAR OPÇÕES (COM CACHE) E ROLAGEM AUTOMATICA---
-            
-            // 1. Verifica se já embaralhamos essa pergunta desde que o card abriu
             if (!quizShuffleCache[questionLineIndex]) {
-              // Se ainda não, embaralha agora e salva no cache!
-              const shuffled = options.map((opt, originalIndex) => {
-                return { ...opt, originalIndex };
-              });
+              const shuffled = options.map((opt, originalIndex) => { return { ...opt, originalIndex }; });
               shuffled.sort(() => Math.random() - 0.5);
               quizShuffleCache[questionLineIndex] = shuffled; 
             }
-
-            // 2. Puxa as opções na ordem que está salva na memória temporária
             const shuffledOptions = quizShuffleCache[questionLineIndex];
 
-            // 3. Renderiza os botões (exatamente como antes)
             shuffledOptions.forEach((opt) => {
               const optBtn = document.createElement('button');
-              optBtn.type = 'button';
-              optBtn.className = 'btn-secondary';
-              optBtn.style.display = 'block';
-              optBtn.style.width = '100%';
-              optBtn.style.textAlign = 'left';
-              optBtn.style.marginBottom = '6px';
+              optBtn.type = 'button'; optBtn.className = 'btn-secondary';
+              optBtn.style.display = 'block'; optBtn.style.width = '100%';
+              optBtn.style.textAlign = 'left'; optBtn.style.marginBottom = '6px';
               optBtn.innerHTML = renderText(opt.text);
 
               if (locked){
@@ -2099,52 +2045,39 @@ btnCopyBudget.addEventListener('click', () => {
                 const isCorrect = opt.correct;
                 const prevForSm2 = due ? record : null; 
                 const updated = sm2Update(prevForSm2, isCorrect);
-
                 updated.chosen = opt.originalIndex;
 
                 if (!item.quizAnswers) item.quizAnswers = {};
-                item.quizAnswers[questionLineIndex] = updated;
-                item.updatedAt = Date.now();
+                item.quizAnswers[questionLineIndex] = updated; item.updatedAt = Date.now();
                 await dbPut(item);
                 const ram = allItems.find(x => x.id === item.id);
                 if (ram){ ram.quizAnswers = item.quizAnswers; ram.updatedAt = item.updatedAt; }
 
                 const dias = updated.interval === 1 ? '1 dia' : `${updated.interval} dias`;
                 showToast((isCorrect ? '✅ Certo! ' : '❌ Errado. ') + `Vai revisar de novo em ${dias}.`);
-                refreshQuizScoreLabel();
-                renderContent(isCode);
+                refreshQuizScoreLabel(); renderContent(isCode);
 
-                // Rolagem automática
                 setTimeout(() => {
                   const nextQuiz = textContainer.querySelector('.quiz-unanswered');
                   if (nextQuiz) {
                     nextQuiz.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    
-                    const oldBg = nextQuiz.style.background;
-                    const oldRadius = nextQuiz.style.borderRadius;
-                    nextQuiz.style.transition = 'background 0.3s';
-                    nextQuiz.style.background = '#4FA8D8'; 
+                    const oldBg = nextQuiz.style.background; const oldRadius = nextQuiz.style.borderRadius;
+                    nextQuiz.style.transition = 'background 0.3s'; nextQuiz.style.background = '#4FA8D8'; 
                     nextQuiz.style.borderRadius = '6px';
-                    
-                    setTimeout(() => { 
-                      nextQuiz.style.background = oldBg; 
-                      nextQuiz.style.borderRadius = oldRadius; 
-                    }, 1700);
+                    setTimeout(() => { nextQuiz.style.background = oldBg; nextQuiz.style.borderRadius = oldRadius; }, 1700);
                   }
                 }, 1600);
               });
 
               qBlock.appendChild(optBtn);
             });
-            // --- FIM DA MELHORIA ---
             textContainer.appendChild(qBlock);
             for (let k = i; k < j; k++) lineEls[k] = qBlock;
             i = j;
             continue;
           }
-  }
+        }
 
-        // --- Checkbox comum ---
         const checkMatch = line.match(/^\[([ xX]?)\](.*)/);
         if (checkMatch) {
           const isChecked = checkMatch[1].toLowerCase() === 'x';
@@ -2186,8 +2119,7 @@ btnCopyBudget.addEventListener('click', () => {
             const marker = cb.checked ? '[x]' : '[ ]';
             const freshLines = item.content.split('\n');
             freshLines[currentIndex] = freshLines[currentIndex].replace(/^\[[ xX]?\]/, marker);
-            item.content = freshLines.join('\n');
-            item.updatedAt = Date.now();
+            item.content = freshLines.join('\n'); item.updatedAt = Date.now();
             await dbPut(item);
             const ramItem = allItems.find(x => x.id === item.id);
             if (ramItem) { ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; }
@@ -2201,8 +2133,7 @@ btnCopyBudget.addEventListener('click', () => {
                 const el = lineEls[foundIdx];
                 el.scrollIntoView({ behavior:'smooth', block:'center' });
                 const oldBg = el.style.background, oldRadius = el.style.borderRadius;
-                el.style.transition = 'background 0.3s';
-                el.style.background = '#4FA8D8'; el.style.borderRadius = '6px';
+                el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px';
                 setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
                 showToast('➡️ Próximo passo: ' + nextStepRaw);
               } else {
@@ -2215,81 +2146,105 @@ btnCopyBudget.addEventListener('click', () => {
           continue;
         }
 
-        // --- Separador visual ---
         const trimmed = line.trim();
         const isDivider = /^(.)\1{2,}$/.test(trimmed) && /^[-=#*]+$/.test(trimmed);
         if (isDivider){
           const hr = document.createElement('hr');
-          hr.style.border = 'none';
-          hr.style.borderTop = '2px dashed var(--smoke, #9AA0AB)';
-          hr.style.margin = '14px 0';
-          textContainer.appendChild(hr);
-          lineEls[i] = hr;
-          i++;
-          continue;
+          hr.style.border = 'none'; hr.style.borderTop = '2px dashed var(--smoke, #9AA0AB)'; hr.style.margin = '14px 0';
+          textContainer.appendChild(hr); lineEls[i] = hr; i++; continue;
         }
 
-        // --- Linha comum ---
         const p = document.createElement('div');
         p.style.minHeight = '1.4em'; p.innerHTML = renderText(line);
-        textContainer.appendChild(p);
-        lineEls[i] = p;
-        i++;
+        textContainer.appendChild(p); lineEls[i] = p; i++;
       }
+
+      // --- INÍCIO DA MELHORIA: MAPEAR RESULTADOS DA BUSCA (NO FINAL DO RENDER) ---
+      setTimeout(() => {
+        matchNodes = Array.from(viewBody.querySelectorAll('mark'));
+        if (matchNodes.length > 0) {
+          matchIndex = 0; 
+          updateMatches(); 
+        } else {
+          matchIndex = -1;
+          internalSearchCount.textContent = '0/0';
+        }
+      }, 10);
+      // --- FIM DA MELHORIA ---
     };
 
     renderContent(false);
     contentWrap.appendChild(textContainer);
     viewBody.appendChild(contentWrap);
 
-    btnCopy.addEventListener('click', () => {
-      navigator.clipboard.writeText(item.content).then(() => showToast('Copiado!'));
-    });
+    btnCopy.addEventListener('click', () => { navigator.clipboard.writeText(item.content).then(() => showToast('Copiado!')); });
+    btnCode.addEventListener('click', () => { isCode = !isCode; btnCode.innerHTML = isCode ? '📝 Texto' : '💻 Código'; renderContent(isCode); });
 
-    btnCode.addEventListener('click', () => {
-      isCode = !isCode;
-      btnCode.innerHTML = isCode ? '📝 Texto' : '💻 Código';
+    // --- INÍCIO DA MELHORIA: EVENTOS DA BARRA DE PESQUISA INTERNA ---
+    internalSearchInput.oninput = debounce(() => {
+      internalQuery = internalSearchInput.value.trim();
+      
+      // Atualiza Vehicle e Spec na mão sem piscar a tela toda
+      if (pVehicle) pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
+      if (pSpec) pSpec.innerHTML = renderText(item.spec);
+      
+      // Reconstrói apenas o texto para não bugar a voz nem o fluxo >>
       renderContent(isCode);
-    });
+    }, 250);
+  } else {
+    // Se a nota NÃO TIVER texto (só foto ou especificação), a pesquisa interna ainda tem que funcionar no spec e no titulo!
+    internalSearchInput.oninput = debounce(() => {
+      internalQuery = internalSearchInput.value.trim();
+      if (pVehicle) pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
+      if (pSpec) pSpec.innerHTML = renderText(item.spec);
+      
+      setTimeout(() => {
+        matchNodes = Array.from(viewBody.querySelectorAll('mark'));
+        if (matchNodes.length > 0) { matchIndex = 0; updateMatches(); } 
+        else { matchIndex = -1; internalSearchCount.textContent = '0/0'; }
+      }, 10);
+    }, 250);
   }
+
+  // --- BOTÕES DE NAVEGAÇÃO DA BUSCA (SETINHAS 🔼 🔽) ---
+  btnInternalPrev.onclick = () => {
+    if (matchNodes.length === 0) return;
+    matchIndex = (matchIndex - 1 + matchNodes.length) % matchNodes.length;
+    updateMatches();
+  };
+
+  btnInternalNext.onclick = () => {
+    if (matchNodes.length === 0) return;
+    matchIndex = (matchIndex + 1) % matchNodes.length;
+    updateMatches();
+  };
+  // --- FIM DA MELHORIA ---
+
   openSheet(modalView);
   item.useCount = (item.useCount||0) + 1;
   dbPut(item).then(() => renderCards());
-  // --- INÍCIO DA MELHORIA: FOCO INTELIGENTE (PESQUISA OU QUIZ) ---
-  setTimeout(() => {
-    // 1. Procura se tem algum texto destacado pela sua pesquisa (tag <mark>)
-    const firstHighlight = viewBody.querySelector('mark');
-    
-    // 2. Procura se tem algum quiz precisando de resposta
-    const firstUnanswered = viewBody.querySelector('.quiz-unanswered');
 
-    // REGRA DE PRIORIDADE:
-    if (firstHighlight) {
-      // Se você pesquisou algo e achou no texto, o foco VAI PARA A PESQUISA!
-      firstHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
-      // O <mark> já é destacado pelo navegador (geralmente amarelo), 
-      // então o scroll suave já é o suficiente para seus olhos acharem.
-      
-    } else if (firstUnanswered) {
-      // Se NÃO tem pesquisa, mas TEM quiz pendente, foca no quiz!
-      firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
-      const oldBg = firstUnanswered.style.background;
-      const oldRadius = firstUnanswered.style.borderRadius;
-      firstUnanswered.style.transition = 'background 0.3s';
-      firstUnanswered.style.background = '#4FA8D8'; 
-      firstUnanswered.style.borderRadius = '6px';
-      
-      setTimeout(() => { 
-        firstUnanswered.style.background = oldBg; 
-        firstUnanswered.style.borderRadius = oldRadius; 
-      }, 2200);
+  // --- FOCO INTELIGENTE AO ABRIR (MANTIDO) ---
+  setTimeout(() => {
+    if (matchNodes.length > 0) {
+      updateMatches(); 
+    } else {
+      const firstUnanswered = viewBody.querySelector('.quiz-unanswered');
+      if (firstUnanswered) {
+        firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const oldBg = firstUnanswered.style.background;
+        const oldRadius = firstUnanswered.style.borderRadius;
+        firstUnanswered.style.transition = 'background 0.3s';
+        firstUnanswered.style.background = '#4FA8D8'; 
+        firstUnanswered.style.borderRadius = '6px';
+        setTimeout(() => { 
+          firstUnanswered.style.background = oldBg; 
+          firstUnanswered.style.borderRadius = oldRadius; 
+        }, 2200);
+      }
     }
   }, 300);
-  // --- FIM DA MELHORIA ---
-} // <--- Fechamento da função openView
-
+}
 function closeView(){
   closeSheetEl(modalView);
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
@@ -2634,6 +2589,30 @@ btnClearBudget.addEventListener('click', async () => {
       }
       
       showToast(isAudioEnabled ? 'Áudio liberado.' : 'Modo Silencioso ativado.');
+    });
+  }
+  // --- CONTROLE DE VELOCIDADE ---
+  if (voiceSpeed) {
+    voiceSpeed.value = currentVoiceSpeed; // Posiciona a bolinha onde estava salvo
+    
+    // Função pra escrever se tá rápido ou devagar
+    const updateSpeedLabel = (val) => {
+      if (val < 0.9) speedLabel.textContent = `Devagar (${val}x)`;
+      else if (val > 1.1) speedLabel.textContent = `Rápido (${val}x)`;
+      else speedLabel.textContent = `Normal (${val}x)`;
+    };
+    updateSpeedLabel(currentVoiceSpeed);
+
+    // Quando você arrasta a bolinha (atualiza o texto em tempo real)
+    voiceSpeed.addEventListener('input', (e) => {
+      updateSpeedLabel(parseFloat(e.target.value));
+    });
+
+    // Quando você SOLTA a bolinha (salva no celular e para a voz atual)
+    voiceSpeed.addEventListener('change', (e) => {
+      currentVoiceSpeed = parseFloat(e.target.value);
+      localStorage.setItem('memorias_voice_speed', currentVoiceSpeed);
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel(); 
     });
   }
 }
