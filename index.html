@@ -437,7 +437,13 @@
     </div>
     <!-- INÍCIO: BARRA DE BUSCA INTERNA -->
     <div id="internalSearchWrap" style="display:none; z-index: 3; bottom: 0; position: sticky; gap:8px; padding:10px 16px; background:var(--panel-2); border-bottom:1px solid var(--smoke); align-items:center;">
-      <input type="text" id="internalSearchInput" placeholder="Buscar nesta nota..." autocomplete="off" style="flex:1; padding:8px 12px; border-radius:6px; border:none; background:var(--bg); color:var(--text); font-size:15px;">
+      
+      <!-- Contêiner do Input com o X dentro -->
+      <div style="flex:1; display:flex; align-items:center; position:relative; background:var(--bg); border-radius:6px;">
+        <input type="text" id="internalSearchInput" placeholder="Buscar nesta nota..." autocomplete="off" style="flex:1; padding:8px 36px 8px 12px; border:none; background:transparent; color:var(--text); font-size:15px; outline:none;">
+        <button type="button" id="btnClearInternalSearch" aria-label="Limpar busca interna" style="background:transparent; border:none; color:var(--smoke); width:36px; height:36px; font-size:16px; display:none; align-items:center; justify-content:center; position:absolute; right:0; cursor:pointer;">✕</button>
+      </div>
+
       <span id="internalSearchCount" style="font-size:0.85em; opacity:0.7; white-space:nowrap; min-width:35px; text-align:center;">0/0</span>
       <button type="button" id="btnInternalPrev" class="icon-btn" style="width:34px;height:34px;background:var(--bg);border-radius:6px; font-size:16px;">🔼</button>
       <button type="button" id="btnInternalNext" class="icon-btn" style="width:34px;height:34px;background:var(--bg);border-radius:6px; font-size:16px;">🔽</button>
@@ -698,6 +704,7 @@ const btnCloseMore = document.getElementById('btnCloseMore');
 const btnExport = document.getElementById('btnExport');
 const internalSearchWrap = document.getElementById('internalSearchWrap');
 const internalSearchInput = document.getElementById('internalSearchInput');
+const btnClearInternalSearch = document.getElementById('btnClearInternalSearch');
 const internalSearchCount = document.getElementById('internalSearchCount');
 const btnInternalPrev = document.getElementById('btnInternalPrev');
 const btnInternalNext = document.getElementById('btnInternalNext');
@@ -2180,9 +2187,12 @@ async function openView(itemLight){
     btnCopy.addEventListener('click', () => { navigator.clipboard.writeText(item.content).then(() => showToast('Copiado!')); });
     btnCode.addEventListener('click', () => { isCode = !isCode; btnCode.innerHTML = isCode ? '📝 Texto' : '💻 Código'; renderContent(isCode); });
 
-    // --- INÍCIO DA MELHORIA: EVENTOS DA BARRA DE PESQUISA INTERNA ---
+// --- INÍCIO DA MELHORIA: EVENTOS DA BARRA DE PESQUISA INTERNA ---
+    btnClearInternalSearch.style.display = 'none'; // Começa escondido
+
     internalSearchInput.oninput = debounce(() => {
       internalQuery = internalSearchInput.value.trim();
+      btnClearInternalSearch.style.display = internalSearchInput.value ? 'flex' : 'none';
       
       // Atualiza Vehicle e Spec na mão sem piscar a tela toda
       if (pVehicle) pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
@@ -2191,10 +2201,28 @@ async function openView(itemLight){
       // Reconstrói apenas o texto para não bugar a voz nem o fluxo >>
       renderContent(isCode);
     }, 250);
+
+    // Quando aperta o botão X (Com Conteúdo)
+    btnClearInternalSearch.onclick = () => {
+      internalSearchInput.value = '';
+      internalQuery = '';
+      btnClearInternalSearch.style.display = 'none';
+      
+      if (pVehicle) pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
+      if (pSpec) pSpec.innerHTML = renderText(item.spec);
+      
+      renderContent(isCode);
+      internalSearchInput.focus(); // Devolve o teclado
+    };
+
   } else {
     // Se a nota NÃO TIVER texto (só foto ou especificação), a pesquisa interna ainda tem que funcionar no spec e no titulo!
+    btnClearInternalSearch.style.display = 'none';
+
     internalSearchInput.oninput = debounce(() => {
       internalQuery = internalSearchInput.value.trim();
+      btnClearInternalSearch.style.display = internalSearchInput.value ? 'flex' : 'none';
+
       if (pVehicle) pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
       if (pSpec) pSpec.innerHTML = renderText(item.spec);
       
@@ -2204,8 +2232,25 @@ async function openView(itemLight){
         else { matchIndex = -1; internalSearchCount.textContent = '0/0'; }
       }, 10);
     }, 250);
-  }
 
+    // Quando aperta o botão X (Sem Conteúdo)
+    btnClearInternalSearch.onclick = () => {
+      internalSearchInput.value = '';
+      internalQuery = '';
+      btnClearInternalSearch.style.display = 'none';
+
+      if (pVehicle) pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
+      if (pSpec) pSpec.innerHTML = renderText(item.spec);
+      
+      setTimeout(() => {
+        matchNodes = Array.from(viewBody.querySelectorAll('mark'));
+        if (matchNodes.length > 0) { matchIndex = 0; updateMatches(); } 
+        else { matchIndex = -1; internalSearchCount.textContent = '0/0'; }
+      }, 10);
+      internalSearchInput.focus();
+    };
+  }
+  
   // --- BOTÕES DE NAVEGAÇÃO DA BUSCA (SETINHAS 🔼 🔽) ---
   btnInternalPrev.onclick = () => {
     if (matchNodes.length === 0) return;
@@ -2244,7 +2289,8 @@ async function openView(itemLight){
       }
     }
   }, 300);
-}
+} // <--- Fechamento correto da função
+
 function closeView(){
   closeSheetEl(modalView);
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
