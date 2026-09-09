@@ -475,13 +475,23 @@
         <span>🏃‍♂️ Velocidade da Voz: <strong id="speedLabel">Normal (0.95x)</strong></span>
         <input type="range" id="voiceSpeed" min="0.5" max="2.0" step="0.05" value="0.95">
       </label>
-      <hr>
       <!-- FIM: CONTROLE DE VELOCIDADE DA VOZ -->
       <!-- INÍCIO: NOVO BOTÃO DE ÁUDIO -->
       <label class="checkbox-row" style="margin-bottom: 6px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
         <input type="checkbox" id="toggleGlobalAudio">
         🔊 Permitir Leitura de Voz (Tocar nos títulos)
       </label>
+      <!-- INÍCIO: CONTROLE DE LEITURA DO QUIZ -->
+      <label class="checkbox-row" style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+        <input type="checkbox" id="toggleReadOptions">
+        🗣️ Ler também as alternativas do quiz
+      </label>
+      <!-- INÍCIO: CONTROLE DE AUTO-LEITURA -->
+      <label class="checkbox-row" style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+        <input type="checkbox" id="toggleAutoReadNext">
+        🔁 Ler a próxima pergunta automaticamente
+      </label>
+      <!-- FIM: CONTROLE DE LEITURA DO QUIZ -->
       <hr>
       <!-- FIM: NOVO BOTÃO DE ÁUDIO -->
       <button id="btnExport" class="btn-primary">⬇️ Exportar backup (.json)</button>
@@ -630,6 +640,9 @@ let currentAudioBlob = null;
 let formAudioURL = null; // Para tocar o áudio antes de salvar
 let viewAudioURL = null; // Para tocar o áudio na visualização
 let isAudioEnabled = localStorage.getItem('memorias_audio_global') !== 'false';
+// Se não tiver salvo, o padrão é true (ler as alternativas junto)
+let readQuizOptions = localStorage.getItem('memorias_read_options') !== 'false';
+let autoReadNextQuiz = localStorage.getItem('memorias_auto_read_next') !== 'false';
 // Puxa a velocidade salva ou usa 0.95 como padrão
 let currentVoiceSpeed = parseFloat(localStorage.getItem('memorias_voice_speed')) || 0.95;
 
@@ -712,6 +725,8 @@ const btnInternalNext = document.getElementById('btnInternalNext');
 const fieldImport = document.getElementById('fieldImport');
 const statsText = document.getElementById('statsText');
 const toggleGlobalAudio = document.getElementById('toggleGlobalAudio');
+const toggleAutoReadNext = document.getElementById('toggleAutoReadNext');
+const toggleReadOptions = document.getElementById('toggleReadOptions');
 const voiceSpeed = document.getElementById('voiceSpeed');
 const speedLabel = document.getElementById('speedLabel');
 
@@ -1605,10 +1620,11 @@ async function openView(itemLight){
   }
   // --- FIM DA MELHORIA ---
 
-  // --- LEITURA INTELIGENTE E SEPARADA ---
+// --- LEITURA INTELIGENTE E SEPARADA ---
   let readingWakeLock = null;
   let activeSpeechTarget = null;
   let restorePreviousVisuals = null; 
+  let isSpeechPaused = false; // <--- NOSSA PRÓPRIA MEMÓRIA DE PAUSA PARA EVITAR O BUG DO CHROME
 
   function getCleanTextToRead() {
     let text = item.title + ". ";
@@ -1625,17 +1641,31 @@ async function openView(itemLight){
     return text;
   }
 
-  async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz) {
+async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz) {
     if (!isAudioEnabled) { showToast('Áudio desativado. Ligue em "Mais opções".'); return; }
     if (!('speechSynthesis' in window)) { showToast('Navegador sem suporte a voz.'); return; }
     const synth = window.speechSynthesis;
 
     if (activeSpeechTarget === targetId) {
-      if (synth.speaking && !synth.paused) { synth.pause(); element.style.opacity = '0.5'; showToast('Leitura pausada.'); return; }
-      if (synth.speaking && synth.paused) { synth.resume(); element.style.opacity = '1'; showToast('Leitura retomada.'); return; }
+      // USAMOS NOSSA PRÓPRIA VARIÁVEL isSpeechPaused PARA GARANTIR QUE FUNCIONE!
+      if (synth.speaking && !isSpeechPaused) { 
+        synth.pause(); 
+        isSpeechPaused = true; 
+        element.style.opacity = '0.5'; 
+        showToast('Leitura pausada.'); 
+        return; 
+      }
+      if (synth.speaking && isSpeechPaused) { 
+        synth.resume(); 
+        isSpeechPaused = false; 
+        element.style.opacity = '1'; 
+        showToast('Leitura retomada.'); 
+        return; 
+      }
     }
 
     synth.cancel();
+    isSpeechPaused = false; // Reseta a pausa ao clicar em uma nova frase
     if (restorePreviousVisuals) restorePreviousVisuals();
     
     activeSpeechTarget = targetId;
@@ -1658,12 +1688,12 @@ async function openView(itemLight){
       if (restorePreviousVisuals) restorePreviousVisuals();
       restorePreviousVisuals = null;
       if (activeSpeechTarget === targetId) activeSpeechTarget = null;
+      isSpeechPaused = false; // Reseta no final
       if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
     };
     utterance.onerror = utterance.onend;
     synth.speak(utterance);
   }
-
   viewTitle.style.cursor = 'pointer';
   const mainTitleOriginal = escapeHTML(item.title);
   viewTitle.onclick = () => { handleSpeech(getCleanTextToRead(), viewTitle, mainTitleOriginal, 'main', false); };
@@ -2002,14 +2032,19 @@ async function openView(itemLight){
             qBlock.style.borderRadius = '8px'; qBlock.style.marginTop = '6px'; qBlock.style.marginBottom = '10px';
 
             const qTitle = document.createElement('div');
+            qTitle.className = 'quiz-title-clicker';
             qTitle.style.fontWeight = 'bold'; qTitle.style.marginBottom = '8px'; qTitle.style.cursor = 'pointer'; 
             
             const originalQuizHtml = '❓ ' + renderText(qMatch[1].trim());
             qTitle.innerHTML = originalQuizHtml;
             
+            // --- INÍCIO DA MELHORIA: LER APENAS A PERGUNTA SE CONFIGURADO ASSIM ---
             let quizSpeechText = "Pergunta: " + qMatch[1].trim() + ". ";
-            options.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; });
             
+            if (readQuizOptions) {
+              options.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; });
+            }
+            // --- FIM DA MELHORIA ---
             qTitle.addEventListener('click', () => {
               handleSpeech(quizSpeechText, qTitle, originalQuizHtml, 'quiz-' + questionLineIndex, true);
             });
@@ -2071,9 +2106,18 @@ async function openView(itemLight){
                     const oldBg = nextQuiz.style.background; const oldRadius = nextQuiz.style.borderRadius;
                     nextQuiz.style.transition = 'background 0.3s'; nextQuiz.style.background = '#4FA8D8'; 
                     nextQuiz.style.borderRadius = '6px';
-                    setTimeout(() => { nextQuiz.style.background = oldBg; nextQuiz.style.borderRadius = oldRadius; }, 1700);
+                    setTimeout(() => { nextQuiz.style.background = oldBg; nextQuiz.style.borderRadius = oldRadius; }, 900);//era 1700 circula o redor depois de passar para a proxima
+                    // --- INÍCIO DA MELHORIA: FANTASMA DO AUTO-PLAY ---
+                    if (isAudioEnabled && autoReadNextQuiz) {
+                      const titleToClick = nextQuiz.querySelector('.quiz-title-clicker');
+                      if (titleToClick) {
+                        // Espera meio segundo (500ms) para a tela dar a rolagem suave antes de começar a falar!
+                        setTimeout(() => titleToClick.click(), 500); 
+                      }
+                    }
+                    // --- FIM DA MELHORIA ---
                   }
-                }, 1600);
+                }, 2500);//era 1600 tempo para pensar no que respondeu certo ou errado
               });
 
               qBlock.appendChild(optBtn);
@@ -2635,6 +2679,24 @@ btnClearBudget.addEventListener('click', async () => {
       }
       
       showToast(isAudioEnabled ? 'Áudio liberado.' : 'Modo Silencioso ativado.');
+    });
+  }
+  // --- CONTROLE DE LER ALTERNATIVAS ---
+  if (toggleReadOptions) {
+    toggleReadOptions.checked = readQuizOptions;
+    toggleReadOptions.addEventListener('change', (e) => {
+      readQuizOptions = e.target.checked;
+      localStorage.setItem('memorias_read_options', readQuizOptions);
+      showToast(readQuizOptions ? 'Lendo pergunta + alternativas.' : 'Lendo APENAS a pergunta.');
+    });
+  }
+  // --- CONTROLE DE LER A PRÓXIMA AUTO ---
+  if (toggleAutoReadNext) {
+    toggleAutoReadNext.checked = autoReadNextQuiz;
+    toggleAutoReadNext.addEventListener('change', (e) => {
+      autoReadNextQuiz = e.target.checked;
+      localStorage.setItem('memorias_auto_read_next', autoReadNextQuiz);
+      showToast(autoReadNextQuiz ? 'Auto-leitura ligada.' : 'Auto-leitura desligada.');
     });
   }
   // --- CONTROLE DE VELOCIDADE ---
