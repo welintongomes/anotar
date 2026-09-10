@@ -371,6 +371,9 @@
   <button type="button" id="btnInsertArrow" class="tag-pill" style="border:none; cursor:pointer;">➡️ fluxo >></button>
   <button type="button" id="btnInsertDivider" class="tag-pill" style="border:none; cursor:pointer;">➖ separador</button>
   <button type="button" id="btnInsertQuiz" class="tag-pill" style="border:none; cursor:pointer;">🧠 quiz</button>
+  <!-- INÍCIO DA MELHORIA: BOTÃO DE LINK -->
+  <button type="button" id="btnInsertLink" class="tag-pill" style="border:none; cursor:pointer; background:#4FA8D8; color:#fff;">🔗 link</button>
+  <!-- FIM DA MELHORIA -->
 </div>
   <div class="textarea-wrap">
     <textarea id="fieldContent" rows="5" placeholder="Explique com suas palavras: qual era o problema, o que resolveu, o passo a passo, onde fica a peça..."></textarea>
@@ -424,10 +427,15 @@
 <!-- Gaveta: visualizar detalhes -->
 <div id="modalView" class="modal-overlay">
   <div class="modal-box">
-    <div class="modal-header">
-      <h2 id="viewTitle"></h2>
+    <!-- INÍCIO DA MELHORIA: CABEÇALHO COM BOTÃO VOLTAR -->
+<div class="modal-header" style="justify-content: space-between; display: flex; align-items: center; width: 100%;">
+      <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
+        <button class="icon-btn" id="btnBackView" style="display:none; font-size:22px; padding:0; margin:0;" aria-label="Voltar">⬅️</button>
+        <h2 id="viewTitle" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></h2>
+      </div>
       <button class="icon-btn" id="btnCloseView" aria-label="Fechar">✕</button>
     </div>
+    <!-- FIM DA MELHORIA -->
     
     <div class="modal-body" id="viewBody"></div>
     <div class="modal-footer view-footer">
@@ -696,6 +704,9 @@ const btnInsertCheckbox = document.getElementById('btnInsertCheckbox');
 const btnInsertArrow = document.getElementById('btnInsertArrow');
 const btnInsertDivider = document.getElementById('btnInsertDivider');
 const btnInsertQuiz = document.getElementById('btnInsertQuiz');
+const btnInsertLink = document.getElementById('btnInsertLink');
+const btnBackView = document.getElementById('btnBackView');
+let viewHistory = []; // <--- ESSA É A MEMÓRIA DA SUA "VIAGEM" ENTRE NOTAS
 const quizDueText = document.getElementById('quizDueText');
 const fieldTags = document.getElementById('fieldTags');
 const fieldPhoto = document.getElementById('fieldPhoto');
@@ -1586,7 +1597,7 @@ if (!title) {
   });
 }
 /* ---------------- Visualizar detalhes ---------------- */
-async function openView(itemLight){
+async function openView(itemLight, navType = 'new'){
   const item = await dbGet(itemLight.id); // Puxa tudo pesado do banco
   
   viewingItem = item;
@@ -1601,6 +1612,26 @@ async function openView(itemLight){
   // Garante que a barra aparece zerada ao abrir a nota
   internalSearchWrap.style.display = 'flex';
   internalSearchInput.value = '';
+  
+  // --- INÍCIO DA MELHORIA: CONTROLE DE HISTÓRICO WIKIPEDIA ---
+  if (navType === 'new') {
+    viewHistory = []; // Se abriu direto da tela inicial, zera o histórico!
+  }
+  
+  // Mostra ou esconde a setinha ⬅️ dependendo se você está no meio de uma "viagem"
+  btnBackView.style.display = viewHistory.length > 0 ? 'flex' : 'none';
+  
+  // Se clicar em voltar:
+  btnBackView.onclick = () => {
+    if (viewHistory.length > 0) {
+      const prev = viewHistory.pop(); // Puxa a última nota que você estava
+      openView({ id: prev.id }, 'back').then(() => {
+        // Magia: devolve você EXATAMENTE na linha (scroll) onde estava lendo!
+        setTimeout(() => { viewBody.scrollTop = prev.scroll; }, 300);
+      });
+    }
+  };
+  // --- FIM DA MELHORIA ---
 
   // Função que ilumina a palavra da vez (Laranja) e as outras (Amarelo)
   function updateMatches() {
@@ -1620,7 +1651,7 @@ async function openView(itemLight){
   }
   // --- FIM DA MELHORIA ---
 
-// --- LEITURA INTELIGENTE E SEPARADA ---
+  // --- LEITURA INTELIGENTE E SEPARADA ---
   let readingWakeLock = null;
   let activeSpeechTarget = null;
   let restorePreviousVisuals = null; 
@@ -1641,7 +1672,7 @@ async function openView(itemLight){
     return text;
   }
 
-async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz) {
+  async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz) {
     if (!isAudioEnabled) { showToast('Áudio desativado. Ligue em "Mais opções".'); return; }
     if (!('speechSynthesis' in window)) { showToast('Navegador sem suporte a voz.'); return; }
     const synth = window.speechSynthesis;
@@ -1694,6 +1725,7 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
     utterance.onerror = utterance.onend;
     synth.speak(utterance);
   }
+  
   viewTitle.style.cursor = 'pointer';
   const mainTitleOriginal = escapeHTML(item.title);
   viewTitle.onclick = () => { handleSpeech(getCleanTextToRead(), viewTitle, mainTitleOriginal, 'main', false); };
@@ -1756,11 +1788,22 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
     viewBody.appendChild(tagsContainer);
   }
 
-  // --- INÍCIO DA MELHORIA: TEXTO COM PRIORIDADE INTERNA ---
+  // --- INÍCIO DA MELHORIA: TEXTO COM PRIORIDADE INTERNA E LINKS WIKIPEDIA ---
   const renderText = (text) => {
     const query = internalQuery || currentSearch;
-    return query ? highlightHTML(text, query) : escapeHTML(text);
+    // 1. Pinta o amarelo da pesquisa se tiver (escapando o HTML)
+    let processed = query ? highlightHTML(text, query) : escapeHTML(text);
+    
+    // 2. A MÁGICA: Converte [[Nome da Nota]] num link de verdade!
+    processed = processed.replace(/\[\[(.*?)\]\]/g, (match, innerText) => {
+      // Limpa tags <mark> pro caso de você ter pesquisado uma palavra que faz parte do nome do link
+      const cleanTitle = innerText.replace(/<[^>]*>?/gm, ''); 
+      return `<span class="internal-link" data-target="${cleanTitle}" style="color:#4FA8D8; text-decoration:underline; font-weight:bold; cursor:pointer;">🔗 ${innerText}</span>`;
+    });
+    
+    return processed;
   };
+  // --- FIM DA MELHORIA ---
 
   let pVehicle = null;
   let pSpec = null;
@@ -1775,7 +1818,6 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
     pSpec.innerHTML = renderText(item.spec);
     viewBody.appendChild(pSpec);
   }
-  // --- FIM DA MELHORIA ---
 
   if (item.photo){
     const img = document.createElement('img'); img.className = 'view-photo';
@@ -2038,13 +2080,12 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
             const originalQuizHtml = '❓ ' + renderText(qMatch[1].trim());
             qTitle.innerHTML = originalQuizHtml;
             
-            // --- INÍCIO DA MELHORIA: LER APENAS A PERGUNTA SE CONFIGURADO ASSIM ---
             let quizSpeechText = "Pergunta: " + qMatch[1].trim() + ". ";
             
             if (readQuizOptions) {
               options.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; });
             }
-            // --- FIM DA MELHORIA ---
+            
             qTitle.addEventListener('click', () => {
               handleSpeech(quizSpeechText, qTitle, originalQuizHtml, 'quiz-' + questionLineIndex, true);
             });
@@ -2106,18 +2147,16 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
                     const oldBg = nextQuiz.style.background; const oldRadius = nextQuiz.style.borderRadius;
                     nextQuiz.style.transition = 'background 0.3s'; nextQuiz.style.background = '#4FA8D8'; 
                     nextQuiz.style.borderRadius = '6px';
-                    setTimeout(() => { nextQuiz.style.background = oldBg; nextQuiz.style.borderRadius = oldRadius; }, 900);//era 1700 circula o redor depois de passar para a proxima
-                    // --- INÍCIO DA MELHORIA: FANTASMA DO AUTO-PLAY ---
+                    setTimeout(() => { nextQuiz.style.background = oldBg; nextQuiz.style.borderRadius = oldRadius; }, 900);
+                    
                     if (isAudioEnabled && autoReadNextQuiz) {
                       const titleToClick = nextQuiz.querySelector('.quiz-title-clicker');
                       if (titleToClick) {
-                        // Espera meio segundo (500ms) para a tela dar a rolagem suave antes de começar a falar!
                         setTimeout(() => titleToClick.click(), 500); 
                       }
                     }
-                    // --- FIM DA MELHORIA ---
                   }
-                }, 2500);//era 1600 tempo para pensar no que respondeu certo ou errado
+                }, 2500);
               });
 
               qBlock.appendChild(optBtn);
@@ -2210,8 +2249,24 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
         textContainer.appendChild(p); lineEls[i] = p; i++;
       }
 
-      // --- INÍCIO DA MELHORIA: MAPEAR RESULTADOS DA BUSCA (NO FINAL DO RENDER) ---
+      // --- INÍCIO DA MELHORIA: ATIVAR CLIQUES DOS LINKS DA NOTA E MAPEAR A BUSCA ---
       setTimeout(() => {
+        // Ativador dos Wiki-links
+        viewBody.querySelectorAll('.internal-link').forEach(linkEl => {
+          linkEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const targetTitle = linkEl.getAttribute('data-target');
+            const targetItem = allItems.find(i => normalize(i.title) === normalize(targetTitle));
+            if (targetItem) {
+              viewHistory.push({ id: item.id, scroll: viewBody.scrollTop }); // Salva a viagem!
+              openView(targetItem, 'link'); 
+            } else {
+              showToast(`Nota não encontrada: "${targetTitle}"`);
+            }
+          });
+        });
+
+        // Buscador Amarelo original
         matchNodes = Array.from(viewBody.querySelectorAll('mark'));
         if (matchNodes.length > 0) {
           matchIndex = 0; 
@@ -2231,22 +2286,18 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
     btnCopy.addEventListener('click', () => { navigator.clipboard.writeText(item.content).then(() => showToast('Copiado!')); });
     btnCode.addEventListener('click', () => { isCode = !isCode; btnCode.innerHTML = isCode ? '📝 Texto' : '💻 Código'; renderContent(isCode); });
 
-// --- INÍCIO DA MELHORIA: EVENTOS DA BARRA DE PESQUISA INTERNA ---
-    btnClearInternalSearch.style.display = 'none'; // Começa escondido
+    btnClearInternalSearch.style.display = 'none'; 
 
     internalSearchInput.oninput = debounce(() => {
       internalQuery = internalSearchInput.value.trim();
       btnClearInternalSearch.style.display = internalSearchInput.value ? 'flex' : 'none';
       
-      // Atualiza Vehicle e Spec na mão sem piscar a tela toda
       if (pVehicle) pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
       if (pSpec) pSpec.innerHTML = renderText(item.spec);
       
-      // Reconstrói apenas o texto para não bugar a voz nem o fluxo >>
       renderContent(isCode);
     }, 250);
 
-    // Quando aperta o botão X (Com Conteúdo)
     btnClearInternalSearch.onclick = () => {
       internalSearchInput.value = '';
       internalQuery = '';
@@ -2256,11 +2307,10 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
       if (pSpec) pSpec.innerHTML = renderText(item.spec);
       
       renderContent(isCode);
-      internalSearchInput.focus(); // Devolve o teclado
+      internalSearchInput.focus(); 
     };
 
   } else {
-    // Se a nota NÃO TIVER texto (só foto ou especificação), a pesquisa interna ainda tem que funcionar no spec e no titulo!
     btnClearInternalSearch.style.display = 'none';
 
     internalSearchInput.oninput = debounce(() => {
@@ -2277,7 +2327,6 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
       }, 10);
     }, 250);
 
-    // Quando aperta o botão X (Sem Conteúdo)
     btnClearInternalSearch.onclick = () => {
       internalSearchInput.value = '';
       internalQuery = '';
@@ -2295,7 +2344,6 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
     };
   }
   
-  // --- BOTÕES DE NAVEGAÇÃO DA BUSCA (SETINHAS 🔼 🔽) ---
   btnInternalPrev.onclick = () => {
     if (matchNodes.length === 0) return;
     matchIndex = (matchIndex - 1 + matchNodes.length) % matchNodes.length;
@@ -2307,13 +2355,11 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
     matchIndex = (matchIndex + 1) % matchNodes.length;
     updateMatches();
   };
-  // --- FIM DA MELHORIA ---
 
   openSheet(modalView);
   item.useCount = (item.useCount||0) + 1;
   dbPut(item).then(() => renderCards());
 
-  // --- FOCO INTELIGENTE AO ABRIR (MANTIDO) ---
   setTimeout(() => {
     if (matchNodes.length > 0) {
       updateMatches(); 
@@ -2334,13 +2380,12 @@ async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz)
     }
   }, 300);
 } // <--- Fechamento correto da função
-
 function closeView(){
   closeSheetEl(modalView);
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
   viewingItem = null;
-
+  viewHistory = []; // <--- ADICIONE ESTA LINHA PARA ZERAR AS VIAGENS
   // --- INÍCIO DA MELHORIA: CALA A BOCA E SOLTA A TELA AO FECHAR ---
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel(); // Manda o robô calar a boca na mesma hora
@@ -2502,23 +2547,25 @@ function setupEventListeners(){
 
   btnMic.addEventListener('click', () => startVoiceInput(searchInput, btnMic, false));
   btnMicContent.addEventListener('click', () => startVoiceInput(fieldContent, btnMicContent, true));
-
+  btnInsertCheckbox.addEventListener('mousedown', (e) => e.preventDefault());
   btnInsertCheckbox.addEventListener('click', () => {
   const start = fieldContent.selectionStart ?? fieldContent.value.length;
   const value = fieldContent.value;
   const atLineStart = start === 0 || value[start - 1] === '\n';
   insertAtCursor(fieldContent, (atLineStart ? '' : '\n') + '[] ');
 });
-
+btnInsertArrow.addEventListener('mousedown', (e) => e.preventDefault());
 btnInsertArrow.addEventListener('click', () => {
   insertAtCursor(fieldContent, ' >> ');
 });
+btnInsertDivider.addEventListener('mousedown', (e) => e.preventDefault());
 btnInsertDivider.addEventListener('click', () => {
   const start = fieldContent.selectionStart ?? fieldContent.value.length;
   const value = fieldContent.value;
   const atLineStart = start === 0 || value[start - 1] === '\n';
   insertAtCursor(fieldContent, (atLineStart ? '' : '\n') + '----\n');
 });
+btnInsertQuiz.addEventListener('mousedown', (e) => e.preventDefault());
 btnInsertQuiz.addEventListener('click', () => {
   const start = fieldContent.selectionStart ?? fieldContent.value.length;
   const end = fieldContent.selectionEnd ?? start;
@@ -2533,6 +2580,26 @@ btnInsertQuiz.addEventListener('click', () => {
   fieldContent.setSelectionRange(selStart, selStart + placeholder.length); // já seleciona "Pergunta" pra você digitar por cima
   fieldContent.dispatchEvent(new Event('input'));
 });
+// 1. A DEFESA: Impede que clicar no botão roube o foco do teclado
+  btnInsertLink.addEventListener('mousedown', (e) => {
+    e.preventDefault(); 
+  });
+// --- INÍCIO DA MELHORIA: INSERIR WIKI-LINK ---
+btnInsertLink.addEventListener('click', () => {
+    const start = fieldContent.selectionStart ?? fieldContent.value.length;
+    const end = fieldContent.selectionEnd ?? start;
+    const value = fieldContent.value;
+    const textToWrap = value.substring(start, end) || "Nome da Nota Aqui";
+    
+    const linkStr = `[[${textToWrap}]]`;
+    fieldContent.value = value.slice(0, start) + linkStr + value.slice(end);
+    
+    const newCursorPos = start + 2; 
+    fieldContent.focus();
+    fieldContent.setSelectionRange(newCursorPos, newCursorPos + textToWrap.length);
+    fieldContent.dispatchEvent(new Event('input'));
+  });
+// --- FIM DA MELHORIA ---
   sortSelect.addEventListener('change', () => { currentSort = sortSelect.value; renderCards(); });
 
   navSearch.addEventListener('click', () => {
