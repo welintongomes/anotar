@@ -285,6 +285,9 @@
     padding: 0 3px;
     font-weight: 700;
   }
+  body.modal-aberto {
+    overflow: hidden !important;
+}
 </style>
 </head>
 <body>
@@ -2817,6 +2820,24 @@ btnClearBudget.addEventListener('click', async () => {
     });
   }
 }
+const observerModais = new MutationObserver(() => {
+    const algumModalAberto = [...document.querySelectorAll(
+        '.modal, .modal-overlay, [role="dialog"]'
+    )].some(el => {
+        const style = getComputedStyle(el);
+        return style.display !== 'none' &&
+               style.visibility !== 'hidden' &&
+               parseFloat(style.opacity) > 0;
+    });
+
+    document.body.classList.toggle('modal-aberto', algumModalAberto);
+});
+
+observerModais.observe(document.body, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class']
+});
 
 /* ---------------- Início ---------------- */
 (async function init(){
