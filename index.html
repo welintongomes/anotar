@@ -1597,8 +1597,9 @@ if (!title) {
   });
 }
 /* ---------------- Visualizar detalhes ---------------- */
-async function openView(itemLight, navType = 'new'){
-  const item = await dbGet(itemLight.id); // Puxa tudo pesado do banco
+// 1. Mudamos aqui: adicionamos o "restoreLinkIndex = null"
+async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
+  const item = await dbGet(itemLight.id); 
   
   viewingItem = item;
   viewTitle.textContent = item.title;
@@ -1609,28 +1610,23 @@ async function openView(itemLight, navType = 'new'){
   let matchNodes = [];
   let matchIndex = -1;
 
-  // Garante que a barra aparece zerada ao abrir a nota
   internalSearchWrap.style.display = 'flex';
   internalSearchInput.value = '';
   
-  // --- INÍCIO DA MELHORIA: CONTROLE DE HISTÓRICO WIKIPEDIA ---
   if (navType === 'new') {
-    viewHistory = []; // Se abriu direto da tela inicial, zera o histórico!
+    viewHistory = []; 
   }
   
-  // Mostra ou esconde a setinha ⬅️ dependendo se você está no meio de uma "viagem"
   btnBackView.style.display = viewHistory.length > 0 ? 'flex' : 'none';
   
-  // Se clicar em voltar:
   btnBackView.onclick = () => {
     if (viewHistory.length > 0) {
-      const prev = viewHistory.pop(); // Puxa a última nota que você estava
-      openView({ id: prev.id }, 'back').then(() => {
-        // Magia: devolve você EXATAMENTE na linha (scroll) onde estava lendo!
-        setTimeout(() => { viewBody.scrollTop = prev.scroll; }, 300);
-      });
+      const prev = viewHistory.pop(); 
+      // Magia Nova: Devolve passando o ÍNDICE do link que você clicou!
+      openView({ id: prev.id }, 'back', prev.linkIndex);
     }
   };
+  
   // --- FIM DA MELHORIA ---
 
   // Função que ilumina a palavra da vez (Laranja) e as outras (Amarelo)
@@ -2249,16 +2245,18 @@ async function openView(itemLight, navType = 'new'){
         textContainer.appendChild(p); lineEls[i] = p; i++;
       }
 
-      // --- INÍCIO DA MELHORIA: ATIVAR CLIQUES DOS LINKS DA NOTA E MAPEAR A BUSCA ---
+      // --- INÍCIO DA MELHORIA: ATIVAR CLIQUES E MAPEAR A BUSCA ---
       setTimeout(() => {
         // Ativador dos Wiki-links
-        viewBody.querySelectorAll('.internal-link').forEach(linkEl => {
+        const allLinks = viewBody.querySelectorAll('.internal-link');
+        allLinks.forEach((linkEl, index) => {
           linkEl.addEventListener('click', (e) => {
             e.stopPropagation();
             const targetTitle = linkEl.getAttribute('data-target');
             const targetItem = allItems.find(i => normalize(i.title) === normalize(targetTitle));
             if (targetItem) {
-              viewHistory.push({ id: item.id, scroll: viewBody.scrollTop }); // Salva a viagem!
+              // NOVO: Salva a posição pelo NÚMERO (index) do link na tela! É infalível!
+              viewHistory.push({ id: item.id, linkIndex: index }); 
               openView(targetItem, 'link'); 
             } else {
               showToast(`Nota não encontrada: "${targetTitle}"`);
@@ -2360,8 +2358,34 @@ async function openView(itemLight, navType = 'new'){
   item.useCount = (item.useCount||0) + 1;
   dbPut(item).then(() => renderCards());
 
+// --- INÍCIO DA MELHORIA: FOCO INTELIGENTE COM MEMÓRIA DE LINK ---
   setTimeout(() => {
-    if (matchNodes.length > 0) {
+    if (navType === 'back' && restoreLinkIndex !== null) {
+      // 1. Busca todos os links da nota e acha aquele exato que você tinha clicado
+      const allLinks = viewBody.querySelectorAll('.internal-link');
+      const targetLink = allLinks[restoreLinkIndex];
+      
+      if (targetLink) {
+        // 2. Rola a tela como um míssil teleguiado direto no link!
+        targetLink.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // 3. Dá uma piscada Laranja Dourada para seus olhos acharem rápido
+        const oldBg = targetLink.style.background;
+        const oldColor = targetLink.style.color;
+        targetLink.style.transition = 'all 0.3s';
+        targetLink.style.background = '#D6A035'; 
+        targetLink.style.color = '#fff';
+        targetLink.style.padding = '2px 6px';
+        targetLink.style.borderRadius = '4px';
+        
+        setTimeout(() => { 
+          targetLink.style.background = oldBg; 
+          targetLink.style.color = oldColor;
+          targetLink.style.padding = '0';
+        }, 2000);
+      }
+    } 
+    else if (matchNodes.length > 0) {
       updateMatches(); 
     } else {
       const firstUnanswered = viewBody.querySelector('.quiz-unanswered');
@@ -2378,8 +2402,10 @@ async function openView(itemLight, navType = 'new'){
         }, 2200);
       }
     }
-  }, 300);
-} // <--- Fechamento correto da função
+  }, 350); // Aumentei 50ms para garantir que toda a tela terminou de carregar
+  // --- FIM DA MELHORIA ---
+} // <--- Fechamento correto da função// <--- Fechamento correto da função
+
 function closeView(){
   closeSheetEl(modalView);
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
