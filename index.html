@@ -182,7 +182,7 @@
   .modal-header h2{font-size:19px;}
   .modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px;}
   .modal-footer{
-    padding:14px 18px calc(18px + env(safe-area-inset-bottom));border-top:1px solid var(--steel);
+    padding: 10px 14px calc(7px + env(safe-area-inset-bottom));border-top:1px solid var(--steel);
     display:flex;gap:10px;flex-wrap:wrap;
   }
 
@@ -240,7 +240,7 @@
   .btn-primary{background:var(--accent);color:var(--accent-ink);}
   .btn-secondary{background:var(--panel-2);color:var(--chalk);border:1px solid var(--steel);}
   .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
-  .view-footer{flex-wrap:wrap;}
+  .view-footer{flex-wrap:wrap;background: #2f343d;}
 
   .spec-big{color:var(--info);font-weight:700;font-size:22px;margin:0;}
   .content-block{ overflow-y: auto; max-height: 38vh;scrollbar-width: thin; scrollbar-color: rgb(139 139 139) rgba(255, 255, 255, .05); white-space:pre-wrap;word-wrap:break-word;line-height:1.6;margin:0;}
@@ -434,19 +434,22 @@
     </div>
     
     <div class="modal-body" id="viewBody"></div>
-    <div class="modal-footer view-footer">
-      <button id="btnEdit" class="btn-secondary">Editar</button>
-      <button id="btnDuplicate" class="btn-secondary">Duplicar</button>
-      <button id="btnDelete" class="btn-danger">Excluir</button>
-    </div>
-    <div id="internalSearchWrap" style="display:none; z-index: 3; bottom: 0; position: sticky; gap:8px; padding:10px 16px; background:var(--panel-2); border-bottom:1px solid var(--smoke); align-items:center;">
-      <div style="flex:1; display:flex; align-items:center; position:relative; background:var(--bg); border-radius:6px;">
-        <input type="text" id="internalSearchInput" placeholder="Buscar nesta nota..." autocomplete="off" style="flex:1; padding:8px 36px 8px 12px; border:none; background:transparent; color:var(--text); font-size:15px; outline:none;">
-        <button type="button" id="btnClearInternalSearch" aria-label="Limpar busca interna" style="background:transparent; border:none; color:var(--smoke); width:36px; height:36px; font-size:16px; display:none; align-items:center; justify-content:center; position:absolute; right:0; cursor:pointer;">✕</button>
+
+    <div id="viewBottomBar" style="position: sticky; bottom: 0; z-index: 3;">
+      <div class="modal-footer view-footer">
+        <button id="btnEdit" class="btn-secondary">Editar</button>
+        <button id="btnDuplicate" class="btn-secondary">Duplicar</button>
+        <button id="btnDelete" class="btn-danger">Excluir</button>
       </div>
-      <span id="internalSearchCount" style="font-size:0.85em; opacity:0.7; white-space:nowrap; min-width:35px; text-align:center;">0/0</span>
-      <button type="button" id="btnInternalPrev" class="icon-btn" style="width:34px;height:34px;background:var(--bg);border-radius:6px; font-size:16px;">🔼</button>
-      <button type="button" id="btnInternalNext" class="icon-btn" style="width:34px;height:34px;background:var(--bg);border-radius:6px; font-size:16px;">🔽</button>
+      <div id="internalSearchWrap" style="display:none; gap:8px; padding:10px 16px; background:var(--panel-2); border-bottom:1px solid var(--smoke); align-items:center;">
+        <div style="flex:1; display:flex; align-items:center; position:relative; background:var(--bg); border-radius:6px;">
+          <input type="text" id="internalSearchInput" placeholder="Buscar nesta nota..." autocomplete="off" style="flex:1; padding:8px 36px 8px 12px; border:none; background:transparent; color:var(--text); font-size:15px; outline:none;">
+          <button type="button" id="btnClearInternalSearch" aria-label="Limpar busca interna" style="background:transparent; border:none; color:var(--smoke); width:36px; height:36px; font-size:16px; display:none; align-items:center; justify-content:center; position:absolute; right:0; cursor:pointer;">✕</button>
+        </div>
+        <span id="internalSearchCount" style="font-size:0.85em; opacity:0.7; white-space:nowrap; min-width:35px; text-align:center;">0/0</span>
+        <button type="button" id="btnInternalPrev" class="icon-btn" style="width:34px;height:34px;background:var(--bg);border-radius:6px; font-size:16px;">🔼</button>
+        <button type="button" id="btnInternalNext" class="icon-btn" style="width:34px;height:34px;background:var(--bg);border-radius:6px; font-size:16px;">🔽</button>
+      </div>
     </div>
   </div>
 </div>
