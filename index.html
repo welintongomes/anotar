@@ -492,7 +492,7 @@
         ⬆️ Importar backup
         <input type="file" accept="application/json" id="fieldImport" style="display:none">
       </label>
-      <p class="meta-line" id="statsText"></p>
+      
       <label style="flex-direction:row;align-items:center;justify-content:space-between;">
         Ordenar
         <select id="sortSelect">
@@ -779,9 +779,37 @@ const btnImportReplace = document.getElementById('btnImportReplace');
 let pendingCartridgeItems = null;
 
 /* ---------------- Gavetas (abrir/fechar) ---------------- */
+let openModalCount = 0;
+let savedScrollY = 0;
+
+function lockBodyScroll(){
+  if (openModalCount === 0){
+    savedScrollY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${savedScrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+  }
+  openModalCount++;
+}
+function unlockBodyScroll(){
+  openModalCount = Math.max(0, openModalCount - 1);
+  if (openModalCount === 0){
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, savedScrollY);
+  }
+}
+
 function openSheet(el){
+  const alreadyOpen = el.style.display === 'flex';
   el.style.display = 'flex';
   el.classList.remove('closing');
+  if (!alreadyOpen) lockBodyScroll();
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
 }
 function closeSheetEl(el){
@@ -791,6 +819,7 @@ function closeSheetEl(el){
   setTimeout(() => {
     el.style.display = 'none';
     el.classList.remove('closing');
+    unlockBodyScroll();
   }, 260);
 }
 
@@ -1488,34 +1517,40 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
   if (item.content){
     const contentWrap = document.createElement('div'); contentWrap.style.marginTop = '12px';
     const toolbar = document.createElement('div'); toolbar.style.display = 'flex'; toolbar.style.gap = '8px'; toolbar.style.marginBottom = '15px'; toolbar.style.justifyContent = 'flex-start'; toolbar.style.flexWrap = 'wrap';
-    const hasChecklist = /\[[ xX]?\]/.test(item.content);
-    if (hasChecklist) {
-      const btnBudget = document.createElement('button'); btnBudget.className = 'tag-pill'; btnBudget.style.border = 'none'; btnBudget.style.background = '#4FA65B'; btnBudget.style.color = '#fff'; btnBudget.style.fontWeight = 'bold'; btnBudget.innerHTML = '💸 Zap';
-      toolbar.appendChild(btnBudget);
-      btnBudget.addEventListener('click', async () => {
-        let total = 0; let desc = []; const lines = item.content.split('\n');
-        lines.forEach(line => {
-          const checkMatch = line.match(/^\[[xX]\](.*)/);
-          if (checkMatch) {
-            const textPart = stripFlowSuffix(checkMatch[1]).trim(); const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); let price = 0;
-            if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
-            if (price > 0) { total += price; desc.push(`✅ ${textPart}`); }
-          }
-        });
-        if (desc.length === 0) { showToast('Marque as caixinhas ([x]) com valor!'); return; }
-        const tituloMsg = item.vehicle || item.title;
-        let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        function hasPricedBudgetNow(){
+      return item.content.split('\n').some(line => {
+        const m = line.match(/^\[[xX]\](.*)/); if (!m) return false;
+        const visible = stripFlowSuffix(m[1]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
+        return nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
       });
     }
+    const btnBudget = document.createElement('button'); btnBudget.className = 'tag-pill'; btnBudget.style.border = 'none'; btnBudget.style.background = '#4FA65B'; btnBudget.style.color = '#fff'; btnBudget.style.fontWeight = 'bold'; btnBudget.innerHTML = '💸 Zap';
+    btnBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
+    toolbar.appendChild(btnBudget);
+    btnBudget.addEventListener('click', async () => {
+      let total = 0; let desc = []; const lines = item.content.split('\n');
+      lines.forEach(line => {
+        const checkMatch = line.match(/^\[[xX]\](.*)/);
+        if (checkMatch) {
+          const textPart = stripFlowSuffix(checkMatch[1]).trim(); const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); let price = 0;
+          if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
+          if (price > 0) { total += price; desc.push(`✅ ${textPart}`); }
+        }
+      });
+      if (desc.length === 0) { showToast('Marque as caixinhas ([x]) com valor!'); return; }
+      const tituloMsg = item.vehicle || item.title;
+      let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    });
     const btnCopyBudget = document.createElement('button'); btnCopyBudget.className = 'tag-pill'; btnCopyBudget.style.border = 'none'; btnCopyBudget.style.background = '#25D366'; btnCopyBudget.style.color = '#fff'; btnCopyBudget.style.fontWeight = 'bold'; btnCopyBudget.innerHTML = '📋 Zap';
+    btnCopyBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
     toolbar.appendChild(btnCopyBudget);
     btnCopyBudget.addEventListener('click', () => {
       let total = 0; let desc = []; const lines = item.content.split('\n');
       lines.forEach(line => {
         const checkMatch = line.match(/^\[[xX]\](.*)/);
         if (checkMatch) {
-          const textPart = checkMatch[1].trim(); const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); let price = 0;
+          const textPart = stripFlowSuffix(checkMatch[1]).trim(); const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); let price = 0;
           if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
           if (price > 0) { total += price; desc.push(`✅ ${textPart}`); }
         }
@@ -1709,7 +1744,12 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
             freshLines[currentIndex] = freshLines[currentIndex].replace(/^\[[ xX]?\]/, marker);
             item.content = freshLines.join('\n'); item.updatedAt = Date.now(); await dbPut(item);
             const ramItem = allItems.find(x => x.id === item.id); if (ramItem) { ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; }
-            btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none'; renderCards();
+                        
+            btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
+            btnBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
+            btnCopyBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
+            renderCards();
+
             if (cb.checked && nextStepRaw){
               const targetNorm = normalize(nextStepRaw);
               const foundIdx = lineSearchNorm.findIndex((t, idx) => idx !== currentIndex && t && t.includes(targetNorm));
@@ -1858,7 +1898,10 @@ async function processCartridgeItems(itemsList) {
   }
   return count;
 }
-
+function cancelImportChoice(){
+  closeSheetEl(modalImportChoice);
+  pendingCartridgeItems = null;
+}
 function setupEventListeners(){
   searchInput.addEventListener('input', debounce(() => {
     currentSearch = searchInput.value; btnClearSearch.style.display = currentSearch ? 'flex' : 'none'; renderCards();
@@ -2048,6 +2091,7 @@ function setupEventListeners(){
   });
 
   btnCloseExportCartridge.addEventListener('click', () => closeSheetEl(modalExportCartridge));
+  modalExportCartridge.addEventListener('click', (e) => { if (e.target === modalExportCartridge) closeSheetEl(modalExportCartridge); });
 
   // C. Ao selecionar o arquivo JSON, lê os dados e abre a gaveta de Importar
   fieldImport.addEventListener('change', async (e) => {
@@ -2069,9 +2113,12 @@ function setupEventListeners(){
     fieldImport.value = '';
   });
 
-  btnCloseImportChoice.addEventListener('click', () => {
-    closeSheetEl(modalImportChoice); pendingCartridgeItems = null;
-  });
+  btnCloseImportChoice.addEventListener('click', cancelImportChoice);
+modalImportChoice.addEventListener('click', (e) => {
+  if (e.target !== modalImportChoice) return;
+  if (!confirm('Cancelar a importação deste cartucho? Você vai precisar selecionar o arquivo de novo.')) return;
+  cancelImportChoice();
+});
 
   // D. Botão MESCLAR Cartucho
   btnImportMerge.addEventListener('click', async () => {
@@ -2109,7 +2156,7 @@ function setupEventListeners(){
     else if (sheetCategory.classList.contains('open')) closeSheetEl(sheetCategory);
     else if (sheetMore.classList.contains('open')) closeSheetEl(sheetMore);
     else if (modalExportCartridge.classList.contains('open')) closeSheetEl(modalExportCartridge);
-    else if (modalImportChoice.classList.contains('open')) closeSheetEl(modalImportChoice);
+    else if (modalImportChoice.classList.contains('open')) cancelImportChoice();
   });
 
   if (!SpeechRecognitionAPI){ document.querySelectorAll('.mic-btn').forEach(b => b.style.display = 'none'); }
