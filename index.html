@@ -1109,15 +1109,24 @@ function renderCategoryList(){
   });
 }
 
+function getSearchIndex(item){
+  if (!item._searchIndex || item._searchIndexAt !== item.updatedAt){
+    item._searchIndex = {
+      nTitle: normalize(item.title),
+      nVehicle: normalize(item.vehicle),
+      nSpec: normalize(item.spec),
+      nContent: normalize(item.content),
+      nTags: normalize((item.tags||[]).join(' ')),
+      nCategory: normalize(item.category)
+    };
+    item._searchIndexAt = item.updatedAt;
+  }
+  return item._searchIndex;
+}
+
 function scoreMatch(item, q) {
   let score = 0;
-  
-  const nTitle = normalize(item.title);
-  const nVehicle = normalize(item.vehicle);
-  const nSpec = normalize(item.spec);
-  const nContent = normalize(item.content);
-  const nTags = normalize((item.tags||[]).join(' '));
-  const nCategory = normalize(item.category);
+  const { nTitle, nVehicle, nSpec, nContent, nTags, nCategory } = getSearchIndex(item);
 
   // Junta todos os textos
   const allText = `${nTitle} ${nVehicle} ${nSpec} ${nContent} ${nTags} ${nCategory}`;
@@ -1427,10 +1436,11 @@ async function clearAllBudgetCheckboxes(){
       const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
       return hasPrice ? ('[ ]' + m[1]) : line;
     });
-    full.content = lines.join('\n');
+        full.content = lines.join('\n');
+    full.updatedAt = Date.now();
     await dbPut(full);
-    const ram = allItems.find(i => i.id === id);
-    if (ram) ram.content = full.content;
+        const ram = allItems.find(i => i.id === id);
+    if (ram){ ram.content = full.content; ram.updatedAt = full.updatedAt; }
   }
   return affectedIds;
 }
@@ -1855,7 +1865,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     toolbar.style.marginBottom = '15px'; toolbar.style.justifyContent = 'flex-start';
     toolbar.style.flexWrap = 'wrap';
 
-    const hasChecklist = item.content.includes('[');
+    const hasChecklist = /\[[ xX]?\]/.test(item.content);
     if (hasChecklist) {
       const btnBudget = document.createElement('button');
       btnBudget.className = 'tag-pill'; btnBudget.style.border = 'none';
@@ -2065,6 +2075,14 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
           }
           if (options.length){
             const questionLineIndex = i;
+
+            if (!quizShuffleCache[questionLineIndex]) {
+              const shuffled = options.map((opt, originalIndex) => { return { ...opt, originalIndex }; });
+              shuffled.sort(() => Math.random() - 0.5);
+              quizShuffleCache[questionLineIndex] = shuffled;
+            }
+            const shuffledOptions = quizShuffleCache[questionLineIndex];
+
             const qBlock = document.createElement('div');
             qBlock.style.background = 'var(--panel-2)'; qBlock.style.padding = '12px';
             qBlock.style.borderRadius = '8px'; qBlock.style.marginTop = '6px'; qBlock.style.marginBottom = '10px';
@@ -2079,7 +2097,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
             let quizSpeechText = "Pergunta: " + qMatch[1].trim() + ". ";
             
             if (readQuizOptions) {
-              options.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; });
+              shuffledOptions.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; });
             }
             
             qTitle.addEventListener('click', () => {
@@ -2098,13 +2116,6 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
               dueTag.textContent = '⏰ Hora de revisar — responda de novo';
               qBlock.appendChild(dueTag);
             }
-
-            if (!quizShuffleCache[questionLineIndex]) {
-              const shuffled = options.map((opt, originalIndex) => { return { ...opt, originalIndex }; });
-              shuffled.sort(() => Math.random() - 0.5);
-              quizShuffleCache[questionLineIndex] = shuffled; 
-            }
-            const shuffledOptions = quizShuffleCache[questionLineIndex];
 
             shuffledOptions.forEach((opt) => {
               const optBtn = document.createElement('button');
