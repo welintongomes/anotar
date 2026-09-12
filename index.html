@@ -371,9 +371,7 @@
   <button type="button" id="btnInsertArrow" class="tag-pill" style="border:none; cursor:pointer;">➡️ fluxo >></button>
   <button type="button" id="btnInsertDivider" class="tag-pill" style="border:none; cursor:pointer;">➖ separador</button>
   <button type="button" id="btnInsertQuiz" class="tag-pill" style="border:none; cursor:pointer;">🧠 quiz</button>
-  <!-- INÍCIO DA MELHORIA: BOTÃO DE LINK -->
   <button type="button" id="btnInsertLink" class="tag-pill" style="border:none; cursor:pointer; background:#4FA8D8; color:#fff;">🔗 link</button>
-  <!-- FIM DA MELHORIA -->
 </div>
   <div class="textarea-wrap">
     <textarea id="fieldContent" rows="5" placeholder="Explique com suas palavras: qual era o problema, o que resolveu, o passo a passo, onde fica a peça..."></textarea>
@@ -427,7 +425,6 @@
 <!-- Gaveta: visualizar detalhes -->
 <div id="modalView" class="modal-overlay">
   <div class="modal-box">
-    <!-- INÍCIO DA MELHORIA: CABEÇALHO COM BOTÃO VOLTAR -->
 <div class="modal-header" style="justify-content: space-between; display: flex; align-items: center; width: 100%;">
       <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
         <button class="icon-btn" id="btnBackView" style="display:none; font-size:22px; padding:0; margin:0;" aria-label="Voltar">⬅️</button>
@@ -435,7 +432,6 @@
       </div>
       <button class="icon-btn" id="btnCloseView" aria-label="Fechar">✕</button>
     </div>
-    <!-- FIM DA MELHORIA -->
     
     <div class="modal-body" id="viewBody"></div>
     <div class="modal-footer view-footer">
@@ -443,20 +439,15 @@
       <button id="btnDuplicate" class="btn-secondary">Duplicar</button>
       <button id="btnDelete" class="btn-danger">Excluir</button>
     </div>
-    <!-- INÍCIO: BARRA DE BUSCA INTERNA -->
     <div id="internalSearchWrap" style="display:none; z-index: 3; bottom: 0; position: sticky; gap:8px; padding:10px 16px; background:var(--panel-2); border-bottom:1px solid var(--smoke); align-items:center;">
-      
-      <!-- Contêiner do Input com o X dentro -->
       <div style="flex:1; display:flex; align-items:center; position:relative; background:var(--bg); border-radius:6px;">
         <input type="text" id="internalSearchInput" placeholder="Buscar nesta nota..." autocomplete="off" style="flex:1; padding:8px 36px 8px 12px; border:none; background:transparent; color:var(--text); font-size:15px; outline:none;">
         <button type="button" id="btnClearInternalSearch" aria-label="Limpar busca interna" style="background:transparent; border:none; color:var(--smoke); width:36px; height:36px; font-size:16px; display:none; align-items:center; justify-content:center; position:absolute; right:0; cursor:pointer;">✕</button>
       </div>
-
       <span id="internalSearchCount" style="font-size:0.85em; opacity:0.7; white-space:nowrap; min-width:35px; text-align:center;">0/0</span>
       <button type="button" id="btnInternalPrev" class="icon-btn" style="width:34px;height:34px;background:var(--bg);border-radius:6px; font-size:16px;">🔼</button>
       <button type="button" id="btnInternalNext" class="icon-btn" style="width:34px;height:34px;background:var(--bg);border-radius:6px; font-size:16px;">🔽</button>
     </div>
-    <!-- FIM: BARRA DE BUSCA INTERNA -->
   </div>
 </div>
 
@@ -478,30 +469,24 @@
       <p class="meta-line">faça backup regularmente para guardar o arquivo.</p>
       <hr>
       <p class="meta-line"></p>
-      <!-- INÍCIO: CONTROLE DE VELOCIDADE DA VOZ -->
       <label style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
         <span>🏃‍♂️ Velocidade da Voz: <strong id="speedLabel">Normal (0.95x)</strong></span>
         <input type="range" id="voiceSpeed" min="0.5" max="2.0" step="0.05" value="0.95">
       </label>
-      <!-- FIM: CONTROLE DE VELOCIDADE DA VOZ -->
-      <!-- INÍCIO: NOVO BOTÃO DE ÁUDIO -->
       <label class="checkbox-row" style="margin-bottom: 6px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
         <input type="checkbox" id="toggleGlobalAudio">
         🔊 Permitir Leitura de Voz (Tocar nos títulos)
       </label>
-      <!-- INÍCIO: CONTROLE DE LEITURA DO QUIZ -->
       <label class="checkbox-row" style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
         <input type="checkbox" id="toggleReadOptions">
         🗣️ Ler também as alternativas do quiz
       </label>
-      <!-- INÍCIO: CONTROLE DE AUTO-LEITURA -->
       <label class="checkbox-row" style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
         <input type="checkbox" id="toggleAutoReadNext">
         🔁 Ler a próxima pergunta automaticamente
       </label>
-      <!-- FIM: CONTROLE DE LEITURA DO QUIZ -->
       <hr>
-      <!-- FIM: NOVO BOTÃO DE ÁUDIO -->
+      <!-- CARTUCHOS: Botões continuam iguais na gaveta -->
       <button id="btnExport" class="btn-primary">⬇️ Exportar backup (.json)</button>
       <label class="btn-secondary" style="display:block;text-align:center;cursor:pointer;">
         ⬆️ Importar backup
@@ -519,6 +504,47 @@
     </div>
   </div>
 </div>
+
+<!-- ========================================== -->
+<!-- MODAIS DO SISTEMA DE CARTUCHOS (NOVOS) -->
+<!-- ========================================== -->
+<div id="modalExportCartridge" class="modal-overlay" style="display: none; z-index: 10000;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>💾 Criar Cartucho</h2>
+      <button class="icon-btn" id="btnCloseExportCartridge" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <label style="display:block; margin-bottom:8px; font-weight:bold;">Nome do Cartucho (opcional):</label>
+      <input type="text" id="cartridgeName" placeholder="Ex: revisao_motor" style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); margin-bottom:16px; font-size:15px; outline:none;">
+      <label style="display:block; margin-bottom:8px; font-weight:bold;">Selecione as categorias:</label>
+      <div id="cartridgeCategories" style="display:flex; flex-direction:column; gap:8px; background:var(--panel-2); padding:10px; border-radius:8px; max-height:220px; overflow-y:auto; margin-bottom:20px;">
+        <!-- Checkboxes virão via JS -->
+      </div>
+      <button type="button" class="btn-primary" id="btnConfirmExportCartridge" style="width:100%; font-size:16px;">📥 Exportar Cartucho</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalImportChoice" class="modal-overlay" style="display: none; z-index: 10000;">
+  <div class="modal-box" style="max-width: 320px;">
+    <div class="modal-header">
+      <h2>📦 Plugar Cartucho</h2>
+      <button class="icon-btn" id="btnCloseImportChoice" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body" style="text-align:center;">
+      <p style="margin-bottom:20px; font-size:14px; opacity:0.8;">Como você deseja plugar os dados deste cartucho?</p>
+      <button type="button" id="btnImportMerge" class="btn-primary" style="width:100%; margin-bottom:12px; background:#4FA65B; border:none;">
+        ➕ Apenas Mesclar<br><span style="font-size:11.5px; font-weight:normal;">(Adiciona aos existentes)</span>
+      </button>
+      <button type="button" id="btnImportReplace" class="btn-primary" style="width:100%; background:#D64545; border:none;">
+        ⚠️ Substituir Tudo<br><span style="font-size:11.5px; font-weight:normal;">(Apaga tudo e usa só o cartucho)</span>
+      </button>
+    </div>
+  </div>
+</div>
+<!-- ========================================== -->
+
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -584,7 +610,6 @@ function dbGetAll(){
     req.onerror = () => reject(req.error);
   }));
 }
-// Puxa apenas UM registro completo do banco (com a foto pesada)
 function dbGet(id){
   return dbPromise.then(db => new Promise((resolve,reject) => {
     const tx = db.transaction(STORE,'readonly');
@@ -593,8 +618,6 @@ function dbGet(id){
     req.onerror = () => reject(req.error);
   }));
 }
-
-// Puxa toda a lista, mas ESVAZIA as fotos para poupar a memória RAM
 function dbGetAllLight(){
   return dbPromise.then(db => new Promise((resolve,reject) => {
     const tx = db.transaction(STORE,'readonly');
@@ -606,8 +629,8 @@ function dbGetAllLight(){
       if(cursor) {
         const item = cursor.value;
         if (item.photo) {
-          item.hasPhoto = true; // Avisa que tem foto
-          delete item.photo;    // Apaga o arquivo gigante da memória
+          item.hasPhoto = true; 
+          delete item.photo;    
         }
         if (item.audio) {
           item.hasAudio = true;
@@ -622,15 +645,12 @@ function dbGetAllLight(){
     req.onerror = () => reject(req.error);
   }));
 }
+
 /* ---------------- Estado ---------------- */
 const PRESET_CATEGORIES = ['Ideias', 'Senhas/Acessos', 'Referências', 'Procedimento', 'Lembrete', 'Nota geral'];
 const CATEGORY_COLORS = {
-  'Ideias':'#D6A035',
-  'Senhas/Acessos':'#D64545',
-  'Referências':'#8B6FD1',
-  'Procedimento':'#4FA65B',
-  'Lembrete':'#4FA8D8',
-  'Nota geral':'#9AA0AB'
+  'Ideias':'#D6A035', 'Senhas/Acessos':'#D64545', 'Referências':'#8B6FD1',
+  'Procedimento':'#4FA65B', 'Lembrete':'#4FA8D8', 'Nota geral':'#9AA0AB'
 };
 
 let allItems = [];
@@ -642,16 +662,14 @@ let currentPhotoBlob = null;
 let photoPreviewURL = null;
 let viewPhotoURL = null;
 let viewingItem = null;
-let currentRenderLimit = 20; // O número mágico: desenha 20 itens por vez
-let lastRenderState = ''; // Ajuda o sistema a saber quando você fez uma nova busca
+let currentRenderLimit = 20; 
+let lastRenderState = ''; 
 let currentAudioBlob = null;
-let formAudioURL = null; // Para tocar o áudio antes de salvar
-let viewAudioURL = null; // Para tocar o áudio na visualização
+let formAudioURL = null; 
+let viewAudioURL = null; 
 let isAudioEnabled = localStorage.getItem('memorias_audio_global') !== 'false';
-// Se não tiver salvo, o padrão é true (ler as alternativas junto)
 let readQuizOptions = localStorage.getItem('memorias_read_options') !== 'false';
 let autoReadNextQuiz = localStorage.getItem('memorias_auto_read_next') !== 'false';
-// Puxa a velocidade salva ou usa 0.95 como padrão
 let currentVoiceSpeed = parseFloat(localStorage.getItem('memorias_voice_speed')) || 0.95;
 
 /* ---------------- Elementos ---------------- */
@@ -672,7 +690,7 @@ const btnCopyGlobalBudget = document.getElementById('btnCopyGlobalBudget');
 let mediaRecorder = null;
 let recordedChunks = [];
 let recordingInterval = null;
-const btnRemoveAudio = document.getElementById('btnRemoveAudio'); // declarar de verdade
+const btnRemoveAudio = document.getElementById('btnRemoveAudio'); 
 
 const navSearch = document.getElementById('navSearch');
 const navCategory = document.getElementById('navCategory');
@@ -706,7 +724,7 @@ const btnInsertDivider = document.getElementById('btnInsertDivider');
 const btnInsertQuiz = document.getElementById('btnInsertQuiz');
 const btnInsertLink = document.getElementById('btnInsertLink');
 const btnBackView = document.getElementById('btnBackView');
-let viewHistory = []; // <--- ESSA É A MEMÓRIA DA SUA "VIAGEM" ENTRE NOTAS
+let viewHistory = []; 
 const quizDueText = document.getElementById('quizDueText');
 const fieldTags = document.getElementById('fieldTags');
 const fieldPhoto = document.getElementById('fieldPhoto');
@@ -747,7 +765,20 @@ const btnClearBudget = document.getElementById('btnClearBudget');
 
 const toast = document.getElementById('toast');
 
-/* ---------------- Gavetas (abrir/fechar com animação) ---------------- */
+// --- VARIÁVEIS DOS CARTUCHOS ---
+const modalExportCartridge = document.getElementById('modalExportCartridge');
+const btnCloseExportCartridge = document.getElementById('btnCloseExportCartridge');
+const cartridgeName = document.getElementById('cartridgeName');
+const cartridgeCategories = document.getElementById('cartridgeCategories');
+const btnConfirmExportCartridge = document.getElementById('btnConfirmExportCartridge');
+
+const modalImportChoice = document.getElementById('modalImportChoice');
+const btnCloseImportChoice = document.getElementById('btnCloseImportChoice');
+const btnImportMerge = document.getElementById('btnImportMerge');
+const btnImportReplace = document.getElementById('btnImportReplace');
+let pendingCartridgeItems = null;
+
+/* ---------------- Gavetas (abrir/fechar) ---------------- */
 function openSheet(el){
   el.style.display = 'flex';
   el.classList.remove('closing');
@@ -766,12 +797,10 @@ function closeSheetEl(el){
 /* ---------------- Utilidades ---------------- */
 async function toggleRecording(){
   if (mediaRecorder && mediaRecorder.state === 'recording'){
-    mediaRecorder.stop();
-    return;
+    mediaRecorder.stop(); return;
   }
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
-    showToast('Seu navegador não permite gravar pelo microfone.');
-    return;
+    showToast('Seu navegador não permite gravar pelo microfone.'); return;
   }
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -783,20 +812,17 @@ async function toggleRecording(){
     mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
 
     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-
     mediaRecorder.onstop = () => {
-      stream.getTracks().forEach(t => t.stop()); // libera o microfone de verdade
+      stream.getTracks().forEach(t => t.stop());
       clearInterval(recordingInterval);
       recordingTimer.style.display = 'none';
       btnRecordAudio.textContent = '🎙️ Gravar áudio pelo microfone';
       btnRecordAudio.style.background = '';
       if (recordedChunks.length){
         currentAudioBlob = new Blob(recordedChunks, { type: mimeType || 'audio/webm' });
-        fieldAudio.value = '';
-        updateAudioPreview();
+        fieldAudio.value = ''; updateAudioPreview();
       }
     };
-
     mediaRecorder.start();
     let seconds = 0;
     recordingTimer.style.display = 'inline';
@@ -810,16 +836,11 @@ async function toggleRecording(){
       recordingTimer.textContent = `● ${m}:${s}`;
     }, 1000);
   } catch(err){
-    showToast('Não foi possível acessar o microfone. Verifique a permissão do navegador.');
+    showToast('Não foi possível acessar o microfone.');
   }
 }
-function normalize(s){
-  return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-}
-function debounce(fn, delay){
-  let t;
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
-}
+function normalize(s){ return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+function debounce(fn, delay){ let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); }; }
 function insertAtCursor(textarea, textToInsert){
   const start = textarea.selectionStart ?? textarea.value.length;
   const end = textarea.selectionEnd ?? textarea.value.length;
@@ -832,8 +853,7 @@ function insertAtCursor(textarea, textToInsert){
   textarea.dispatchEvent(new Event('input'));
 }
 function showToast(msg){
-  toast.textContent = msg;
-  toast.classList.add('show');
+  toast.textContent = msg; toast.classList.add('show');
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => toast.classList.remove('show'), 2200);
 }
@@ -855,102 +875,64 @@ function categoryColor(cat){
   if (CATEGORY_COLORS[cat]) return CATEGORY_COLORS[cat];
   let hash = 0;
   for (let i=0;i<cat.length;i++){ hash = cat.charCodeAt(i) + ((hash<<5)-hash); }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 55%, 58%)`;
+  const hue = Math.abs(hash) % 360; return `hsl(${hue}, 55%, 58%)`;
 }
 function blobToDataURL(blob){
   return new Promise((resolve,reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
+    reader.onerror = reject; reader.readAsDataURL(blob);
   });
 }
-function dataURLToBlob(dataUrl){
-  return fetch(dataUrl).then(res => res.blob());
-}
-// Adicione junto com suas funções de utilidade
+function dataURLToBlob(dataUrl){ return fetch(dataUrl).then(res => res.blob()); }
 function compressImage(file, maxWidth = 1200, quality = 0.8) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
+    const reader = new FileReader(); reader.readAsDataURL(file);
     reader.onload = event => {
-      const img = new Image();
-      img.src = event.target.result;
+      const img = new Image(); img.src = event.target.result;
       img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob((blob) => {
-          resolve(blob);
-        }, 'image/jpeg', quality);
+        let width = img.width; let height = img.height;
+        if (width > maxWidth) { height = Math.round((height * maxWidth) / width); width = maxWidth; }
+        const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', quality);
       };
-      img.onerror = () => reject(new Error('Não foi possível carregar a imagem.'));
+      img.onerror = () => reject(new Error('Erro ao carregar imagem.'));
     };
     reader.onerror = error => reject(error);
   });
 }
-// Previne que códigos estranhos quebrem o design (Segurança)
 function escapeHTML(str) {
   return (str || '').toString().replace(/[&<>'"]/g, tag => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-  }[tag])).replace(/\r?\n/g, '<br>'); // <--- Essa é a mágica do pulo de linha!
+  }[tag])).replace(/\r?\n/g, '<br>'); 
 }
 function stripFlowSuffix(text){
   const idx = (text||'').indexOf('>>');
   return idx === -1 ? text : text.slice(0, idx);
 }
 function sm2Update(prev, correct){
-  const quality = correct ? 5 : 1; // Adaptação binária: acertou = 5 (fácil), errou = 1 (falhou)
+  const quality = correct ? 5 : 1; 
   let ef = (prev && typeof prev.ef === 'number') ? prev.ef : 2.5;
   let reps = (prev && typeof prev.reps === 'number') ? prev.reps : 0;
   let interval = (prev && typeof prev.interval === 'number') ? prev.interval : 0;
-
-  if (quality < 3){
-    reps = 0;
-    interval = 1;
-  } else {
+  if (quality < 3){ reps = 0; interval = 1; } 
+  else {
     if (reps === 0) interval = 1;
     else if (reps === 1) interval = 6;
     else interval = Math.round(interval * ef);
     reps += 1;
   }
-
   ef = ef + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
   if (ef < 1.3) ef = 1.3;
-
-  return {
-    chosen: null, // preenchido por quem chama, depois de saber a opção clicada
-    ef, reps, interval,
-    dueAt: Date.now() + interval * 24 * 60 * 60 * 1000,
-    answeredAt: Date.now()
-  };
+  return { chosen: null, ef, reps, interval, dueAt: Date.now() + interval * 24 * 60 * 60 * 1000, answeredAt: Date.now() };
 }
-
-// Se a nota já tinha resposta salva no formato antigo (só um número), converte pro novo formato
 function normalizeQuizRecord(raw){
   if (raw === undefined || raw === null) return null;
-  if (typeof raw === 'number'){
-    return { chosen: raw, ef: 2.5, reps: 0, interval: 0, dueAt: 0 }; // dueAt 0 = já considerado "vencido", o relógio do SM-2 começa a contar a partir de agora
-  }
+  if (typeof raw === 'number'){ return { chosen: raw, ef: 2.5, reps: 0, interval: 0, dueAt: 0 }; }
   return raw;
 }
-
-function isRecordDue(record){
-  return !!record && Date.now() >= record.dueAt;
-}
-
+function isRecordDue(record){ return !!record && Date.now() >= record.dueAt; }
 function getGlobalQuizStatus(){
   let due = 0, novas = 0;
   allItems.forEach(it => {
@@ -964,77 +946,44 @@ function getGlobalQuizStatus(){
   });
   return { due, novas };
 }
-// Faz o marcador entender que "oleo" e "óleo" são a mesma coisa
 function createFuzzyRegex(word) {
   return word
-    .replace(/[aáàãâä]/gi, '[aáàãâä]')
-    .replace(/[eéèêë]/gi, '[eéèêë]')
-    .replace(/[iíìîï]/gi, '[iíìîï]')
-    .replace(/[oóòõôö]/gi, '[oóòõôö]')
-    .replace(/[uúùûü]/gi, '[uúùûü]')
-    .replace(/[cç]/gi, '[cç]');
+    .replace(/[aáàãâä]/gi, '[aáàãâä]').replace(/[eéèêë]/gi, '[eéèêë]')
+    .replace(/[iíìîï]/gi, '[iíìîï]').replace(/[oóòõôö]/gi, '[oóòõôö]')
+    .replace(/[uúùûü]/gi, '[uúùûü]').replace(/[cç]/gi, '[cç]');
 }
-
-// Procura as palavras da pesquisa e envolve na tag <mark>
-// Procura as palavras da pesquisa e envolve na tag <mark>
 function highlightHTML(text, query) {
   if (!text) return '';
   let safeText = escapeHTML(text);
   const q = (query || '').trim();
   if (!q) return safeText;
-
-  // As mesmas palavras que queremos ignorar soltas
   const stopWords = ['o','a','os','as','um','uma','de','do','da','dos','das','em','no','na','nos','nas','para','por','com','e','ou'];
-
   const rawWords = q.split(' ').filter(Boolean);
   let phrasesToHighlight = [];
-
-  // 1. O Pintor tenta colorir a frase exata primeiro (ex: "bomba de combustivel")
-  if (rawWords.length > 1) {
-    phrasesToHighlight.push(rawWords.join(' ')); 
-  }
-
-  // 2. O Pintor adiciona as palavras soltas, MAS filtra e joga fora os "de", "para", etc.
+  if (rawWords.length > 1) { phrasesToHighlight.push(rawWords.join(' ')); }
   const meaningfulWords = rawWords.filter(w => !stopWords.includes(normalize(w)));
   phrasesToHighlight = phrasesToHighlight.concat(meaningfulWords);
-
-  // Se você pesquisar SÓ por "de", ele não tem o que pintar e devolve o texto normal
   if (phrasesToHighlight.length === 0) return safeText;
-
-  // 3. Prepara a tinta (tira repetições e pinta a frase maior antes das palavras menores)
   const wordsToRegex = [...new Set(phrasesToHighlight)]
-    .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) // Escapa símbolos estranhos
-    .map(w => createFuzzyRegex(w)) // Aceita falta de acentos
-    .sort((a, b) => b.length - a.length); // Pinta a frase inteira antes das palavras curtas
-
+    .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) 
+    .map(w => createFuzzyRegex(w)) 
+    .sort((a, b) => b.length - a.length); 
   if (wordsToRegex.length > 0) {
     const regex = new RegExp(`(${wordsToRegex.join('|')})`, 'gi');
     safeText = safeText.replace(regex, '<mark>$1</mark>');
   }
-  
   return safeText;
 }
-/* ---------------- Reconhecimento de voz ---------------- */
 const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-
 function startVoiceInput(targetEl, button, appendMode){
-  if (!SpeechRecognitionAPI){
-    showToast('Busca por voz não é compatível com este navegador.');
-    return;
-  }
+  if (!SpeechRecognitionAPI){ showToast('Busca por voz não é compatível.'); return; }
   const rec = new SpeechRecognitionAPI();
-  rec.lang = 'pt-BR';
-  rec.interimResults = false;
-  rec.maxAlternatives = 1;
+  rec.lang = 'pt-BR'; rec.interimResults = false; rec.maxAlternatives = 1;
   button.classList.add('listening');
   rec.onresult = (e) => {
     const text = e.results[0][0].transcript;
-    if (appendMode){
-      targetEl.value = (targetEl.value ? targetEl.value.trim() + ' ' : '') + text;
-    } else {
-      targetEl.value = text;
-      targetEl.dispatchEvent(new Event('input'));
-    }
+    if (appendMode){ targetEl.value = (targetEl.value ? targetEl.value.trim() + ' ' : '') + text; } 
+    else { targetEl.value = text; targetEl.dispatchEvent(new Event('input')); }
   };
   rec.onerror = () => { button.classList.remove('listening'); };
   rec.onend = () => { button.classList.remove('listening'); };
@@ -1049,17 +998,14 @@ function loadAndRender(){
     renderCards();
   });
 }
-
 function updateNavIndicators(){
   if (currentSearch.trim()){
     navSearch.classList.add('active');
-    const label = navSearch.querySelector('.nav-label');
-    label.textContent = currentSearch.length > 10 ? currentSearch.slice(0,9) + '…' : currentSearch;
+    navSearch.querySelector('.nav-label').textContent = currentSearch.length > 10 ? currentSearch.slice(0,9) + '…' : currentSearch;
   } else {
     navSearch.classList.remove('active');
     navSearch.querySelector('.nav-label').textContent = 'Buscar';
   }
-
   if (currentCategory !== 'Todos' && currentCategory !== 'Favoritos'){
     navCategory.classList.add('active');
     navCategoryLabel.textContent = currentCategory.length > 10 ? currentCategory.slice(0,9) + '…' : currentCategory;
@@ -1067,92 +1013,56 @@ function updateNavIndicators(){
     navCategory.classList.remove('active');
     navCategoryLabel.textContent = 'Categorias';
   }
-
   if (currentCategory === 'Favoritos') navFav.classList.add('active');
   else navFav.classList.remove('active');
 }
-
 function renderCategoryList(){
-  const cats = [];
-  const seen = new Set();
-  PRESET_CATEGORIES.forEach(c => {
-    if (allItems.some(i => i.category === c) && !seen.has(c)){ cats.push(c); seen.add(c); }
-  });
+  const cats = []; const seen = new Set();
+  PRESET_CATEGORIES.forEach(c => { if (allItems.some(i => i.category === c) && !seen.has(c)){ cats.push(c); seen.add(c); } });
   const customCats = [...new Set(allItems.map(i => i.category))]
-    .filter(c => !seen.has(c))
-    .sort((a,b) => a.localeCompare(b,'pt-BR'));
+    .filter(c => !seen.has(c)).sort((a,b) => a.localeCompare(b,'pt-BR'));
   customCats.forEach(c => { cats.push(c); seen.add(c); });
-
   const allCats = ['Todos', ...cats];
   if (currentCategory !== 'Favoritos' && !allCats.includes(currentCategory)) currentCategory = 'Todos';
 
   categoryList.innerHTML = '';
   allCats.forEach(c => {
     const row = document.createElement('button');
-    row.type = 'button';
-    row.className = 'category-row' + (c === currentCategory ? ' selected' : '');
+    row.type = 'button'; row.className = 'category-row' + (c === currentCategory ? ' selected' : '');
     const dot = document.createElement('span'); dot.className = 'cat-dot';
     dot.style.background = c === 'Todos' ? 'var(--smoke)' : categoryColor(c);
     row.appendChild(dot);
-    const label = document.createElement('span'); label.textContent = c;
-    row.appendChild(label);
+    const label = document.createElement('span'); label.textContent = c; row.appendChild(label);
     const count = document.createElement('span'); count.className = 'cat-count';
     count.textContent = c === 'Todos' ? allItems.length : allItems.filter(i => i.category === c).length;
     row.appendChild(count);
     row.addEventListener('click', () => {
-      currentCategory = c;
-      renderCategoryList();
-      renderCards();
-      closeSheetEl(sheetCategory);
+      currentCategory = c; renderCategoryList(); renderCards(); closeSheetEl(sheetCategory);
     });
     categoryList.appendChild(row);
   });
 }
-
 function getSearchIndex(item){
   if (!item._searchIndex || item._searchIndexAt !== item.updatedAt){
     item._searchIndex = {
-      nTitle: normalize(item.title),
-      nVehicle: normalize(item.vehicle),
-      nSpec: normalize(item.spec),
-      nContent: normalize(item.content),
-      nTags: normalize((item.tags||[]).join(' ')),
-      nCategory: normalize(item.category)
+      nTitle: normalize(item.title), nVehicle: normalize(item.vehicle),
+      nSpec: normalize(item.spec), nContent: normalize(item.content),
+      nTags: normalize((item.tags||[]).join(' ')), nCategory: normalize(item.category)
     };
     item._searchIndexAt = item.updatedAt;
   }
   return item._searchIndex;
 }
-
 function scoreMatch(item, q) {
   let score = 0;
   const { nTitle, nVehicle, nSpec, nContent, nTags, nCategory } = getSearchIndex(item);
-
-  // Junta todos os textos
   const allText = `${nTitle} ${nVehicle} ${nSpec} ${nContent} ${nTags} ${nCategory}`;
-
-  // Nossas palavras ignoradas
   const stopWords = ['o','a','os','as','um','uma','de','do','da','dos','das','em','no','na','nos','nas','para','por','com','e','ou'];
-
-  // rawWords: A frase EXATAMENTE como você digitou, cortada em pedaços (ex: ['bomba', 'de', 'agua'])
   const rawWords = q.split(' ').filter(w => w.trim() !== '');
-  
-  // words: As palavras que REALMENTE importam (ex: ['bomba', 'agua'])
   const words = rawWords.filter(w => !stopWords.includes(w));
+  if (words.length === 0) return 0; 
 
-  // CORREÇÃO 1: Se você digitou APENAS "de" ou "para", a pesquisa não serve pra nada. Zera tudo.
-  if (words.length === 0) {
-    return 0; 
-  }
-
-  // Filtro AND: Todas as palavras PRINCIPAIS têm que existir na nota
-  for (const word of words) {
-    if (!allText.includes(word)) {
-      return 0; 
-    }
-  }
-
-  // Pontuação padrão para as palavras principais soltas
+  for (const word of words) { if (!allText.includes(word)) return 0; }
   for (const word of words) {
     if (nTitle.includes(word)) score += 5;
     if (nTags.includes(word)) score += 4;
@@ -1161,34 +1071,25 @@ function scoreMatch(item, q) {
     if (nCategory.includes(word)) score += 2;
     if (nContent.includes(word)) score += 1;
   }
-
-  // CORREÇÃO 2: A MÁGICA DA FRASE EXATA
-  // Usa o "rawWords" (que tem o "de" no meio) para não quebrar a frase perfeita!
   if (rawWords.length > 1) {
     const exactPhrase = rawWords.join(' ');
     if (allText.includes(exactPhrase)) {
-      score += 15; // Ganha os 15 pontos de Bigrama
-      if (nTitle.includes(exactPhrase)) score += 10; // Se a frase exata tá no título, é ouro puro!
+      score += 15; 
+      if (nTitle.includes(exactPhrase)) score += 10; 
     }
   }
-
   return score;
 }
 function getFilteredSorted(){
   let items = allItems.slice();
-  if (currentCategory === 'Favoritos'){
-    items = items.filter(i => i.favorite);
-  } else if (currentCategory !== 'Todos'){
-    items = items.filter(i => i.category === currentCategory);
-  }
+  if (currentCategory === 'Favoritos'){ items = items.filter(i => i.favorite); } 
+  else if (currentCategory !== 'Todos'){ items = items.filter(i => i.category === currentCategory); }
   const q = normalize(currentSearch.trim());
   if (q){
-    items = items
-      .map(i => ({ item:i, score: scoreMatch(i,q) }))
+    return items.map(i => ({ item:i, score: scoreMatch(i,q) }))
       .filter(x => x.score > 0)
       .sort((a,b) => (b.score - a.score) || ((b.item.favorite?1:0) - (a.item.favorite?1:0)) || (b.item.updatedAt - a.item.updatedAt))
       .map(x => x.item);
-    return items;
   }
   items.sort((a,b) => {
     const favA = a.favorite ? 1 : 0, favB = b.favorite ? 1 : 0;
@@ -1199,122 +1100,57 @@ function getFilteredSorted(){
   });
   return items;
 }
-
 function buildFooterText(item){
   const rel = timeAgo(item.updatedAt);
-  if (item.useCount && item.useCount > 0){
-    return `Atualizado ${rel}, consultado ${item.useCount}x`;
-  }
+  if (item.useCount && item.useCount > 0){ return `Atualizado ${rel}, consultado ${item.useCount}x`; }
   return `Atualizado ${rel}`;
 }
-
 function buildCard(item){
-  const card = document.createElement('article');
-  card.className = 'card';
-  card.tabIndex = 0;
-  card.setAttribute('role','button');
-  card.setAttribute('aria-label', 'Ver detalhes de ' + item.title);
+  const card = document.createElement('article'); card.className = 'card'; card.tabIndex = 0;
+  card.setAttribute('role','button'); card.setAttribute('aria-label', 'Ver detalhes de ' + item.title);
   card.style.setProperty('--tag-color', categoryColor(item.category));
   card.addEventListener('click', () => openView(item));
-  card.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openView(item); }
-  });
+  card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openView(item); } });
 
   const top = document.createElement('div'); top.className = 'card-top';
   const badge = document.createElement('span'); badge.className = 'badge';
   badge.textContent = item.category; badge.style.color = categoryColor(item.category);
   top.appendChild(badge);
 
-  if (item.photo || item.hasPhoto){
-    const flag = document.createElement('span'); flag.className = 'photo-flag'; flag.textContent = '📷';
-    top.appendChild(flag);
-  }
-  if (item.audio || item.hasAudio){
-  const audioFlag = document.createElement('span'); audioFlag.className = 'photo-flag'; audioFlag.textContent = '🎵';
-  top.appendChild(audioFlag);
-}
-  if (item.content && /^\?\?\s*.+/m.test(item.content)){
-    const quizFlag = document.createElement('span'); quizFlag.className = 'photo-flag'; quizFlag.textContent = '🧠';
-    top.appendChild(quizFlag);
-  }
-  const star = document.createElement('button');
-  star.type = 'button';
+  if (item.photo || item.hasPhoto){ const flag = document.createElement('span'); flag.className = 'photo-flag'; flag.textContent = '📷'; top.appendChild(flag); }
+  if (item.audio || item.hasAudio){ const flag = document.createElement('span'); flag.className = 'photo-flag'; flag.textContent = '🎵'; top.appendChild(flag); }
+  if (item.content && /^\?\?\s*.+/m.test(item.content)){ const quizFlag = document.createElement('span'); quizFlag.className = 'photo-flag'; quizFlag.textContent = '🧠'; top.appendChild(quizFlag); }
+  
+  const star = document.createElement('button'); star.type = 'button';
   star.className = 'star-btn' + (item.favorite ? ' active' : '');
   star.textContent = item.favorite ? '★' : '☆';
-  star.setAttribute('aria-label', item.favorite ? 'Remover dos favoritos' : 'Marcar como favorito');
   star.addEventListener('click', (e) => { e.stopPropagation(); toggleFavorite(item); });
-  top.appendChild(star);
-  card.appendChild(top);
+  top.appendChild(star); card.appendChild(top);
 
-  // --- MÁGICA DO HIGHLIGHT AQUI ---
-  // Se tem pesquisa, pinta o texto. Se não tem, só exibe normal.
   const renderText = (text) => currentSearch ? highlightHTML(text, currentSearch) : escapeHTML(text);
 
   const title = document.createElement('h3'); title.className = 'card-title'; 
-  title.innerHTML = renderText(item.title);
-  card.appendChild(title);
+  title.innerHTML = renderText(item.title); card.appendChild(title);
 
-  if (item.vehicle){
-    const v = document.createElement('p'); v.className = 'card-vehicle'; 
-    v.innerHTML = renderText(item.vehicle);
-    card.appendChild(v);
-  }
-  if (item.spec){
-    const s = document.createElement('p'); s.className = 'card-spec'; 
-    s.innerHTML = renderText(item.spec);
-    card.appendChild(s);
-  }
-  if (item.content){
-    const c = document.createElement('p'); c.className = 'card-snippet'; 
-    c.innerHTML = renderText(item.content);
-    card.appendChild(c);
-  }
-if (item.tags && item.tags.length){
-    const tw = document.createElement('div'); 
-    tw.className = 'tags-wrap';
-    
-    // --- CORREÇÃO DO "CARD ESTICADO" ---
-    tw.style.display = 'flex';
-    tw.style.flexWrap = 'nowrap';
-    tw.style.overflowX = 'auto';
-    
-    // Estas duas linhas são a trava! Elas proíbem a div de esticar o card
-    tw.style.maxWidth = '100%'; 
-    tw.style.width = '100%'; 
-    
-    tw.style.paddingBottom = '4px';
-    tw.style.WebkitOverflowScrolling = 'touch';
-    // --- FIM DA CORREÇÃO ---
-
+  if (item.vehicle){ const v = document.createElement('p'); v.className = 'card-vehicle'; v.innerHTML = renderText(item.vehicle); card.appendChild(v); }
+  if (item.spec){ const s = document.createElement('p'); s.className = 'card-spec'; s.innerHTML = renderText(item.spec); card.appendChild(s); }
+  if (item.content){ const c = document.createElement('p'); c.className = 'card-snippet'; c.innerHTML = renderText(item.content); card.appendChild(c); }
+  if (item.tags && item.tags.length){
+    const tw = document.createElement('div'); tw.className = 'tags-wrap';
+    tw.style.display = 'flex'; tw.style.flexWrap = 'nowrap'; tw.style.overflowX = 'auto';
+    tw.style.maxWidth = '100%'; tw.style.width = '100%'; tw.style.paddingBottom = '4px'; tw.style.WebkitOverflowScrolling = 'touch';
     item.tags.forEach(t => {
-      const pill = document.createElement('span'); 
-      pill.className = 'tag-pill'; 
-      pill.innerHTML = '#' + renderText(t);
-      
-      // Impede a tag de esmagar, mantendo o tamanho original
-      pill.style.flexShrink = '0';
-      pill.style.whiteSpace = 'nowrap';
-      
-      // Clique da tag
-      pill.style.cursor = 'pointer'; 
+      const pill = document.createElement('span'); pill.className = 'tag-pill'; pill.innerHTML = '#' + renderText(t);
+      pill.style.flexShrink = '0'; pill.style.whiteSpace = 'nowrap'; pill.style.cursor = 'pointer'; 
       pill.addEventListener('click', (e) => {
-        e.stopPropagation(); 
-        searchInput.value = t;
-        currentSearch = t;
-        btnClearSearch.style.display = 'flex';
-        renderCards(); 
-        window.scrollTo({ top: 0, behavior: 'smooth' }); 
-        showToast(`Buscando pela tag: ${t}`);
+        e.stopPropagation(); searchInput.value = t; currentSearch = t;
+        btnClearSearch.style.display = 'flex'; renderCards(); 
+        window.scrollTo({ top: 0, behavior: 'smooth' }); showToast(`Buscando tag: ${t}`);
       });
-      
       tw.appendChild(pill);
     });
     card.appendChild(tw);
-
-    // HACK DE SEGURANÇA: Se o card estiver usando flexbox/grid no seu CSS, 
-    // isso aqui garante de uma vez por todas que ele não vai estourar a tela.
-    card.style.minWidth = '0';
-    card.style.maxWidth = '100%';
+    card.style.minWidth = '0'; card.style.maxWidth = '100%';
   }
   const footer = document.createElement('p'); footer.className = 'card-footer'; footer.textContent = buildFooterText(item);
   card.appendChild(footer);
@@ -1322,16 +1158,9 @@ if (item.tags && item.tags.length){
 }
 function renderCards(){
   updateNavIndicators();
-  
-  // 1. O CÉREBRO DO LIMITE: Verifica se você digitou uma busca nova, mudou a aba ou a ordenação.
-  // Se mudou, ele reseta o limite de volta para 20.
   const currentState = `${currentCategory}|${currentSearch}|${currentSort}`;
-  if (lastRenderState !== currentState) {
-    currentRenderLimit = 20;
-    lastRenderState = currentState;
-  }
+  if (lastRenderState !== currentState) { currentRenderLimit = 20; lastRenderState = currentState; }
 
-  // Busca os dados filtrados na memória RAM (processo instantâneo)
   const items = getFilteredSorted();
   resultCount.textContent = items.length === 1 ? '1 registro' : `${items.length} registros`;
   searchResultCount.textContent = items.length;
@@ -1339,89 +1168,54 @@ function renderCards(){
   
   if (items.length === 0){
     emptyState.style.display = 'block';
-    emptyState.textContent = allItems.length === 0
-      ? 'Nada guardado ainda. Toque no + e registre a primeira coisa que você não pode esquecer.'
-      : 'Nada encontrado com esses termos. Tente outra palavra ou categoria.';
+    emptyState.textContent = allItems.length === 0 ? 'Nada guardado ainda. Toque no + e registre algo.' : 'Nada encontrado.';
     return;
   }
   emptyState.style.display = 'none';
 
-  // 2. A PROTEÇÃO: Corta a lista gigante e pega só a quantidade permitida (ex: os 20 primeiros)
   const itemsToRender = items.slice(0, currentRenderLimit);
-  
-  // Desenha no HTML apenas o que foi cortado, poupando a placa de vídeo do celular
   itemsToRender.forEach(item => cardsContainer.appendChild(buildCard(item)));
 
-  // 3. O BOTÃO "MOSTRAR MAIS": Se a lista original for maior que o limite, cria o botão no final
   if (items.length > currentRenderLimit) {
-    const btnMoreContainer = document.createElement('div');
-    // Faz o botão ocupar a largura toda caso você abra no computador
-    btnMoreContainer.style.gridColumn = '1 / -1'; 
-    
-    const btnMore = document.createElement('button');
-    btnMore.className = 'btn-secondary';
-    btnMore.style.width = '100%';
-    btnMore.style.padding = '14px';
-    btnMore.style.marginTop = '10px';
+    const btnMoreContainer = document.createElement('div'); btnMoreContainer.style.gridColumn = '1 / -1'; 
+    const btnMore = document.createElement('button'); btnMore.className = 'btn-secondary';
+    btnMore.style.width = '100%'; btnMore.style.padding = '14px'; btnMore.style.marginTop = '10px';
     btnMore.textContent = `Mostrar mais (restam ${items.length - currentRenderLimit})`;
-    
-    // Quando clicar, aumenta a cota em 20 e desenha de novo
-    btnMore.addEventListener('click', () => {
-      currentRenderLimit += 20; 
-      renderCards(); 
-    });
-    
-    btnMoreContainer.appendChild(btnMore);
-    cardsContainer.appendChild(btnMoreContainer);
+    btnMore.addEventListener('click', () => { currentRenderLimit += 20; renderCards(); });
+    btnMoreContainer.appendChild(btnMore); cardsContainer.appendChild(btnMoreContainer);
   }
 }
 async function toggleFavorite(itemLight){
   itemLight.favorite = !itemLight.favorite;
-  //itemLight.updatedAt = Date.now();
-  
-  // CRÍTICO: Puxa o original com a foto antes de salvar, para não perdê-la!
   const fullItem = await dbGet(itemLight.id);
   fullItem.favorite = itemLight.favorite;
-  //fullItem.updatedAt = itemLight.updatedAt;
-  
   await dbPut(fullItem);
-  renderCategoryList(); 
-  renderCards();
+  renderCategoryList(); renderCards();
 }
 function getGlobalBudgetData(){
-  const list = [];
-  let total = 0;
+  const list = []; let total = 0;
   allItems.forEach(item => {
     if (!item.content) return;
     item.content.split('\n').forEach(line => {
-      const m = line.match(/^\[[xX]\](.*)/);
-      if (!m) return;
+      const m = line.match(/^\[[xX]\](.*)/); if (!m) return;
       const textPart = stripFlowSuffix(m[1]).trim();
-      const nums = textPart.match(/\d+(?:[.,]\d+)?/g);
-      if (!nums || !nums.length) return;
+      const nums = textPart.match(/\d+(?:[.,]\d+)?/g); if (!nums || !nums.length) return;
       const price = parseFloat(nums[nums.length - 1].replace(',', '.'));
-      if (price > 0){
-        list.push({ itemId: item.id, itemTitle: item.title, text: textPart, price });
-        total += price;
-      }
+      if (price > 0){ list.push({ itemId: item.id, itemTitle: item.title, text: textPart, price }); total += price; }
     });
   });
   return { list, total };
 }
-
 function refreshBudgetSummary(){
   const { list, total } = getGlobalBudgetData();
   if (!list.length){
     budgetSummaryText.textContent = 'Nenhum item de orçamento marcado no momento.';
-    btnSendBudget.disabled = true;
-    btnClearBudget.disabled = true;
+    btnSendBudget.disabled = true; btnClearBudget.disabled = true;
   } else {
     budgetSummaryText.textContent = `Orçamento atual: ${list.length} item(ns) — R$ ${total.toFixed(2).replace('.', ',')}`;
-    btnSendBudget.disabled = false;
-    btnClearBudget.disabled = false;
+    btnSendBudget.disabled = false; btnClearBudget.disabled = false;
   }
 }
-
 async function clearAllBudgetCheckboxes(){
   const { list } = getGlobalBudgetData();
   const affectedIds = [...new Set(list.map(i => i.itemId))];
@@ -1429,22 +1223,21 @@ async function clearAllBudgetCheckboxes(){
     const full = await dbGet(id);
     if (!full || !full.content) continue;
     const lines = full.content.split('\n').map(line => {
-      const m = line.match(/^\[[xX]\](.*)/);
-      if (!m) return line;
+      const m = line.match(/^\[[xX]\](.*)/); if (!m) return line;
       const visible = stripFlowSuffix(m[1]);
       const nums = visible.match(/\d+(?:[.,]\d+)?/g);
       const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
       return hasPrice ? ('[ ]' + m[1]) : line;
     });
-        full.content = lines.join('\n');
-    full.updatedAt = Date.now();
+    full.content = lines.join('\n'); full.updatedAt = Date.now();
     await dbPut(full);
-        const ram = allItems.find(i => i.id === id);
+    const ram = allItems.find(i => i.id === id);
     if (ram){ ram.content = full.content; ram.updatedAt = full.updatedAt; }
   }
   return affectedIds;
 }
-/* ---------------- Formulário (adicionar/editar/duplicar) ---------------- */
+
+/* ---------------- Formulário ---------------- */
 function populateCategorySelect(selected){
   const categoriesSet = new Set(PRESET_CATEGORIES);
   allItems.forEach(i => categoriesSet.add(i.category));
@@ -1456,59 +1249,28 @@ function populateCategorySelect(selected){
   const customOpt = document.createElement('option'); customOpt.value = '__custom__'; customOpt.textContent = '+ Nova categoria...';
   fieldCategory.appendChild(customOpt);
 
-  if (selected && categoriesSet.has(selected)){
-    fieldCategory.value = selected;
-    fieldCategoryCustom.style.display = 'none';
-    fieldCategoryCustom.value = '';
-  } else {
-    fieldCategory.value = PRESET_CATEGORIES[0];
-    fieldCategoryCustom.style.display = 'none';
-    fieldCategoryCustom.value = '';
-  }
+  if (selected && categoriesSet.has(selected)){ fieldCategory.value = selected; fieldCategoryCustom.style.display = 'none'; fieldCategoryCustom.value = ''; } 
+  else { fieldCategory.value = PRESET_CATEGORIES[0]; fieldCategoryCustom.style.display = 'none'; fieldCategoryCustom.value = ''; }
 }
-
 function updatePhotoPreview(){
   if (photoPreviewURL){ URL.revokeObjectURL(photoPreviewURL); photoPreviewURL = null; }
-  if (currentPhotoBlob){
-    photoPreviewURL = URL.createObjectURL(currentPhotoBlob);
-    photoPreview.src = photoPreviewURL;
-    photoPreviewWrap.style.display = 'flex';
-  } else {
-    photoPreviewWrap.style.display = 'none';
-    photoPreview.removeAttribute('src');
-  }
+  if (currentPhotoBlob){ photoPreviewURL = URL.createObjectURL(currentPhotoBlob); photoPreview.src = photoPreviewURL; photoPreviewWrap.style.display = 'flex'; } 
+  else { photoPreviewWrap.style.display = 'none'; photoPreview.removeAttribute('src'); }
 }
 function updateAudioPreview(){
   if (formAudioURL){ URL.revokeObjectURL(formAudioURL); formAudioURL = null; }
-  if (currentAudioBlob){
-    formAudioURL = URL.createObjectURL(currentAudioBlob);
-    audioPreview.src = formAudioURL;
-    audioPreviewWrap.style.display = 'flex';
-  } else {
-    audioPreviewWrap.style.display = 'none';
-    audioPreview.removeAttribute('src');
-  }
+  if (currentAudioBlob){ formAudioURL = URL.createObjectURL(currentAudioBlob); audioPreview.src = formAudioURL; audioPreviewWrap.style.display = 'flex'; } 
+  else { audioPreviewWrap.style.display = 'none'; audioPreview.removeAttribute('src'); }
 }
 function closeForm(){
   if (mediaRecorder && mediaRecorder.state === 'recording'){ mediaRecorder.stop(); }
-  closeSheetEl(modalForm);
-  editingId = null;
-  
-  // Limpa foto
-  currentPhotoBlob = null;
-  fieldPhoto.value = '';
-  updatePhotoPreview();
-  
-  // Limpa áudio
-  currentAudioBlob = null;
-  fieldAudio.value = '';
-  updateAudioPreview();
+  closeSheetEl(modalForm); editingId = null;
+  currentPhotoBlob = null; fieldPhoto.value = ''; updatePhotoPreview();
+  currentAudioBlob = null; fieldAudio.value = ''; updateAudioPreview();
 }
-
 function openForm(item, mode){
   formTitle.textContent = mode === 'edit' ? 'Editar registro' : 'Novo registro';
   editingId = mode === 'edit' ? item.id : null;
-
   fieldTitle.value = item ? (mode === 'duplicate' ? item.title + ' (cópia)' : item.title) : '';
   populateCategorySelect(item ? item.category : null);
   fieldVehicle.value = item ? (item.vehicle || '') : '';
@@ -1518,218 +1280,120 @@ function openForm(item, mode){
   fieldFavorite.checked = item ? !!item.favorite : false;
   
   currentPhotoBlob = item && item.photo ? item.photo : null;
-  fieldPhoto.value = '';
-  updatePhotoPreview();
+  fieldPhoto.value = ''; updatePhotoPreview();
 
   currentAudioBlob = item && item.audio ? item.audio : null;
-  fieldAudio.value = '';
-  updateAudioPreview();
+  fieldAudio.value = ''; updateAudioPreview();
 
-  openSheet(modalForm);
-  setTimeout(() => fieldTitle.focus(), 260);
+  openSheet(modalForm); setTimeout(() => fieldTitle.focus(), 260);
 }
 function handleSave(){
-  if (mediaRecorder && mediaRecorder.state === 'recording'){
-    showToast('Pare a gravação antes de salvar.');
-    return;
-  }
+  if (mediaRecorder && mediaRecorder.state === 'recording'){ showToast('Pare a gravação antes de salvar.'); return; }
   let title = fieldTitle.value.trim();
-  const content = fieldContent.value.trim(); // Puxa o conteúdo logo no início
+  const content = fieldContent.value.trim(); 
 
-  // 1. Validação: Precisa de pelo menos UMA das três coisas (Título, Foto ou Anotação)
   if (!title && !currentPhotoBlob && !currentAudioBlob && !content) { 
-  showToast('Dê um título, foto, áudio ou digite uma anotação.'); 
-  fieldContent.focus(); 
-  return; 
-}
-
-if (!title) {
-  if (content) {
-    title = content.length > 30 ? content.substring(0, 30) + '...' : content;
-  } else if (currentPhotoBlob) {
-    const dataLocal = new Date().toLocaleString('pt-BR').substring(0, 10);
-    title = `Foto rápida - ${dataLocal}`; 
-  } else if (currentAudioBlob) {
-    const dataLocal = new Date().toLocaleString('pt-BR').substring(0, 10);
-    title = `Áudio rápido - ${dataLocal}`;
+    showToast('Dê um título, foto, áudio ou digite uma anotação.'); fieldContent.focus(); return; 
   }
-}
-
-  // 3. Categoria
+  if (!title) {
+    if (content) title = content.length > 30 ? content.substring(0, 30) + '...' : content;
+    else if (currentPhotoBlob) title = `Foto rápida - ${new Date().toLocaleString('pt-BR').substring(0, 10)}`; 
+    else if (currentAudioBlob) title = `Áudio rápido - ${new Date().toLocaleString('pt-BR').substring(0, 10)}`;
+  }
   let category = fieldCategory.value;
   if (category === '__custom__'){
     category = fieldCategoryCustom.value.trim();
-    if (!category){ 
-      showToast('Digite o nome da nova categoria.'); 
-      fieldCategoryCustom.focus(); 
-      return; 
-    }
+    if (!category){ showToast('Digite o nome da nova categoria.'); fieldCategoryCustom.focus(); return; }
   }
 
-  // 4. Monta os dados
   const tags = fieldTags.value.split(',').map(t => t.trim()).filter(Boolean);
   const now = Date.now();
-  
   const item = {
-    title: title,
-    category: category,
-    vehicle: fieldVehicle.value.trim(),
-    spec: fieldSpec.value.trim(),
-    content: content, // Salva o conteúdo aqui
-    tags: tags,
-    favorite: fieldFavorite.checked,
-    photo: currentPhotoBlob || null,
-    audio: currentAudioBlob || null,
-    updatedAt: now
+    title: title, category: category, vehicle: fieldVehicle.value.trim(), spec: fieldSpec.value.trim(),
+    content: content, tags: tags, favorite: fieldFavorite.checked, photo: currentPhotoBlob || null, audio: currentAudioBlob || null, updatedAt: now
   };
 
-  // 5. Salva no banco (IndexedDB)
   const savePromise = (async () => {
-        if (editingId){
+    if (editingId){
       const existing = allItems.find(i => i.id === editingId);
-      item.id = editingId;
-      item.createdAt = existing ? existing.createdAt : now;
-      item.useCount = existing ? (existing.useCount||0) : 0;
-      item.quizAnswers = existing ? (existing.quizAnswers || {}) : {};
+      item.id = editingId; item.createdAt = existing ? existing.createdAt : now;
+      item.useCount = existing ? (existing.useCount||0) : 0; item.quizAnswers = existing ? (existing.quizAnswers || {}) : {};
       await dbPut(item);
     } else {
-      item.createdAt = now;
-      item.useCount = 0;
-      item.quizAnswers = {};
+      item.createdAt = now; item.useCount = 0; item.quizAnswers = {};
       await dbAdd(item);
     }
   })();
-
-  savePromise.then(() => {
-    closeForm();
-    showToast('Salvo com sucesso!');
-    loadAndRender();
-  });
+  savePromise.then(() => { closeForm(); showToast('Salvo com sucesso!'); loadAndRender(); });
 }
+
 /* ---------------- Visualizar detalhes ---------------- */
-// 1. Mudamos aqui: adicionamos o "restoreLinkIndex = null"
 async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
   const item = await dbGet(itemLight.id); 
-  
-  viewingItem = item;
-  viewTitle.textContent = item.title;
-  viewBody.innerHTML = '';
+  viewingItem = item; viewTitle.textContent = item.title; viewBody.innerHTML = '';
 
-  // --- INÍCIO DA MELHORIA: VARIÁVEIS DA BUSCA INTERNA ---
-  let internalQuery = '';
-  let matchNodes = [];
-  let matchIndex = -1;
-
-  internalSearchWrap.style.display = 'flex';
-  internalSearchInput.value = '';
+  let internalQuery = ''; let matchNodes = []; let matchIndex = -1;
+  internalSearchWrap.style.display = 'flex'; internalSearchInput.value = '';
   
-  if (navType === 'new') {
-    viewHistory = []; 
-  }
-  
+  if (navType === 'new') { viewHistory = []; }
   btnBackView.style.display = viewHistory.length > 0 ? 'flex' : 'none';
-  
   btnBackView.onclick = () => {
-    if (viewHistory.length > 0) {
-      const prev = viewHistory.pop(); 
-      // Magia Nova: Devolve passando o ÍNDICE do link que você clicou!
-      openView({ id: prev.id }, 'back', prev.linkIndex);
-    }
+    if (viewHistory.length > 0) { const prev = viewHistory.pop(); openView({ id: prev.id }, 'back', prev.linkIndex); }
   };
-  
-  // --- FIM DA MELHORIA ---
 
-  // Função que ilumina a palavra da vez (Laranja) e as outras (Amarelo)
   function updateMatches() {
     matchNodes.forEach((node, idx) => {
       if (idx === matchIndex) {
-        node.style.background = '#D6A035'; 
-        node.style.color = '#fff';
+        node.style.background = '#D6A035'; node.style.color = '#fff';
         node.style.boxShadow = '0 0 0 3px rgba(214, 160, 53, 0.4)';
         node.scrollIntoView({ behavior: 'smooth', block: 'center' });
       } else {
-        node.style.background = 'yellow';
-        node.style.color = '#000';
-        node.style.boxShadow = 'none';
+        node.style.background = 'yellow'; node.style.color = '#000'; node.style.boxShadow = 'none';
       }
     });
     internalSearchCount.textContent = matchNodes.length > 0 ? `${matchIndex + 1}/${matchNodes.length}` : '0/0';
   }
-  // --- FIM DA MELHORIA ---
 
-  // --- LEITURA INTELIGENTE E SEPARADA ---
-  let readingWakeLock = null;
-  let activeSpeechTarget = null;
-  let restorePreviousVisuals = null; 
-  let isSpeechPaused = false; // <--- NOSSA PRÓPRIA MEMÓRIA DE PAUSA PARA EVITAR O BUG DO CHROME
+  let readingWakeLock = null; let activeSpeechTarget = null;
+  let restorePreviousVisuals = null; let isSpeechPaused = false; 
 
   function getCleanTextToRead() {
     let text = item.title + ". ";
     if (item.vehicle) text += item.vehicle + ". ";
     if (item.spec) text += item.spec + ". ";
     if (item.content) {
-      text += item.content
-        .replace(/\[[xX ]?\]/g, '') 
-        .replace(/^\?\?\s*/gm, 'Pergunta: ') 
-        .replace(/^\(\s*[xX]?\s*\)/gm, 'Alternativa: ') 
-        .replace(/>>/g, ' próximo passo ') 
-        .replace(/[-=#*]{3,}/g, ''); 
+      text += item.content.replace(/\[[xX ]?\]/g, '').replace(/^\?\?\s*/gm, 'Pergunta: ').replace(/^\(\s*[xX]?\s*\)/gm, 'Alternativa: ').replace(/>>/g, ' próximo passo ').replace(/[-=#*]{3,}/g, ''); 
     }
     return text;
   }
-
   async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz) {
-    if (!isAudioEnabled) { showToast('Áudio desativado. Ligue em "Mais opções".'); return; }
-    if (!('speechSynthesis' in window)) { showToast('Navegador sem suporte a voz.'); return; }
+    if (!isAudioEnabled) { showToast('Áudio desativado.'); return; }
+    if (!('speechSynthesis' in window)) { showToast('Sem suporte a voz.'); return; }
     const synth = window.speechSynthesis;
-
     if (activeSpeechTarget === targetId) {
-      // USAMOS NOSSA PRÓPRIA VARIÁVEL isSpeechPaused PARA GARANTIR QUE FUNCIONE!
-      if (synth.speaking && !isSpeechPaused) { 
-        synth.pause(); 
-        isSpeechPaused = true; 
-        element.style.opacity = '0.5'; 
-        showToast('Leitura pausada.'); 
-        return; 
-      }
-      if (synth.speaking && isSpeechPaused) { 
-        synth.resume(); 
-        isSpeechPaused = false; 
-        element.style.opacity = '1'; 
-        showToast('Leitura retomada.'); 
-        return; 
-      }
+      if (synth.speaking && !isSpeechPaused) { synth.pause(); isSpeechPaused = true; element.style.opacity = '0.5'; showToast('Pausada.'); return; }
+      if (synth.speaking && isSpeechPaused) { synth.resume(); isSpeechPaused = false; element.style.opacity = '1'; showToast('Retomada.'); return; }
     }
-
-    synth.cancel();
-    isSpeechPaused = false; // Reseta a pausa ao clicar em uma nova frase
+    synth.cancel(); isSpeechPaused = false; 
     if (restorePreviousVisuals) restorePreviousVisuals();
-    
-    activeSpeechTarget = targetId;
-    element.style.opacity = '1';
+    activeSpeechTarget = targetId; element.style.opacity = '1';
     restorePreviousVisuals = () => { element.innerHTML = originalHtml; element.style.opacity = '1'; };
 
     const utterance = new SpeechSynthesisUtterance(textToRead);
-    utterance.lang = 'pt-BR';
-    utterance.rate = currentVoiceSpeed;
-
+    utterance.lang = 'pt-BR'; utterance.rate = currentVoiceSpeed;
     utterance.onstart = async () => {
-      if (isQuiz) { element.innerHTML = originalHtml.replace('❓', '🔊'); } 
-      else { element.innerHTML = '🔊 ' + originalHtml; }
+      if (isQuiz) { element.innerHTML = originalHtml.replace('❓', '🔊'); } else { element.innerHTML = '🔊 ' + originalHtml; }
       if ('wakeLock' in navigator && !window.currentWakeLock && !readingWakeLock) {
         try { readingWakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
       }
     };
-
     utterance.onend = () => {
       if (restorePreviousVisuals) restorePreviousVisuals();
-      restorePreviousVisuals = null;
-      if (activeSpeechTarget === targetId) activeSpeechTarget = null;
-      isSpeechPaused = false; // Reseta no final
+      restorePreviousVisuals = null; if (activeSpeechTarget === targetId) activeSpeechTarget = null;
+      isSpeechPaused = false; 
       if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
     };
-    utterance.onerror = utterance.onend;
-    synth.speak(utterance);
+    utterance.onerror = utterance.onend; synth.speak(utterance);
   }
   
   viewTitle.style.cursor = 'pointer';
@@ -1739,11 +1403,9 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
 
-  // --- TELA VIVA (WAKE LOCK) ---
   const topRow = document.createElement('div');
   topRow.style.display = 'flex'; topRow.style.justifyContent = 'space-between';
   topRow.style.alignItems = 'center'; topRow.style.marginBottom = '3px';
-
   const badge = document.createElement('span'); badge.className = 'badge';
   badge.textContent = item.category; badge.style.color = categoryColor(item.category);
   topRow.appendChild(badge);
@@ -1751,19 +1413,15 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
   if ('wakeLock' in navigator) {
     const btnWake = document.createElement('button');
     btnWake.className = 'tag-pill'; btnWake.style.border = 'none';
-    btnWake.style.background = 'var(--panel-2)'; btnWake.style.color = '#fff';
-    btnWake.innerHTML = '💡 Tela Viva';
-    
+    btnWake.style.background = 'var(--panel-2)'; btnWake.style.color = '#fff'; btnWake.innerHTML = '💡 Tela Viva';
     btnWake.addEventListener('click', async () => {
       try {
         if (window.currentWakeLock) {
           await window.currentWakeLock.release(); window.currentWakeLock = null;
-          btnWake.innerHTML = '💡 Tela Viva'; btnWake.style.background = 'var(--panel-2)';
-          showToast('Tela normal (pode apagar).');
+          btnWake.innerHTML = '💡 Tela Viva'; btnWake.style.background = 'var(--panel-2)'; showToast('Tela normal.');
         } else {
           window.currentWakeLock = await navigator.wakeLock.request('screen');
-          btnWake.innerHTML = '☀️ Tela Travada'; btnWake.style.background = '#D6A035';
-          showToast('A tela não vai apagar!');
+          btnWake.innerHTML = '☀️ Tela Travada'; btnWake.style.background = '#D6A035'; showToast('A tela não vai apagar!');
           window.currentWakeLock.addEventListener('release', () => {
             window.currentWakeLock = null; btnWake.innerHTML = '💡 Tela Viva'; btnWake.style.background = 'var(--panel-2)';
           });
@@ -1774,75 +1432,48 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
   }
   viewBody.appendChild(topRow);
 
-  // --- TAGS DENTRO DA NOTA ---
   if (item.tags && item.tags.length) {
     const tagsContainer = document.createElement('div');
     tagsContainer.style.display = 'flex'; tagsContainer.style.gap = '6px'; 
     tagsContainer.style.flexWrap = 'nowrap'; tagsContainer.style.marginTop = '3px';
     tagsContainer.style.overflowX = 'auto'; tagsContainer.style.scrollbarWidth = 'none';
-    
     item.tags.forEach(t => {
-      const pill = document.createElement('span'); pill.className = 'tag-pill';
-      pill.textContent = '#' + t; pill.style.cursor = 'pointer'; pill.style.background = 'var(--panel-2)';
+      const pill = document.createElement('span'); pill.className = 'tag-pill'; pill.textContent = '#' + t; 
+      pill.style.cursor = 'pointer'; pill.style.background = 'var(--panel-2)';
       pill.addEventListener('click', () => {
-        closeView(); searchInput.value = t; currentSearch = t;
-        btnClearSearch.style.display = 'flex'; renderCards();
-        window.scrollTo({ top: 0, behavior: 'smooth' }); showToast(`Buscando pela tag: ${t}`);
+        closeView(); searchInput.value = t; currentSearch = t; btnClearSearch.style.display = 'flex'; renderCards();
+        window.scrollTo({ top: 0, behavior: 'smooth' }); showToast(`Buscando tag: ${t}`);
       });
       tagsContainer.appendChild(pill);
     });
     viewBody.appendChild(tagsContainer);
   }
 
-  // --- INÍCIO DA MELHORIA: TEXTO COM PRIORIDADE INTERNA E LINKS WIKIPEDIA ---
   const renderText = (text) => {
     const query = internalQuery || currentSearch;
-    // 1. Pinta o amarelo da pesquisa se tiver (escapando o HTML)
     let processed = query ? highlightHTML(text, query) : escapeHTML(text);
-    
-    // 2. A MÁGICA: Converte [[Nome da Nota]] num link de verdade!
     processed = processed.replace(/\[\[(.*?)\]\]/g, (match, innerText) => {
-      // Limpa tags <mark> pro caso de você ter pesquisado uma palavra que faz parte do nome do link
       const cleanTitle = innerText.replace(/<[^>]*>?/gm, ''); 
       return `<span class="internal-link" data-target="${cleanTitle}" style="color:#4FA8D8; text-decoration:underline; font-weight:bold; cursor:pointer;">🔗 ${innerText}</span>`;
     });
-    
     return processed;
   };
-  // --- FIM DA MELHORIA ---
 
-  let pVehicle = null;
-  let pSpec = null;
-
-  if (item.vehicle){
-    pVehicle = document.createElement('p'); pVehicle.className = 'meta-line'; 
-    pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
-    viewBody.appendChild(pVehicle);
-  }
-  if (item.spec){
-    pSpec = document.createElement('p'); pSpec.className = 'spec-big'; 
-    pSpec.innerHTML = renderText(item.spec);
-    viewBody.appendChild(pSpec);
-  }
+  let pVehicle = null; let pSpec = null;
+  if (item.vehicle){ pVehicle = document.createElement('p'); pVehicle.className = 'meta-line'; pVehicle.innerHTML = '📌 ' + renderText(item.vehicle); viewBody.appendChild(pVehicle); }
+  if (item.spec){ pSpec = document.createElement('p'); pSpec.className = 'spec-big'; pSpec.innerHTML = renderText(item.spec); viewBody.appendChild(pSpec); }
 
   if (item.photo){
     const img = document.createElement('img'); img.className = 'view-photo';
     viewPhotoURL = URL.createObjectURL(item.photo); img.src = viewPhotoURL;
     img.style.cursor = 'zoom-in'; viewBody.appendChild(img);
-
     img.addEventListener('click', () => {
       const overlay = document.createElement('div');
-      overlay.style.position = 'fixed'; overlay.style.top = '0'; overlay.style.left = '0';
-      overlay.style.width = '100vw'; overlay.style.height = '100vh';
+      overlay.style.position = 'fixed'; overlay.style.top = '0'; overlay.style.left = '0'; overlay.style.width = '100vw'; overlay.style.height = '100vh';
       overlay.style.backgroundColor = 'rgba(0,0,0,0.95)'; overlay.style.zIndex = '99999';
-      overlay.style.display = 'flex'; overlay.style.justifyContent = 'center';
-      overlay.style.alignItems = 'center'; overlay.style.cursor = 'zoom-out';
-      
+      overlay.style.display = 'flex'; overlay.style.justifyContent = 'center'; overlay.style.alignItems = 'center'; overlay.style.cursor = 'zoom-out';
       const bigImg = document.createElement('img');
-      bigImg.src = viewPhotoURL; bigImg.style.maxWidth = '95%'; bigImg.style.maxHeight = '95%';
-      bigImg.style.objectFit = 'contain'; bigImg.style.transform = 'scale(0.8)';
-      bigImg.style.transition = 'transform 0.2s ease-out'; 
-      
+      bigImg.src = viewPhotoURL; bigImg.style.maxWidth = '95%'; bigImg.style.maxHeight = '95%'; bigImg.style.objectFit = 'contain'; bigImg.style.transform = 'scale(0.8)'; bigImg.style.transition = 'transform 0.2s ease-out'; 
       overlay.appendChild(bigImg); document.body.appendChild(overlay);
       requestAnimationFrame(() => { bigImg.style.transform = 'scale(1)'; });
       overlay.addEventListener('click', () => overlay.remove());
@@ -1850,109 +1481,71 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
   }
   
   if (item.audio){
-    const aud = document.createElement('audio'); aud.controls = true;
-    aud.style.width = '100%'; aud.style.marginTop = '8px';
-    viewAudioURL = URL.createObjectURL(item.audio); aud.src = viewAudioURL;
-    viewBody.appendChild(aud);
+    const aud = document.createElement('audio'); aud.controls = true; aud.style.width = '100%'; aud.style.marginTop = '8px';
+    viewAudioURL = URL.createObjectURL(item.audio); aud.src = viewAudioURL; viewBody.appendChild(aud);
   }
 
   if (item.content){
-    const contentWrap = document.createElement('div');
-    contentWrap.style.marginTop = '12px';
-
-    const toolbar = document.createElement('div');
-    toolbar.style.display = 'flex'; toolbar.style.gap = '8px';
-    toolbar.style.marginBottom = '15px'; toolbar.style.justifyContent = 'flex-start';
-    toolbar.style.flexWrap = 'wrap';
-
+    const contentWrap = document.createElement('div'); contentWrap.style.marginTop = '12px';
+    const toolbar = document.createElement('div'); toolbar.style.display = 'flex'; toolbar.style.gap = '8px'; toolbar.style.marginBottom = '15px'; toolbar.style.justifyContent = 'flex-start'; toolbar.style.flexWrap = 'wrap';
     const hasChecklist = /\[[ xX]?\]/.test(item.content);
     if (hasChecklist) {
-      const btnBudget = document.createElement('button');
-      btnBudget.className = 'tag-pill'; btnBudget.style.border = 'none';
-      btnBudget.style.background = '#4FA65B'; btnBudget.style.color = '#fff';
-      btnBudget.style.fontWeight = 'bold'; btnBudget.innerHTML = '💸 Zap';
+      const btnBudget = document.createElement('button'); btnBudget.className = 'tag-pill'; btnBudget.style.border = 'none'; btnBudget.style.background = '#4FA65B'; btnBudget.style.color = '#fff'; btnBudget.style.fontWeight = 'bold'; btnBudget.innerHTML = '💸 Zap';
       toolbar.appendChild(btnBudget);
-
       btnBudget.addEventListener('click', async () => {
         let total = 0; let desc = []; const lines = item.content.split('\n');
         lines.forEach(line => {
           const checkMatch = line.match(/^\[[xX]\](.*)/);
           if (checkMatch) {
-            const textPart = stripFlowSuffix(checkMatch[1]).trim();
-            const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g);
-            let price = 0;
+            const textPart = stripFlowSuffix(checkMatch[1]).trim(); const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); let price = 0;
             if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
             if (price > 0) { total += price; desc.push(`✅ ${textPart}`); }
           }
         });
-        if (desc.length === 0) { showToast('Marque as caixinhas ([x]) que têm valor em dinheiro!'); return; }
+        if (desc.length === 0) { showToast('Marque as caixinhas ([x]) com valor!'); return; }
         const tituloMsg = item.vehicle || item.title;
         let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
       });
     }
-    
-    const btnCopyBudget = document.createElement('button');
-    btnCopyBudget.className = 'tag-pill'; btnCopyBudget.style.border = 'none';
-    btnCopyBudget.style.background = '#25D366'; btnCopyBudget.style.color = '#fff';
-    btnCopyBudget.style.fontWeight = 'bold'; btnCopyBudget.innerHTML = '📋 Zap';
+    const btnCopyBudget = document.createElement('button'); btnCopyBudget.className = 'tag-pill'; btnCopyBudget.style.border = 'none'; btnCopyBudget.style.background = '#25D366'; btnCopyBudget.style.color = '#fff'; btnCopyBudget.style.fontWeight = 'bold'; btnCopyBudget.innerHTML = '📋 Zap';
     toolbar.appendChild(btnCopyBudget);
-
     btnCopyBudget.addEventListener('click', () => {
       let total = 0; let desc = []; const lines = item.content.split('\n');
       lines.forEach(line => {
         const checkMatch = line.match(/^\[[xX]\](.*)/);
         if (checkMatch) {
-          const textPart = checkMatch[1].trim();
-          const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g);
-          let price = 0;
+          const textPart = checkMatch[1].trim(); const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); let price = 0;
           if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
           if (price > 0) { total += price; desc.push(`✅ ${textPart}`); }
         }
       });
-      
-      if (desc.length === 0) { showToast('Marque as caixinhas ([x]) que têm valor em dinheiro!'); return; }
-      const tituloMsg = item.vehicle || item.title;
-      let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
-      navigator.clipboard.writeText(msg).then(() => showToast('Orçamento copiado com sucesso!'));
+      if (desc.length === 0) { showToast('Marque as caixinhas ([x]) com valor!'); return; }
+      let msg = `*Orçamento - Serviços*\nRef: ${item.vehicle || item.title}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+      navigator.clipboard.writeText(msg).then(() => showToast('Copiado!'));
     });
 
     function hasPlainChecklistNow(){
       return item.content.split('\n').some(line => {
-        const m = line.match(/^\[[xX]\](.*)/);
-        if (!m) return false;
-        const visible = stripFlowSuffix(m[1]);
-        const nums = visible.match(/\d+(?:[.,]\d+)?/g);
+        const m = line.match(/^\[[xX]\](.*)/); if (!m) return false;
+        const visible = stripFlowSuffix(m[1]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
         const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
         return !hasPrice;
       });
     }
-    const btnResetPlain = document.createElement('button');
-    btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none';
-    btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff';
-    btnResetPlain.innerHTML = '🔄 Resetar checklist';
-    btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
+    const btnResetPlain = document.createElement('button'); btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none'; btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff'; btnResetPlain.innerHTML = '🔄 Resetar checklist'; btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
     toolbar.appendChild(btnResetPlain);
-
     btnResetPlain.addEventListener('click', async () => {
-      const ok = confirm('Desmarcar os itens do checklist sem valor nesta nota?');
-      if (!ok) return;
+      if (!confirm('Desmarcar os itens sem valor nesta nota?')) return;
       const lines = item.content.split('\n').map(line => {
-        const m = line.match(/^\[[xX]\](.*)/);
-        if (!m) return line;
-        const visible = stripFlowSuffix(m[1]);
-        const nums = visible.match(/\d+(?:[.,]\d+)?/g);
+        const m = line.match(/^\[[xX]\](.*)/); if (!m) return line;
+        const visible = stripFlowSuffix(m[1]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
         const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
         return hasPrice ? line : ('[ ]' + m[1]);
       });
-      item.content = lines.join('\n'); item.updatedAt = Date.now();
-      await dbPut(item);
-      const ram = allItems.find(i => i.id === item.id);
-      if (ram){ ram.content = item.content; ram.updatedAt = item.updatedAt; }
-      renderContent(isCode);
-      btnResetPlain.style.display = 'none';
-      showToast('Checklist resetado.');
-      renderCards();
+      item.content = lines.join('\n'); item.updatedAt = Date.now(); await dbPut(item);
+      const ram = allItems.find(i => i.id === item.id); if (ram){ ram.content = item.content; ram.updatedAt = item.updatedAt; }
+      renderContent(isCode); btnResetPlain.style.display = 'none'; showToast('Checklist resetado.'); renderCards();
     });
 
     function getQuizQuestions(){
@@ -1962,10 +1555,8 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
         if (m){
           const qLineIndex = i; const options = []; let j = i + 1;
           while (j < lines.length){
-            const om = lines[j].match(/^\(([ xX]?)\)(.*)/);
-            if (!om) break;
-            options.push({ lineIndex:j, correct: om[1].toLowerCase()==='x', text: om[2].trim() });
-            j++;
+            const om = lines[j].match(/^\(([ xX]?)\)(.*)/); if (!om) break;
+            options.push({ lineIndex:j, correct: om[1].toLowerCase()==='x', text: om[2].trim() }); j++;
           }
           if (options.length){ qs.push({ lineIndex:qLineIndex, text:m[1].trim(), options }); i = j; continue; }
         }
@@ -1973,7 +1564,6 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
       }
       return qs;
     }
-    
     function getQuizScore(){
       const qs = getQuizQuestions(); const answers = item.quizAnswers || {};
       let mastered = 0, dueForReview = 0, neverAnswered = 0;
@@ -1984,665 +1574,342 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
       });
       return { total: qs.length, mastered, dueForReview, neverAnswered };
     }
-
-    const quizQuestionsCount = getQuizQuestions().length;
-    let quizScoreLabel = null;
+    const quizQuestionsCount = getQuizQuestions().length; let quizScoreLabel = null;
     if (quizQuestionsCount > 0){
-      quizScoreLabel = document.createElement('span');
-      quizScoreLabel.className = 'tag-pill'; quizScoreLabel.style.border = 'none';
-      toolbar.appendChild(quizScoreLabel);
-
-      const btnResetQuiz = document.createElement('button');
-      btnResetQuiz.type = 'button'; btnResetQuiz.className = 'tag-pill'; btnResetQuiz.style.border = 'none';
-      btnResetQuiz.style.background = '#9AA0AB'; btnResetQuiz.style.color = '#fff';
-      btnResetQuiz.innerHTML = '🔄 Refazer quiz';
+      quizScoreLabel = document.createElement('span'); quizScoreLabel.className = 'tag-pill'; quizScoreLabel.style.border = 'none'; toolbar.appendChild(quizScoreLabel);
+      const btnResetQuiz = document.createElement('button'); btnResetQuiz.type = 'button'; btnResetQuiz.className = 'tag-pill'; btnResetQuiz.style.border = 'none'; btnResetQuiz.style.background = '#9AA0AB'; btnResetQuiz.style.color = '#fff'; btnResetQuiz.innerHTML = '🔄 Refazer quiz';
       toolbar.appendChild(btnResetQuiz);
-
       btnResetQuiz.addEventListener('click', async () => {
         const { mastered, dueForReview } = getQuizScore();
-        if (!mastered && !dueForReview){ showToast('Você ainda não respondeu nada neste quiz.'); return; }
-        if (!confirm('Reiniciar este quiz (apaga histórico) e responder do zero?')) return;
+        if (!mastered && !dueForReview){ showToast('Nada respondido ainda.'); return; }
+        if (!confirm('Reiniciar este quiz?')) return;
         item.quizAnswers = {}; await dbPut(item);
-        const ram = allItems.find(x => x.id === item.id);
-        if (ram) ram.quizAnswers = {};
-        refreshQuizScoreLabel(); renderContent(isCode);
-        showToast('Quiz reiniciado.');
+        const ram = allItems.find(x => x.id === item.id); if (ram) ram.quizAnswers = {};
+        refreshQuizScoreLabel(); renderContent(isCode); showToast('Quiz reiniciado.');
       });
     }
-    
     function refreshQuizScoreLabel(){
       if (!quizScoreLabel) return;
       const { total, mastered, dueForReview, neverAnswered } = getQuizScore();
-      let extra = '';
-      if (dueForReview > 0) extra += ` · ⏰ ${dueForReview} p/ revisar`;
-      if (neverAnswered > 0) extra += ` · ${neverAnswered} nova(s)`;
-
+      let extra = ''; if (dueForReview > 0) extra += ` · ⏰ ${dueForReview} p/ revisar`; if (neverAnswered > 0) extra += ` · ${neverAnswered} nova(s)`;
       const percent = total > 0 ? Math.round((mastered / total) * 100) : 0;
-      let barColor = '#D64545'; 
-      if (percent >= 40) barColor = '#D6A035'; 
-      if (percent >= 80) barColor = '#4FA65B'; 
-
+      let barColor = '#D64545'; if (percent >= 40) barColor = '#D6A035'; if (percent >= 80) barColor = '#4FA65B'; 
       quizScoreLabel.style.background = `linear-gradient(90deg, ${barColor} ${percent}%, var(--smoke, #9AA0AB) ${percent}%)`;
-      quizScoreLabel.style.color = '#fff';
-      quizScoreLabel.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; 
+      quizScoreLabel.style.color = '#fff'; quizScoreLabel.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; 
       quizScoreLabel.innerHTML = `🧠 ${mastered}/${total} (${percent}%)` + extra;
     }
     refreshQuizScoreLabel();
 
-    const btnCode = document.createElement('button');
-    btnCode.className = 'tag-pill'; btnCode.style.border = 'none'; btnCode.innerHTML = '💻 Código';
-    const btnCopy = document.createElement('button');
-    btnCopy.className = 'tag-pill'; btnCopy.style.border = 'none'; btnCopy.innerHTML = '📋 Copiar';
+    const btnCode = document.createElement('button'); btnCode.className = 'tag-pill'; btnCode.style.border = 'none'; btnCode.innerHTML = '💻 Código';
+    const btnCopy = document.createElement('button'); btnCopy.className = 'tag-pill'; btnCopy.style.border = 'none'; btnCopy.innerHTML = '📋 Copiar';
     toolbar.appendChild(btnCode); toolbar.appendChild(btnCopy); contentWrap.appendChild(toolbar);
 
-    const textContainer = document.createElement('div');
-    textContainer.className = 'content-block';
-    let isCode = false;
-
-    const quizShuffleCache = {};
+    const textContainer = document.createElement('div'); textContainer.className = 'content-block'; let isCode = false; const quizShuffleCache = {};
 
     const renderContent = (isCodeMode) => {
       textContainer.innerHTML = '';
       if (isCodeMode) {
-        textContainer.style.fontFamily = 'monospace'; textContainer.style.background = 'var(--panel-2)';
-        textContainer.style.padding = '12px'; textContainer.style.borderRadius = '8px';
-        textContainer.style.fontSize = '13.5px'; textContainer.style.overflowX = 'auto';
-        textContainer.style.whiteSpace = 'pre'; textContainer.textContent = item.content;
-        return;
+        textContainer.style.fontFamily = 'monospace'; textContainer.style.background = 'var(--panel-2)'; textContainer.style.padding = '12px'; textContainer.style.borderRadius = '8px'; textContainer.style.fontSize = '13.5px'; textContainer.style.overflowX = 'auto'; textContainer.style.whiteSpace = 'pre'; textContainer.textContent = item.content; return;
       }
       textContainer.style = ''; textContainer.className = 'content-block';
       const lines = item.content.split('\n');
-
       const lineSearchNorm = lines.map(l => {
-        const m = l.match(/^\[[ xX]?\](.*)/);
-        const raw = m ? m[1] : l;
-        return normalize(stripFlowSuffix(raw));
+        const m = l.match(/^\[[ xX]?\](.*)/); const raw = m ? m[1] : l; return normalize(stripFlowSuffix(raw));
       });
       const lineEls = [];
 
       let i = 0;
       while (i < lines.length){
         const line = lines[i];
-
         const qMatch = line.match(/^\?\?\s*(.*)/);
         if (qMatch){
           const options = []; let j = i + 1;
           while (j < lines.length){
-            const om = lines[j].match(/^\(([ xX]?)\)(.*)/);
-            if (!om) break;
-            options.push({ lineIndex:j, correct: om[1].toLowerCase()==='x', text: om[2].trim() });
-            j++;
+            const om = lines[j].match(/^\(([ xX]?)\)(.*)/); if (!om) break;
+            options.push({ lineIndex:j, correct: om[1].toLowerCase()==='x', text: om[2].trim() }); j++;
           }
           if (options.length){
             const questionLineIndex = i;
-
             if (!quizShuffleCache[questionLineIndex]) {
               const shuffled = options.map((opt, originalIndex) => { return { ...opt, originalIndex }; });
-              shuffled.sort(() => Math.random() - 0.5);
-              quizShuffleCache[questionLineIndex] = shuffled;
+              shuffled.sort(() => Math.random() - 0.5); quizShuffleCache[questionLineIndex] = shuffled;
             }
             const shuffledOptions = quizShuffleCache[questionLineIndex];
-
-            const qBlock = document.createElement('div');
-            qBlock.style.background = 'var(--panel-2)'; qBlock.style.padding = '12px';
-            qBlock.style.borderRadius = '8px'; qBlock.style.marginTop = '6px'; qBlock.style.marginBottom = '10px';
-
-            const qTitle = document.createElement('div');
-            qTitle.className = 'quiz-title-clicker';
-            qTitle.style.fontWeight = 'bold'; qTitle.style.marginBottom = '8px'; qTitle.style.cursor = 'pointer'; 
-            
-            const originalQuizHtml = '❓ ' + renderText(qMatch[1].trim());
-            qTitle.innerHTML = originalQuizHtml;
-            
+            const qBlock = document.createElement('div'); qBlock.style.background = 'var(--panel-2)'; qBlock.style.padding = '12px'; qBlock.style.borderRadius = '8px'; qBlock.style.marginTop = '6px'; qBlock.style.marginBottom = '10px';
+            const qTitle = document.createElement('div'); qTitle.className = 'quiz-title-clicker'; qTitle.style.fontWeight = 'bold'; qTitle.style.marginBottom = '8px'; qTitle.style.cursor = 'pointer'; 
+            const originalQuizHtml = '❓ ' + renderText(qMatch[1].trim()); qTitle.innerHTML = originalQuizHtml;
             let quizSpeechText = "Pergunta: " + qMatch[1].trim() + ". ";
-            
-            if (readQuizOptions) {
-              shuffledOptions.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; });
-            }
-            
-            qTitle.addEventListener('click', () => {
-              handleSpeech(quizSpeechText, qTitle, originalQuizHtml, 'quiz-' + questionLineIndex, true);
-            });
+            if (readQuizOptions) { shuffledOptions.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; }); }
+            qTitle.addEventListener('click', () => { handleSpeech(quizSpeechText, qTitle, originalQuizHtml, 'quiz-' + questionLineIndex, true); });
             qBlock.appendChild(qTitle);
 
             const record = normalizeQuizRecord((item.quizAnswers || {})[questionLineIndex]);
-            const due = isRecordDue(record);       
-            const locked = !!record && !due;       
+            const due = isRecordDue(record); const locked = !!record && !due; 
             if (!locked) { qBlock.classList.add('quiz-unanswered'); }
-
-            if (due){
-              const dueTag = document.createElement('div');
-              dueTag.style.fontSize = '0.8em'; dueTag.style.opacity = '0.7'; dueTag.style.marginBottom = '6px';
-              dueTag.textContent = '⏰ Hora de revisar — responda de novo';
-              qBlock.appendChild(dueTag);
-            }
+            if (due){ const dueTag = document.createElement('div'); dueTag.style.fontSize = '0.8em'; dueTag.style.opacity = '0.7'; dueTag.style.marginBottom = '6px'; dueTag.textContent = '⏰ Hora de revisar — responda de novo'; qBlock.appendChild(dueTag); }
 
             shuffledOptions.forEach((opt) => {
-              const optBtn = document.createElement('button');
-              optBtn.type = 'button'; optBtn.className = 'btn-secondary';
-              optBtn.style.display = 'block'; optBtn.style.width = '100%';
-              optBtn.style.textAlign = 'left'; optBtn.style.marginBottom = '6px';
-              optBtn.innerHTML = renderText(opt.text);
-
+              const optBtn = document.createElement('button'); optBtn.type = 'button'; optBtn.className = 'btn-secondary'; optBtn.style.display = 'block'; optBtn.style.width = '100%'; optBtn.style.textAlign = 'left'; optBtn.style.marginBottom = '6px'; optBtn.innerHTML = renderText(opt.text);
               if (locked){
                 optBtn.disabled = true;
                 if (opt.correct){ optBtn.style.background = '#4FA65B'; optBtn.style.color = '#fff'; }
                 else if (opt.originalIndex === record.chosen){ optBtn.style.background = '#D64545'; optBtn.style.color = '#fff'; }
               }
-
               optBtn.addEventListener('click', async () => {
                 if (locked) return;
-                const isCorrect = opt.correct;
-                const prevForSm2 = due ? record : null; 
-                const updated = sm2Update(prevForSm2, isCorrect);
-                updated.chosen = opt.originalIndex;
-
+                const isCorrect = opt.correct; const prevForSm2 = due ? record : null; 
+                const updated = sm2Update(prevForSm2, isCorrect); updated.chosen = opt.originalIndex;
                 if (!item.quizAnswers) item.quizAnswers = {};
-                item.quizAnswers[questionLineIndex] = updated; item.updatedAt = Date.now();
-                await dbPut(item);
-                const ram = allItems.find(x => x.id === item.id);
-                if (ram){ ram.quizAnswers = item.quizAnswers; ram.updatedAt = item.updatedAt; }
-
+                item.quizAnswers[questionLineIndex] = updated; item.updatedAt = Date.now(); await dbPut(item);
+                const ram = allItems.find(x => x.id === item.id); if (ram){ ram.quizAnswers = item.quizAnswers; ram.updatedAt = item.updatedAt; }
                 const dias = updated.interval === 1 ? '1 dia' : `${updated.interval} dias`;
                 showToast((isCorrect ? '✅ Certo! ' : '❌ Errado. ') + `Vai revisar de novo em ${dias}.`);
                 refreshQuizScoreLabel(); renderContent(isCode);
-
                 setTimeout(() => {
                   const nextQuiz = textContainer.querySelector('.quiz-unanswered');
                   if (nextQuiz) {
                     nextQuiz.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     const oldBg = nextQuiz.style.background; const oldRadius = nextQuiz.style.borderRadius;
-                    nextQuiz.style.transition = 'background 0.3s'; nextQuiz.style.background = '#4FA8D8'; 
-                    nextQuiz.style.borderRadius = '6px';
+                    nextQuiz.style.transition = 'background 0.3s'; nextQuiz.style.background = '#4FA8D8'; nextQuiz.style.borderRadius = '6px';
                     setTimeout(() => { nextQuiz.style.background = oldBg; nextQuiz.style.borderRadius = oldRadius; }, 900);
-                    
                     if (isAudioEnabled && autoReadNextQuiz) {
                       const titleToClick = nextQuiz.querySelector('.quiz-title-clicker');
-                      if (titleToClick) {
-                        setTimeout(() => titleToClick.click(), 500); 
-                      }
+                      if (titleToClick) { setTimeout(() => titleToClick.click(), 500); }
                     }
                   }
                 }, 2500);
               });
-
               qBlock.appendChild(optBtn);
             });
-            textContainer.appendChild(qBlock);
-            for (let k = i; k < j; k++) lineEls[k] = qBlock;
-            i = j;
-            continue;
+            textContainer.appendChild(qBlock); for (let k = i; k < j; k++) lineEls[k] = qBlock;
+            i = j; continue;
           }
         }
 
         const checkMatch = line.match(/^\[([ xX]?)\](.*)/);
         if (checkMatch) {
-          const isChecked = checkMatch[1].toLowerCase() === 'x';
-          const rawText = checkMatch[2];
+          const isChecked = checkMatch[1].toLowerCase() === 'x'; const rawText = checkMatch[2];
           const arrowIdx = rawText.indexOf('>>');
           const visibleText = (arrowIdx === -1 ? rawText : rawText.slice(0, arrowIdx)).trim();
           const nextStepRaw = arrowIdx === -1 ? null : rawText.slice(arrowIdx + 2).trim();
 
-          const label = document.createElement('label');
-          label.className = 'checkbox-row';
-          label.style.display = 'flex'; label.style.alignItems = 'center';
-          label.style.marginTop = '6px'; label.style.marginBottom = '6px';
-
-          const cb = document.createElement('input');
-          cb.type = 'checkbox'; cb.checked = isChecked;
-          cb.style.width = '20px'; cb.style.height = '20px'; cb.style.marginRight = '8px';
-
-          const span = document.createElement('span');
-          span.innerHTML = renderText(visibleText);
+          const label = document.createElement('label'); label.className = 'checkbox-row'; label.style.display = 'flex'; label.style.alignItems = 'center'; label.style.marginTop = '6px'; label.style.marginBottom = '6px';
+          const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = isChecked; cb.style.width = '20px'; cb.style.height = '20px'; cb.style.marginRight = '8px';
+          const span = document.createElement('span'); span.innerHTML = renderText(visibleText);
           if (isChecked) { span.style.textDecoration = 'line-through'; span.style.opacity = '0.6'; }
-
           label.appendChild(cb); label.appendChild(span);
-
           if (nextStepRaw){
-            const hint = document.createElement('span');
-            hint.textContent = ' ➡️';
-            hint.title = 'Se marcar: sugere "' + nextStepRaw + '"';
-            hint.style.opacity = '0.55'; hint.style.fontSize = '0.85em';
-            label.appendChild(hint);
+            const hint = document.createElement('span'); hint.textContent = ' ➡️'; hint.title = 'Se marcar: sugere "' + nextStepRaw + '"'; hint.style.opacity = '0.55'; hint.style.fontSize = '0.85em'; label.appendChild(hint);
           }
-
-          textContainer.appendChild(label);
-          const currentIndex = i;
-          lineEls[currentIndex] = label;
+          textContainer.appendChild(label); const currentIndex = i; lineEls[currentIndex] = label;
 
           cb.addEventListener('change', async () => {
-            span.style.textDecoration = cb.checked ? 'line-through' : 'none';
-            span.style.opacity = cb.checked ? '0.6' : '1';
-            const marker = cb.checked ? '[x]' : '[ ]';
-            const freshLines = item.content.split('\n');
+            span.style.textDecoration = cb.checked ? 'line-through' : 'none'; span.style.opacity = cb.checked ? '0.6' : '1';
+            const marker = cb.checked ? '[x]' : '[ ]'; const freshLines = item.content.split('\n');
             freshLines[currentIndex] = freshLines[currentIndex].replace(/^\[[ xX]?\]/, marker);
-            item.content = freshLines.join('\n'); item.updatedAt = Date.now();
-            await dbPut(item);
-            const ramItem = allItems.find(x => x.id === item.id);
-            if (ramItem) { ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; }
-            btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
-            renderCards();
-
+            item.content = freshLines.join('\n'); item.updatedAt = Date.now(); await dbPut(item);
+            const ramItem = allItems.find(x => x.id === item.id); if (ramItem) { ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; }
+            btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none'; renderCards();
             if (cb.checked && nextStepRaw){
               const targetNorm = normalize(nextStepRaw);
               const foundIdx = lineSearchNorm.findIndex((t, idx) => idx !== currentIndex && t && t.includes(targetNorm));
               if (foundIdx !== -1 && lineEls[foundIdx]){
-                const el = lineEls[foundIdx];
-                el.scrollIntoView({ behavior:'smooth', block:'center' });
+                const el = lineEls[foundIdx]; el.scrollIntoView({ behavior:'smooth', block:'center' });
                 const oldBg = el.style.background, oldRadius = el.style.borderRadius;
                 el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px';
                 setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
                 showToast('➡️ Próximo passo: ' + nextStepRaw);
-              } else {
-                showToast('➡️ Próximo passo sugerido: "' + nextStepRaw + '" (não encontrei esse texto na lista)');
-              }
+              } else { showToast('➡️ Próximo passo sugerido: "' + nextStepRaw + '" (não encontrei esse texto na lista)'); }
             }
           });
-
-          i++;
-          continue;
+          i++; continue;
         }
 
-        const trimmed = line.trim();
-        const isDivider = /^(.)\1{2,}$/.test(trimmed) && /^[-=#*]+$/.test(trimmed);
+        const trimmed = line.trim(); const isDivider = /^(.)\1{2,}$/.test(trimmed) && /^[-=#*]+$/.test(trimmed);
         if (isDivider){
-          const hr = document.createElement('hr');
-          hr.style.border = 'none'; hr.style.borderTop = '2px dashed var(--smoke, #9AA0AB)'; hr.style.margin = '14px 0';
+          const hr = document.createElement('hr'); hr.style.border = 'none'; hr.style.borderTop = '2px dashed var(--smoke, #9AA0AB)'; hr.style.margin = '14px 0';
           textContainer.appendChild(hr); lineEls[i] = hr; i++; continue;
         }
-
-        const p = document.createElement('div');
-        p.style.minHeight = '1.4em'; p.innerHTML = renderText(line);
-        textContainer.appendChild(p); lineEls[i] = p; i++;
+        const p = document.createElement('div'); p.style.minHeight = '1.4em'; p.innerHTML = renderText(line); textContainer.appendChild(p); lineEls[i] = p; i++;
       }
 
-      // --- INÍCIO DA MELHORIA: ATIVAR CLIQUES E MAPEAR A BUSCA ---
       setTimeout(() => {
-        // Ativador dos Wiki-links
         const allLinks = viewBody.querySelectorAll('.internal-link');
         allLinks.forEach((linkEl, index) => {
           linkEl.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const targetTitle = linkEl.getAttribute('data-target');
+            e.stopPropagation(); const targetTitle = linkEl.getAttribute('data-target');
             const targetItem = allItems.find(i => normalize(i.title) === normalize(targetTitle));
-            if (targetItem) {
-              // NOVO: Salva a posição pelo NÚMERO (index) do link na tela! É infalível!
-              viewHistory.push({ id: item.id, linkIndex: index }); 
-              openView(targetItem, 'link'); 
-            } else {
-              showToast(`Nota não encontrada: "${targetTitle}"`);
-            }
+            if (targetItem) { viewHistory.push({ id: item.id, linkIndex: index }); openView(targetItem, 'link'); } 
+            else { showToast(`Nota não encontrada: "${targetTitle}"`); }
           });
         });
-
-        // Buscador Amarelo original
         matchNodes = Array.from(viewBody.querySelectorAll('mark'));
-        if (matchNodes.length > 0) {
-          matchIndex = 0; 
-          updateMatches(); 
-        } else {
-          matchIndex = -1;
-          internalSearchCount.textContent = '0/0';
-        }
+        if (matchNodes.length > 0) { matchIndex = 0; updateMatches(); } 
+        else { matchIndex = -1; internalSearchCount.textContent = '0/0'; }
       }, 10);
-      // --- FIM DA MELHORIA ---
     };
 
-    renderContent(false);
-    contentWrap.appendChild(textContainer);
-    viewBody.appendChild(contentWrap);
-
+    renderContent(false); contentWrap.appendChild(textContainer); viewBody.appendChild(contentWrap);
     btnCopy.addEventListener('click', () => { navigator.clipboard.writeText(item.content).then(() => showToast('Copiado!')); });
     btnCode.addEventListener('click', () => { isCode = !isCode; btnCode.innerHTML = isCode ? '📝 Texto' : '💻 Código'; renderContent(isCode); });
 
     btnClearInternalSearch.style.display = 'none'; 
-
     internalSearchInput.oninput = debounce(() => {
-      internalQuery = internalSearchInput.value.trim();
-      btnClearInternalSearch.style.display = internalSearchInput.value ? 'flex' : 'none';
-      
+      internalQuery = internalSearchInput.value.trim(); btnClearInternalSearch.style.display = internalSearchInput.value ? 'flex' : 'none';
       if (pVehicle) pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
       if (pSpec) pSpec.innerHTML = renderText(item.spec);
-      
       renderContent(isCode);
     }, 250);
-
     btnClearInternalSearch.onclick = () => {
-      internalSearchInput.value = '';
-      internalQuery = '';
-      btnClearInternalSearch.style.display = 'none';
-      
+      internalSearchInput.value = ''; internalQuery = ''; btnClearInternalSearch.style.display = 'none';
       if (pVehicle) pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
       if (pSpec) pSpec.innerHTML = renderText(item.spec);
-      
-      renderContent(isCode);
-      internalSearchInput.focus(); 
+      renderContent(isCode); internalSearchInput.focus(); 
     };
 
   } else {
     btnClearInternalSearch.style.display = 'none';
-
     internalSearchInput.oninput = debounce(() => {
-      internalQuery = internalSearchInput.value.trim();
-      btnClearInternalSearch.style.display = internalSearchInput.value ? 'flex' : 'none';
-
+      internalQuery = internalSearchInput.value.trim(); btnClearInternalSearch.style.display = internalSearchInput.value ? 'flex' : 'none';
       if (pVehicle) pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
       if (pSpec) pSpec.innerHTML = renderText(item.spec);
-      
       setTimeout(() => {
         matchNodes = Array.from(viewBody.querySelectorAll('mark'));
-        if (matchNodes.length > 0) { matchIndex = 0; updateMatches(); } 
-        else { matchIndex = -1; internalSearchCount.textContent = '0/0'; }
+        if (matchNodes.length > 0) { matchIndex = 0; updateMatches(); } else { matchIndex = -1; internalSearchCount.textContent = '0/0'; }
       }, 10);
     }, 250);
-
     btnClearInternalSearch.onclick = () => {
-      internalSearchInput.value = '';
-      internalQuery = '';
-      btnClearInternalSearch.style.display = 'none';
-
+      internalSearchInput.value = ''; internalQuery = ''; btnClearInternalSearch.style.display = 'none';
       if (pVehicle) pVehicle.innerHTML = '📌 ' + renderText(item.vehicle);
       if (pSpec) pSpec.innerHTML = renderText(item.spec);
-      
       setTimeout(() => {
         matchNodes = Array.from(viewBody.querySelectorAll('mark'));
-        if (matchNodes.length > 0) { matchIndex = 0; updateMatches(); } 
-        else { matchIndex = -1; internalSearchCount.textContent = '0/0'; }
+        if (matchNodes.length > 0) { matchIndex = 0; updateMatches(); } else { matchIndex = -1; internalSearchCount.textContent = '0/0'; }
       }, 10);
       internalSearchInput.focus();
     };
   }
   
   btnInternalPrev.onclick = () => {
-    if (matchNodes.length === 0) return;
-    matchIndex = (matchIndex - 1 + matchNodes.length) % matchNodes.length;
-    updateMatches();
+    if (matchNodes.length === 0) return; matchIndex = (matchIndex - 1 + matchNodes.length) % matchNodes.length; updateMatches();
   };
-
   btnInternalNext.onclick = () => {
-    if (matchNodes.length === 0) return;
-    matchIndex = (matchIndex + 1) % matchNodes.length;
-    updateMatches();
+    if (matchNodes.length === 0) return; matchIndex = (matchIndex + 1) % matchNodes.length; updateMatches();
   };
 
-  openSheet(modalView);
-  item.useCount = (item.useCount||0) + 1;
-  dbPut(item).then(() => renderCards());
+  openSheet(modalView); item.useCount = (item.useCount||0) + 1; dbPut(item).then(() => renderCards());
 
-// --- INÍCIO DA MELHORIA: FOCO INTELIGENTE COM MEMÓRIA DE LINK ---
   setTimeout(() => {
     if (navType === 'back' && restoreLinkIndex !== null) {
-      // 1. Busca todos os links da nota e acha aquele exato que você tinha clicado
-      const allLinks = viewBody.querySelectorAll('.internal-link');
-      const targetLink = allLinks[restoreLinkIndex];
-      
+      const allLinks = viewBody.querySelectorAll('.internal-link'); const targetLink = allLinks[restoreLinkIndex];
       if (targetLink) {
-        // 2. Rola a tela como um míssil teleguiado direto no link!
         targetLink.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        // 3. Dá uma piscada Laranja Dourada para seus olhos acharem rápido
-        const oldBg = targetLink.style.background;
-        const oldColor = targetLink.style.color;
-        targetLink.style.transition = 'all 0.3s';
-        targetLink.style.background = '#D6A035'; 
-        targetLink.style.color = '#fff';
-        targetLink.style.padding = '2px 6px';
-        targetLink.style.borderRadius = '4px';
-        
-        setTimeout(() => { 
-          targetLink.style.background = oldBg; 
-          targetLink.style.color = oldColor;
-          targetLink.style.padding = '0';
-        }, 2000);
+        const oldBg = targetLink.style.background; const oldColor = targetLink.style.color;
+        targetLink.style.transition = 'all 0.3s'; targetLink.style.background = '#D6A035'; targetLink.style.color = '#fff'; targetLink.style.padding = '2px 6px'; targetLink.style.borderRadius = '4px';
+        setTimeout(() => { targetLink.style.background = oldBg; targetLink.style.color = oldColor; targetLink.style.padding = '0'; }, 2000);
       }
     } 
-    else if (matchNodes.length > 0) {
-      updateMatches(); 
-    } else {
+    else if (matchNodes.length > 0) { updateMatches(); } 
+    else {
       const firstUnanswered = viewBody.querySelector('.quiz-unanswered');
       if (firstUnanswered) {
         firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        const oldBg = firstUnanswered.style.background;
-        const oldRadius = firstUnanswered.style.borderRadius;
-        firstUnanswered.style.transition = 'background 0.3s';
-        firstUnanswered.style.background = '#4FA8D8'; 
-        firstUnanswered.style.borderRadius = '6px';
-        setTimeout(() => { 
-          firstUnanswered.style.background = oldBg; 
-          firstUnanswered.style.borderRadius = oldRadius; 
-        }, 2200);
+        const oldBg = firstUnanswered.style.background; const oldRadius = firstUnanswered.style.borderRadius;
+        firstUnanswered.style.transition = 'background 0.3s'; firstUnanswered.style.background = '#4FA8D8'; firstUnanswered.style.borderRadius = '6px';
+        setTimeout(() => { firstUnanswered.style.background = oldBg; firstUnanswered.style.borderRadius = oldRadius; }, 2200);
       }
     }
-  }, 350); // Aumentei 50ms para garantir que toda a tela terminou de carregar
-  // --- FIM DA MELHORIA ---
-} // <--- Fechamento correto da função// <--- Fechamento correto da função
+  }, 350); 
+} 
 
 function closeView(){
   closeSheetEl(modalView);
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
-  viewingItem = null;
-  viewHistory = []; // <--- ADICIONE ESTA LINHA PARA ZERAR AS VIAGENS
-  // --- INÍCIO DA MELHORIA: CALA A BOCA E SOLTA A TELA AO FECHAR ---
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel(); // Manda o robô calar a boca na mesma hora
-  }
-  if (window.currentWakeLock) {
-    window.currentWakeLock.release().catch(() => {});
-    window.currentWakeLock = null;
-  }
-  // --- FIM DA MELHORIA ---
+  viewingItem = null; viewHistory = []; 
+  if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); }
+  if (window.currentWakeLock) { window.currentWakeLock.release().catch(() => {}); window.currentWakeLock = null; }
 }
 
-/* ---------------- Backup ---------------- */
-async function exportBackup(){
-  const items = await dbGetAll();
-  const serializable = [];
-  for (const it of items){
-        let photoBase64 = null, photoType = null;
-    if (it.photo){
-      photoBase64 = await blobToDataURL(it.photo);
-      photoType = it.photo.type || null;
-    }
-    let audioBase64 = null, audioType = null;
-    if (it.audio){
-      audioBase64 = await blobToDataURL(it.audio);
-      audioType = it.audio.type || null;
-    }
-    const copy = Object.assign({}, it);
-    delete copy.photo;
-    delete copy.audio;
-    copy.photoBase64 = photoBase64;
-    copy.photoType = photoType;
-    copy.audioBase64 = audioBase64;
-    copy.audioType = audioType;
-    serializable.push(copy);
-  }
-  const payload = { app:'memorias', version:1, exportedAt: Date.now(), items: serializable };
-  const blob = new Blob([JSON.stringify(payload)], { type:'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const dateStr = new Date().toISOString().slice(0,10);
-  a.href = url; a.download = `backup-memorias-${dateStr}.json`;
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-  showToast('Backup exportado.');
-}
-
-async function importBackup(file){
-  let payload;
-  try {
-    const text = await file.text();
-    payload = JSON.parse(text);
-  } catch(e){
-    showToast('Arquivo inválido.');
-    return;
-  }
-  const items = Array.isArray(payload) ? payload : (payload.items || []);
-  if (!items.length){ showToast('Nenhum registro encontrado no arquivo.'); return; }
-
-  const ok = confirm(`Isso vai ADICIONAR ${items.length} registro(s) do backup aos que você já tem, sem apagar nada. Continuar?`);
-  if (!ok) return;
-
-  let count = 0;
-  for (const raw of items){
-    const newItem = {
-      title: raw.title || 'Sem título',
-      category: raw.category || 'Nota geral',
-      vehicle: raw.vehicle || '',
-      spec: raw.spec || '',
-      content: raw.content || '',
-      tags: raw.tags || [],
-      favorite: !!raw.favorite,
-      useCount: raw.useCount || 0,
-      createdAt: raw.createdAt || Date.now(),
-      updatedAt: raw.updatedAt || Date.now(),
-      photo: null,
-      audio: null,
-      quizAnswers: raw.quizAnswers || {}
-    };
-    if (raw.photoBase64){
-      try { newItem.photo = await dataURLToBlob(raw.photoBase64); } catch(e){ /* ignora foto quebrada */ }
-    }
-    if (raw.audioBase64){
-      try { newItem.audio = await dataURLToBlob(raw.audioBase64); } catch(e){ /* ignora áudio quebrado */ }
-    }
-    try { await dbAdd(newItem); count++; } catch(e){ /* pula item com erro */ }
-  }
-  showToast(`${count} registro(s) importado(s).`);
-  loadAndRender();
-}
-
-/* ---------------- Dados de exemplo (primeira vez) ---------------- */
-async function seedIfEmpty(){
-  const items = await dbGetAll();
-  if (items.length > 0) return;
-  const now = Date.now();
-  const examples = [
-    {
-      title:'Exemplo: torque do cabeçote (você pode apagar)',
-      category:'Torque/Aperto',
-      vehicle:'VW Gol 1.0 8V (motor AP)',
-      spec:'9,5 kgf·m (95 Nm) + 1/4 de volta',
-      content:'Sequência de aperto em cruz, em 3 etapas, sempre com o motor frio. Este é um registro de exemplo — edite ou apague quando quiser.',
-      tags:['motor','cabecote','ap'],
-      favorite:true, photo:null, useCount:0, createdAt:now, updatedAt:now
-    },
-    {
-      title:'Exemplo: carro não pega só de manhã',
-      category:'Diagnóstico',
-      vehicle:'Honda Civic 2015 1.8',
-      spec:'',
-      content:'Causa encontrada: válvula do IAC suja, motor engasgando a frio. A limpeza resolveu. Vale checar esse componente antes de trocar sensor.',
-      tags:['partida a frio','iac','injecao'],
-      favorite:false, photo:null, useCount:0, createdAt:now, updatedAt:now
-    },
-    {
-      title:'Exemplo: relé da bomba de combustível',
-      category:'Componente',
-      vehicle:'Fiat Palio 1.0 Fire',
-      spec:'',
-      content:'Fica na caixa de fusíveis do compartimento do motor, posição 3, relé azul.',
-      tags:['combustivel','rele','fusivel'],
-      favorite:false, photo:null, useCount:0, createdAt:now, updatedAt:now
-    }
-  ];
-  for (const ex of examples) await dbAdd(ex);
-}
-
-/* ---------------- Eventos ---------------- */
+/* ---------------- Eventos Globais ---------------- */
 fieldAudio.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file){ 
-      currentAudioBlob = file; 
-      updateAudioPreview(); 
-    }
-  });
-  btnRecordAudio.addEventListener('click', toggleRecording);
+  const file = e.target.files[0];
+  if (file){ currentAudioBlob = file; updateAudioPreview(); }
+});
+btnRecordAudio.addEventListener('click', toggleRecording);
 
 if (!window.MediaRecorder || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
   btnRecordAudio.style.display = 'none';
 }
-  btnRemoveAudio.addEventListener('click', () => {
-    currentAudioBlob = null; 
-    fieldAudio.value = ''; 
-    updateAudioPreview();
-  });
+btnRemoveAudio.addEventListener('click', () => { currentAudioBlob = null; fieldAudio.value = ''; updateAudioPreview(); });
+
+// Função super limpa que pega os itens brutos do banco e insere 1 a 1 para o Importar
+async function processCartridgeItems(itemsList) {
+  let count = 0;
+  for (const raw of itemsList){
+    const newItem = {
+      title: raw.title || 'Sem título', category: raw.category || 'Nota geral', vehicle: raw.vehicle || '', spec: raw.spec || '',
+      content: raw.content || '', tags: raw.tags || [], favorite: !!raw.favorite, useCount: raw.useCount || 0,
+      createdAt: raw.createdAt || Date.now(), updatedAt: raw.updatedAt || Date.now(), photo: null, audio: null, quizAnswers: raw.quizAnswers || {}
+    };
+    if (raw.photoBase64){ try { newItem.photo = await dataURLToBlob(raw.photoBase64); } catch(e){} }
+    if (raw.audioBase64){ try { newItem.audio = await dataURLToBlob(raw.audioBase64); } catch(e){} }
+    try { await dbAdd(newItem); count++; } catch(e){}
+  }
+  return count;
+}
 
 function setupEventListeners(){
   searchInput.addEventListener('input', debounce(() => {
-    currentSearch = searchInput.value;
-    btnClearSearch.style.display = currentSearch ? 'flex' : 'none';
-    renderCards();
+    currentSearch = searchInput.value; btnClearSearch.style.display = currentSearch ? 'flex' : 'none'; renderCards();
   }, 120));
 
   btnClearSearch.addEventListener('click', () => {
-    searchInput.value = ''; currentSearch = '';
-    btnClearSearch.style.display = 'none';
-    renderCards(); searchInput.focus();
+    searchInput.value = ''; currentSearch = ''; btnClearSearch.style.display = 'none'; renderCards(); searchInput.focus();
   });
 
   btnMic.addEventListener('click', () => startVoiceInput(searchInput, btnMic, false));
   btnMicContent.addEventListener('click', () => startVoiceInput(fieldContent, btnMicContent, true));
+  
   btnInsertCheckbox.addEventListener('mousedown', (e) => e.preventDefault());
   btnInsertCheckbox.addEventListener('click', () => {
-  const start = fieldContent.selectionStart ?? fieldContent.value.length;
-  const value = fieldContent.value;
-  const atLineStart = start === 0 || value[start - 1] === '\n';
-  insertAtCursor(fieldContent, (atLineStart ? '' : '\n') + '[] ');
-});
-btnInsertArrow.addEventListener('mousedown', (e) => e.preventDefault());
-btnInsertArrow.addEventListener('click', () => {
-  insertAtCursor(fieldContent, ' >> ');
-});
-btnInsertDivider.addEventListener('mousedown', (e) => e.preventDefault());
-btnInsertDivider.addEventListener('click', () => {
-  const start = fieldContent.selectionStart ?? fieldContent.value.length;
-  const value = fieldContent.value;
-  const atLineStart = start === 0 || value[start - 1] === '\n';
-  insertAtCursor(fieldContent, (atLineStart ? '' : '\n') + '----\n');
-});
-btnInsertQuiz.addEventListener('mousedown', (e) => e.preventDefault());
-btnInsertQuiz.addEventListener('click', () => {
-  const start = fieldContent.selectionStart ?? fieldContent.value.length;
-  const end = fieldContent.selectionEnd ?? start;
-  const value = fieldContent.value;
-  const atLineStart = start === 0 || value[start - 1] === '\n';
-  const prefix = (atLineStart ? '' : '\n') + '?? ';
-  const placeholder = 'Pergunta';
-  const rest = placeholder + '\n() Opção 1\n() Opção 2\n(x) Opção correta\n';
-  fieldContent.value = value.slice(0, start) + prefix + rest + value.slice(end);
-  const selStart = start + prefix.length;
-  fieldContent.focus();
-  fieldContent.setSelectionRange(selStart, selStart + placeholder.length); // já seleciona "Pergunta" pra você digitar por cima
-  fieldContent.dispatchEvent(new Event('input'));
-});
-// 1. A DEFESA: Impede que clicar no botão roube o foco do teclado
-  btnInsertLink.addEventListener('mousedown', (e) => {
-    e.preventDefault(); 
+    const start = fieldContent.selectionStart ?? fieldContent.value.length; const value = fieldContent.value;
+    const atLineStart = start === 0 || value[start - 1] === '\n';
+    insertAtCursor(fieldContent, (atLineStart ? '' : '\n') + '[] ');
   });
-// --- INÍCIO DA MELHORIA: INSERIR WIKI-LINK ---
-btnInsertLink.addEventListener('click', () => {
-    const start = fieldContent.selectionStart ?? fieldContent.value.length;
-    const end = fieldContent.selectionEnd ?? start;
-    const value = fieldContent.value;
-    const textToWrap = value.substring(start, end) || "Nome da Nota Aqui";
-    
+  
+  btnInsertArrow.addEventListener('mousedown', (e) => e.preventDefault());
+  btnInsertArrow.addEventListener('click', () => { insertAtCursor(fieldContent, ' >> '); });
+  
+  btnInsertDivider.addEventListener('mousedown', (e) => e.preventDefault());
+  btnInsertDivider.addEventListener('click', () => {
+    const start = fieldContent.selectionStart ?? fieldContent.value.length; const value = fieldContent.value;
+    const atLineStart = start === 0 || value[start - 1] === '\n';
+    insertAtCursor(fieldContent, (atLineStart ? '' : '\n') + '----\n');
+  });
+  
+  btnInsertQuiz.addEventListener('mousedown', (e) => e.preventDefault());
+  btnInsertQuiz.addEventListener('click', () => {
+    const start = fieldContent.selectionStart ?? fieldContent.value.length; const end = fieldContent.selectionEnd ?? start;
+    const value = fieldContent.value; const atLineStart = start === 0 || value[start - 1] === '\n';
+    const prefix = (atLineStart ? '' : '\n') + '?? '; const placeholder = 'Pergunta';
+    const rest = placeholder + '\n() Opção 1\n() Opção 2\n(x) Opção correta\n';
+    fieldContent.value = value.slice(0, start) + prefix + rest + value.slice(end);
+    const selStart = start + prefix.length; fieldContent.focus(); fieldContent.setSelectionRange(selStart, selStart + placeholder.length); fieldContent.dispatchEvent(new Event('input'));
+  });
+
+  btnInsertLink.addEventListener('mousedown', (e) => { e.preventDefault(); });
+  btnInsertLink.addEventListener('click', () => {
+    const start = fieldContent.selectionStart ?? fieldContent.value.length; const end = fieldContent.selectionEnd ?? start;
+    const value = fieldContent.value; const textToWrap = value.substring(start, end) || "Nome da Nota Aqui";
     const linkStr = `[[${textToWrap}]]`;
     fieldContent.value = value.slice(0, start) + linkStr + value.slice(end);
-    
-    const newCursorPos = start + 2; 
-    fieldContent.focus();
-    fieldContent.setSelectionRange(newCursorPos, newCursorPos + textToWrap.length);
-    fieldContent.dispatchEvent(new Event('input'));
+    const newCursorPos = start + 2; fieldContent.focus(); fieldContent.setSelectionRange(newCursorPos, newCursorPos + textToWrap.length); fieldContent.dispatchEvent(new Event('input'));
   });
-// --- FIM DA MELHORIA ---
+
   sortSelect.addEventListener('change', () => { currentSort = sortSelect.value; renderCards(); });
 
-  navSearch.addEventListener('click', () => {
-    openSheet(sheetSearch);
-    setTimeout(() => searchInput.focus(), 260);
-  });
+  navSearch.addEventListener('click', () => { openSheet(sheetSearch); setTimeout(() => searchInput.focus(), 260); });
   btnCloseSearch.addEventListener('click', () => closeSheetEl(sheetSearch));
   btnApplySearch.addEventListener('click', () => closeSheetEl(sheetSearch));
   sheetSearch.addEventListener('click', (e) => { if (e.target === sheetSearch) closeSheetEl(sheetSearch); });
@@ -2651,36 +1918,23 @@ btnInsertLink.addEventListener('click', () => {
   btnCloseCategory.addEventListener('click', () => closeSheetEl(sheetCategory));
   sheetCategory.addEventListener('click', (e) => { if (e.target === sheetCategory) closeSheetEl(sheetCategory); });
 
-  navFav.addEventListener('click', () => {
-    currentCategory = currentCategory === 'Favoritos' ? 'Todos' : 'Favoritos';
-    renderCategoryList();
-    renderCards();
-  });
+  navFav.addEventListener('click', () => { currentCategory = currentCategory === 'Favoritos' ? 'Todos' : 'Favoritos'; renderCategoryList(); renderCards(); });
 
   btnAdd.addEventListener('click', () => openForm(null, 'add'));
 
   fieldCategory.addEventListener('change', () => {
-    const isCustom = fieldCategory.value === '__custom__';
-    fieldCategoryCustom.style.display = isCustom ? 'block' : 'none';
+    const isCustom = fieldCategory.value === '__custom__'; fieldCategoryCustom.style.display = isCustom ? 'block' : 'none';
     if (isCustom) fieldCategoryCustom.focus();
   });
-btnRemovePhoto.addEventListener('click', () => {
-  currentPhotoBlob = null;
-  fieldPhoto.value = '';
-  updatePhotoPreview();
-});
+  
+  btnRemovePhoto.addEventListener('click', () => { currentPhotoBlob = null; fieldPhoto.value = ''; updatePhotoPreview(); });
   fieldPhoto.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    showToast('Comprimindo foto...');
-    try {
-      currentPhotoBlob = await compressImage(file);
-      updatePhotoPreview();
-    } catch (error) {
-      showToast('Erro ao processar foto.');
+    const file = e.target.files[0];
+    if (file) {
+      showToast('Comprimindo foto...');
+      try { currentPhotoBlob = await compressImage(file); updatePhotoPreview(); } catch (error) { showToast('Erro ao processar foto.'); }
     }
-  }
-});
+  });
 
   itemForm.addEventListener('submit', (e) => { e.preventDefault(); handleSave(); });
   btnCloseForm.addEventListener('click', closeForm);
@@ -2689,73 +1943,163 @@ btnRemovePhoto.addEventListener('click', () => {
   btnCloseView.addEventListener('click', closeView);
   modalView.addEventListener('click', (e) => { if (e.target === modalView) closeView(); });
 
-  btnEdit.addEventListener('click', () => {
-    const item = viewingItem; closeView(); openForm(item, 'edit');
-  });
-  btnDuplicate.addEventListener('click', () => {
-    const item = viewingItem; closeView(); openForm(item, 'duplicate');
-  });
+  btnEdit.addEventListener('click', () => { const item = viewingItem; closeView(); openForm(item, 'edit'); });
+  btnDuplicate.addEventListener('click', () => { const item = viewingItem; closeView(); openForm(item, 'duplicate'); });
   btnDelete.addEventListener('click', () => {
-    const item = viewingItem;
-    if (!item) return;
-    const ok = confirm(`Excluir "${item.title}"? Essa ação não pode ser desfeita.`);
-    if (!ok) return;
-    dbDelete(item.id).then(() => {
-      closeView();
-      showToast('Excluído.');
-      loadAndRender();
-    });
+    const item = viewingItem; if (!item) return;
+    if (!confirm(`Excluir "${item.title}"?`)) return;
+    dbDelete(item.id).then(() => { closeView(); showToast('Excluído.'); loadAndRender(); });
   });
 
   navMore.addEventListener('click', async () => {
-    const { due: nDue, novas: nNovas } = getGlobalQuizStatus();
-    let partes = [];
+    const { due: nDue, novas: nNovas } = getGlobalQuizStatus(); let partes = [];
     if (nDue > 0) partes.push(`⏰ ${nDue} vencida(s) pra revisar`);
     if (nNovas > 0) partes.push(`🆕 ${nNovas} nova(s) esperando resposta`);
     quizDueText.textContent = partes.length ? '🧠 ' + partes.join(' · ') : 'Nenhuma pergunta de quiz pendente agora.';
     const items = await dbGetAll();
     statsText.textContent = items.length === 1 ? '1 registro salvo neste navegador.' : `${items.length} registros salvos neste navegador.`;
-    refreshBudgetSummary();
-    openSheet(sheetMore);
+    refreshBudgetSummary(); openSheet(sheetMore);
   });
   btnCloseMore.addEventListener('click', () => closeSheetEl(sheetMore));
   sheetMore.addEventListener('click', (e) => { if (e.target === sheetMore) closeSheetEl(sheetMore); });
 
   btnSendBudget.addEventListener('click', () => {
-  const { list, total } = getGlobalBudgetData();
-  if (!list.length) return;
-  const desc = list.map(i => `✅ ${i.text} (${i.itemTitle})`);
-  const msg = `*Orçamento*\n\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-});
-btnCopyGlobalBudget.addEventListener('click', () => {
-  const { list, total } = getGlobalBudgetData();
-  if (!list.length) return;
-  const desc = list.map(i => `✅ ${i.text} (${i.itemTitle})`);
-  const msg = `*Orçamento*\n\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
-  
-  navigator.clipboard.writeText(msg).then(() => {
-    showToast('Orçamento global copiado!');
+    const { list, total } = getGlobalBudgetData(); if (!list.length) return;
+    const desc = list.map(i => `✅ ${i.text} (${i.itemTitle})`);
+    const msg = `*Orçamento*\n\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   });
-});
-btnClearBudget.addEventListener('click', async () => {
-  const { list } = getGlobalBudgetData();
-  if (!list.length) return;
-  const ok = confirm(`Isso vai desmarcar ${list.length} item(ns) de orçamento em todas as notas (checklists sem valor não são afetados). Continuar?`);
-  if (!ok) return;
-  const affectedIds = await clearAllBudgetCheckboxes();
-  if (viewingItem && affectedIds.includes(viewingItem.id)) closeView();
-  showToast('Orçamento limpo.');
-  refreshBudgetSummary();
-  renderCards();
-});
+  
+  btnCopyGlobalBudget.addEventListener('click', () => {
+    const { list, total } = getGlobalBudgetData(); if (!list.length) return;
+    const desc = list.map(i => `✅ ${i.text} (${i.itemTitle})`);
+    const msg = `*Orçamento*\n\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+    navigator.clipboard.writeText(msg).then(() => { showToast('Orçamento global copiado!'); });
+  });
+  
+  btnClearBudget.addEventListener('click', async () => {
+    const { list } = getGlobalBudgetData(); if (!list.length) return;
+    if (!confirm(`Isso vai desmarcar ${list.length} item(ns) de orçamento. Continuar?`)) return;
+    const affectedIds = await clearAllBudgetCheckboxes();
+    if (viewingItem && affectedIds.includes(viewingItem.id)) closeView();
+    showToast('Orçamento limpo.'); refreshBudgetSummary(); renderCards();
+  });
 
-  btnExport.addEventListener('click', () => exportBackup());
-  fieldImport.addEventListener('change', (e) => {
+  // ==========================================
+  // CARTUCHOS - EVENTOS DE CLIQUE E ARQUIVOS
+  // ==========================================
+  
+  // A. Botão que abre a gaveta de Exportar
+  btnExport.addEventListener('click', () => {
+    if (typeof closeSheetEl === 'function') closeSheetEl(sheetMore);
+    const allCats = [...new Set(allItems.map(i => i.category || 'Sem Categoria'))];
+    cartridgeCategories.innerHTML = '';
+    
+    allCats.forEach(cat => {
+      const lbl = document.createElement('label'); lbl.className = 'checkbox-row';
+      lbl.style.display = 'flex'; lbl.style.alignItems = 'center'; lbl.style.gap = '8px'; lbl.style.padding = '6px 0'; lbl.style.cursor = 'pointer';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = cat; cb.checked = true; cb.style.width = '20px'; cb.style.height = '20px';
+      const span = document.createElement('span'); span.textContent = cat;
+      lbl.appendChild(cb); lbl.appendChild(span);
+      cartridgeCategories.appendChild(lbl);
+    });
+
+    cartridgeName.value = ''; openSheet(modalExportCartridge); 
+  });
+
+  // B. Botão FINAL que filtra o BD e exporta o JSON (Preservando as imagens/áudios)
+  btnConfirmExportCartridge.addEventListener('click', async () => {
+    const checkboxes = Array.from(cartridgeCategories.querySelectorAll('input[type="checkbox"]:checked'));
+    const selectedCats = checkboxes.map(cb => cb.value);
+    if (selectedCats.length === 0) { showToast('Selecione pelo menos uma categoria!'); return; }
+
+    closeSheetEl(modalExportCartridge);
+    showToast('Processando cartucho... isso pode levar uns segundos.');
+
+    // PRECISAMOS DO dbGetAll PARA PEGAR OS BLOBS (fotos e áudios que pesam na memória)
+    const allHeavyItems = await dbGetAll();
+    const dataToExport = allHeavyItems.filter(i => selectedCats.includes(i.category || 'Sem Categoria'));
+    
+    const serializable = [];
+    for (const it of dataToExport){
+      let photoBase64 = null, photoType = null;
+      if (it.photo){ photoBase64 = await blobToDataURL(it.photo); photoType = it.photo.type || null; }
+      let audioBase64 = null, audioType = null;
+      if (it.audio){ audioBase64 = await blobToDataURL(it.audio); audioType = it.audio.type || null; }
+      
+      const copy = Object.assign({}, it);
+      delete copy.photo; delete copy.audio;
+      copy.photoBase64 = photoBase64; copy.photoType = photoType;
+      copy.audioBase64 = audioBase64; copy.audioType = audioType;
+      serializable.push(copy);
+    }
+    
+    const payload = { app:'memorias', version:1, exportedAt: Date.now(), items: serializable };
+    const blob = new Blob([JSON.stringify(payload)], { type:'application/json' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    
+    const customName = cartridgeName.value.trim().replace(/\s+/g, '_'); 
+    const dateStr = new Date().toISOString().slice(0,10);
+    const filename = customName ? `cartucho_${customName}_${dateStr}.json` : `cartucho_memorias_${dateStr}.json`;
+    
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    showToast(`Cartucho exportado! (${dataToExport.length} notas)`);
+  });
+
+  btnCloseExportCartridge.addEventListener('click', () => closeSheetEl(modalExportCartridge));
+
+  // C. Ao selecionar o arquivo JSON, lê os dados e abre a gaveta de Importar
+  fieldImport.addEventListener('change', async (e) => {
     const file = e.target.files[0];
-    if (file) importBackup(file);
+    if (!file) return;
+    
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      const items = Array.isArray(payload) ? payload : (payload.items || []);
+      if (!items.length){ showToast('Nenhum registro encontrado no arquivo.'); fieldImport.value = ''; return; }
+      
+      pendingCartridgeItems = items; // Salva na memória 
+      if (typeof closeSheetEl === 'function') closeSheetEl(sheetMore);
+      openSheet(modalImportChoice);
+    } catch(err){
+      showToast('Arquivo inválido ou corrompido.');
+    }
     fieldImport.value = '';
   });
+
+  btnCloseImportChoice.addEventListener('click', () => {
+    closeSheetEl(modalImportChoice); pendingCartridgeItems = null;
+  });
+
+  // D. Botão MESCLAR Cartucho
+  btnImportMerge.addEventListener('click', async () => {
+    if (!pendingCartridgeItems) return;
+    closeSheetEl(modalImportChoice);
+    showToast('Mesclando cartucho... aguarde.');
+    const addedCount = await processCartridgeItems(pendingCartridgeItems);
+    showToast(`${addedCount} registro(s) mesclado(s) com sucesso.`);
+    pendingCartridgeItems = null; loadAndRender();
+  });
+
+  // E. Botão SUBSTITUIR TUDO
+  btnImportReplace.addEventListener('click', async () => {
+    if (!pendingCartridgeItems) return;
+    if (!confirm(`Isso vai APAGAR TODAS as suas notas atuais e usar APENAS as ${pendingCartridgeItems.length} do cartucho. Tem Certeza?`)) return;
+    
+    closeSheetEl(modalImportChoice);
+    showToast('Formatando e instalando cartucho... aguarde.');
+
+    const currentItems = await dbGetAll();
+    for (const it of currentItems) { await dbDelete(it.id); }
+
+    const addedCount = await processCartridgeItems(pendingCartridgeItems);
+    showToast(`Novo Cartucho Instalado! (${addedCount} registros)`);
+    pendingCartridgeItems = null; loadAndRender();
+  });
+
+  // ==========================================
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
@@ -2764,69 +2108,59 @@ btnClearBudget.addEventListener('click', async () => {
     else if (sheetSearch.classList.contains('open')) closeSheetEl(sheetSearch);
     else if (sheetCategory.classList.contains('open')) closeSheetEl(sheetCategory);
     else if (sheetMore.classList.contains('open')) closeSheetEl(sheetMore);
+    else if (modalExportCartridge.classList.contains('open')) closeSheetEl(modalExportCartridge);
+    else if (modalImportChoice.classList.contains('open')) closeSheetEl(modalImportChoice);
   });
 
-  if (!SpeechRecognitionAPI){
-    document.querySelectorAll('.mic-btn').forEach(b => b.style.display = 'none');
-  }
-  // --- CONTROLE DE ÁUDIO GLOBAL ---
+  if (!SpeechRecognitionAPI){ document.querySelectorAll('.mic-btn').forEach(b => b.style.display = 'none'); }
   if (toggleGlobalAudio) {
-    toggleGlobalAudio.checked = isAudioEnabled; // Deixa marcado ou desmarcado baseado na memória
-    
+    toggleGlobalAudio.checked = isAudioEnabled;
     toggleGlobalAudio.addEventListener('change', (e) => {
-      isAudioEnabled = e.target.checked;
-      localStorage.setItem('memorias_audio_global', isAudioEnabled); // Salva a escolha pra sempre
-      
-      // Se ele desligou o áudio ENQUANTO o robô estava falando, manda calar a boca na hora!
-      if (!isAudioEnabled && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); 
-      }
-      
+      isAudioEnabled = e.target.checked; localStorage.setItem('memorias_audio_global', isAudioEnabled);
+      if (!isAudioEnabled && 'speechSynthesis' in window) { window.speechSynthesis.cancel(); }
       showToast(isAudioEnabled ? 'Áudio liberado.' : 'Modo Silencioso ativado.');
     });
   }
-  // --- CONTROLE DE LER ALTERNATIVAS ---
   if (toggleReadOptions) {
     toggleReadOptions.checked = readQuizOptions;
     toggleReadOptions.addEventListener('change', (e) => {
-      readQuizOptions = e.target.checked;
-      localStorage.setItem('memorias_read_options', readQuizOptions);
+      readQuizOptions = e.target.checked; localStorage.setItem('memorias_read_options', readQuizOptions);
       showToast(readQuizOptions ? 'Lendo pergunta + alternativas.' : 'Lendo APENAS a pergunta.');
     });
   }
-  // --- CONTROLE DE LER A PRÓXIMA AUTO ---
   if (toggleAutoReadNext) {
     toggleAutoReadNext.checked = autoReadNextQuiz;
     toggleAutoReadNext.addEventListener('change', (e) => {
-      autoReadNextQuiz = e.target.checked;
-      localStorage.setItem('memorias_auto_read_next', autoReadNextQuiz);
+      autoReadNextQuiz = e.target.checked; localStorage.setItem('memorias_auto_read_next', autoReadNextQuiz);
       showToast(autoReadNextQuiz ? 'Auto-leitura ligada.' : 'Auto-leitura desligada.');
     });
   }
-  // --- CONTROLE DE VELOCIDADE ---
   if (voiceSpeed) {
-    voiceSpeed.value = currentVoiceSpeed; // Posiciona a bolinha onde estava salvo
-    
-    // Função pra escrever se tá rápido ou devagar
+    voiceSpeed.value = currentVoiceSpeed; 
     const updateSpeedLabel = (val) => {
       if (val < 0.9) speedLabel.textContent = `Devagar (${val}x)`;
       else if (val > 1.1) speedLabel.textContent = `Rápido (${val}x)`;
       else speedLabel.textContent = `Normal (${val}x)`;
     };
     updateSpeedLabel(currentVoiceSpeed);
-
-    // Quando você arrasta a bolinha (atualiza o texto em tempo real)
-    voiceSpeed.addEventListener('input', (e) => {
-      updateSpeedLabel(parseFloat(e.target.value));
-    });
-
-    // Quando você SOLTA a bolinha (salva no celular e para a voz atual)
+    voiceSpeed.addEventListener('input', (e) => { updateSpeedLabel(parseFloat(e.target.value)); });
     voiceSpeed.addEventListener('change', (e) => {
-      currentVoiceSpeed = parseFloat(e.target.value);
-      localStorage.setItem('memorias_voice_speed', currentVoiceSpeed);
+      currentVoiceSpeed = parseFloat(e.target.value); localStorage.setItem('memorias_voice_speed', currentVoiceSpeed);
       if ('speechSynthesis' in window) window.speechSynthesis.cancel(); 
     });
   }
+}
+
+async function seedIfEmpty(){
+  const items = await dbGetAllLight();
+  if (items.length > 0) return;
+  const now = Date.now();
+  const examples = [
+    { title:'Exemplo: torque do cabeçote (você pode apagar)', category:'Torque/Aperto', vehicle:'VW Gol 1.0 8V (motor AP)', spec:'9,5 kgf·m (95 Nm) + 1/4 de volta', content:'Sequência de aperto em cruz, em 3 etapas, sempre com o motor frio. Este é um registro de exemplo — edite ou apague quando quiser.', tags:['motor','cabecote','ap'], favorite:true, photo:null, useCount:0, createdAt:now, updatedAt:now },
+    { title:'Exemplo: carro não pega só de manhã', category:'Diagnóstico', vehicle:'Honda Civic 2015 1.8', spec:'', content:'Causa encontrada: válvula do IAC suja, motor engasgando a frio. A limpeza resolveu. Vale checar esse componente antes de trocar sensor.', tags:['partida a frio','iac','injecao'], favorite:false, photo:null, useCount:0, createdAt:now, updatedAt:now },
+    { title:'Exemplo: relé da bomba de combustível', category:'Componente', vehicle:'Fiat Palio 1.0 Fire', spec:'', content:'Fica na caixa de fusíveis do compartimento do motor, posição 3, relé azul.', tags:['combustivel','rele','fusivel'], favorite:false, photo:null, useCount:0, createdAt:now, updatedAt:now }
+  ];
+  for (const ex of examples) await dbAdd(ex);
 }
 
 /* ---------------- Início ---------------- */
