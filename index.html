@@ -1587,18 +1587,26 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
       
       const updateTimerUI = () => {
         if (item.speedrunActive && item.speedrunLastSplit) {
+          // Rodando
           const elapsed = Date.now() - item.speedrunLastSplit + (item.speedrunAccumulated || 0);
           btnTimer.innerHTML = '⏱️ ' + formatTimeMs(elapsed);
           btnTimer.style.background = '#D6A035'; btnTimer.style.color = '#000';
         } else {
-          btnTimer.innerHTML = '▶️ Iniciar Tempo';
-          btnTimer.style.background = 'var(--smoke)'; btnTimer.style.color = '#fff';
+          // Pausado ou Zerado
+          if (item.speedrunAccumulated > 0) {
+            btnTimer.innerHTML = '⏸️ ' + formatTimeMs(item.speedrunAccumulated);
+            btnTimer.style.background = '#9AA0AB'; btnTimer.style.color = '#fff';
+          } else {
+            btnTimer.innerHTML = '▶️ Iniciar Tempo';
+            btnTimer.style.background = 'var(--smoke)'; btnTimer.style.color = '#fff';
+          }
         }
       };
       updateTimerUI();
       toolbar.appendChild(btnTimer);
 
-      btnTimer.addEventListener('click', async () => {
+      // 1. CLIQUE NORMAL: Pausa ou Inicia
+      btnTimer.addEventListener('click', async (e) => {
         if (item.speedrunActive) {
           item.speedrunActive = false; // Pausa
           item.speedrunAccumulated = (item.speedrunAccumulated || 0) + (Date.now() - item.speedrunLastSplit);
@@ -1610,6 +1618,42 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
         updateTimerUI();
       });
 
+      // 2. CLIQUE LONGO: Segurar para Zerar/Recomeçar
+      let pressTimer;
+      const startPress = (e) => {
+        if (e.type === 'contextmenu') e.preventDefault(); // Impede menu nativo do celular
+        pressTimer = setTimeout(async () => {
+          if (confirm('Deseja zerar totalmente o tempo deste serviço para recomeçar?')) {
+            item.speedrunActive = false;
+            item.speedrunAccumulated = 0;
+            item.speedrunLastSplit = null;
+            item.speedrunLog = {}; // Limpa os tempos gravados nas caixinhas também
+            item.updatedAt = Date.now();
+            await dbPut(item);
+            
+            updateTimerUI(); // Atualiza o botão
+            
+            // Se a gaveta de orçamento estiver aberta, já atualiza ela zerada
+            if (typeof updateBudgetPanel === 'function') {
+               const budgetPanel = toolbar.parentElement.querySelector('div[style*="flex-direction: column"]');
+               if (budgetPanel && budgetPanel.style.display === 'flex') updateBudgetPanel();
+            }
+            
+            showToast('⏱️ Tempo zerado!');
+          }
+        }, 800); // 800 milissegundos segurando para ativar
+      };
+      const cancelPress = () => clearTimeout(pressTimer);
+
+      // Eventos para reconhecer o dedo segurando na tela ou o mouse
+      btnTimer.addEventListener('mousedown', startPress);
+      btnTimer.addEventListener('touchstart', startPress, {passive: true});
+      btnTimer.addEventListener('mouseup', cancelPress);
+      btnTimer.addEventListener('mouseleave', cancelPress);
+      btnTimer.addEventListener('touchend', cancelPress);
+      btnTimer.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      // Loop infinito que atualiza o relógio a cada segundo
       if (viewTimerInterval) clearInterval(viewTimerInterval);
       viewTimerInterval = setInterval(() => { if (item.speedrunActive) updateTimerUI(); }, 1000);
     }
