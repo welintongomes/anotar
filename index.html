@@ -505,6 +505,23 @@
         <input type="checkbox" id="toggleReadNextStep">
         ➡️ Ler em voz alta o próximo passo do fluxo
       </label>
+      <!-- COMEÇO DA MUDANÇA 1: Configurações de Speedrun -->
+      <label class="checkbox-row" style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+        <input type="checkbox" id="toggleReadNextStep">
+        ➡️ Ler em voz alta o próximo passo do fluxo
+      </label>
+      <hr>
+      <!-- NOVO: MODO SPEEDRUN -->
+      <label class="checkbox-row" style="margin-bottom: 6px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+        <input type="checkbox" id="toggleSpeedrun">
+        ⏱️ Modo Speedrun (Gravar tempo de cada passo)
+      </label>
+      <label style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+        <span>💰 Valor cobrado por Hora (R$):</span>
+        <input type="number" id="hourlyRate" placeholder="Ex: 50.00" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
+      </label>
+      <hr>
+<!-- FIM DA MUDANÇA 1 -->
       <hr>
       <!-- CARTUCHOS: Botões continuam iguais na gaveta -->
       <button id="btnExport" class="btn-primary">⬇️ Exportar backup (.json)</button>
@@ -690,7 +707,9 @@ let viewAudioURL = null;
 let isAudioEnabled = localStorage.getItem('memorias_audio_global') !== 'false';
 let readQuizOptions = localStorage.getItem('memorias_read_options') !== 'false';
 let autoReadNextQuiz = localStorage.getItem('memorias_auto_read_next') !== 'false';
-let readNextStep = localStorage.getItem('memorias_read_next_step') === 'true'; // Vem desligado por padrão
+let readNextStep = localStorage.getItem('memorias_read_next_step') === 'true';
+let speedrunMode = localStorage.getItem('memorias_speedrun_mode') === 'true';
+let hourlyRate = parseFloat(localStorage.getItem('memorias_hourly_rate')) || 0;
 let currentVoiceSpeed = parseFloat(localStorage.getItem('memorias_voice_speed')) || 0.95;
 let currentToastDuration = parseFloat(localStorage.getItem('memorias_toast_duration')) || 2200;
 
@@ -779,6 +798,9 @@ const statsText = document.getElementById('statsText');
 const toggleGlobalAudio = document.getElementById('toggleGlobalAudio');
 const toggleAutoReadNext = document.getElementById('toggleAutoReadNext');
 const toggleReadNextStep = document.getElementById('toggleReadNextStep');
+const toggleSpeedrun = document.getElementById('toggleSpeedrun'); // NOVO
+const hourlyRateInput = document.getElementById('hourlyRate'); // NOVO
+let viewTimerInterval = null; // Cronômetro ao vivo na tela
 const toggleReadOptions = document.getElementById('toggleReadOptions');
 const voiceSpeed = document.getElementById('voiceSpeed');
 const speedLabel = document.getElementById('speedLabel');
@@ -929,6 +951,15 @@ function timeAgo(ts){
   if (months < 12) return months===1 ? 'há 1 mês' : `há ${months} meses`;
   const years = Math.floor(months/12);
   return years===1 ? 'há 1 ano' : `há ${years} anos`;
+}
+// NOVO: Transforma milissegundos em 00:00:00
+function formatTimeMs(ms) {
+  if (!ms || ms < 0) return "00:00:00";
+  const totalSeconds = Math.floor(ms / 1000);
+  const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+  const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+  const s = String(totalSeconds % 60).padStart(2, '0');
+  return `${h}:${m}:${s}`;
 }
 function categoryColor(cat){
   if (CATEGORY_COLORS[cat]) return CATEGORY_COLORS[cat];
@@ -1546,49 +1577,242 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
 
   if (item.content){
     const contentWrap = document.createElement('div'); contentWrap.style.marginTop = '12px';
+    /* COMEÇO DA MUDANÇA 1: Relógio e Orçamento */
     const toolbar = document.createElement('div'); toolbar.style.display = 'flex'; toolbar.style.gap = '8px'; toolbar.style.marginBottom = '15px'; toolbar.style.justifyContent = 'flex-start'; toolbar.style.flexWrap = 'wrap';
-        function hasPricedBudgetNow(){
-      return item.content.split('\n').some(line => {
+
+    // --- INÍCIO: RELÓGIO SPEEDRUN NA BARRA ---
+    if (speedrunMode) {
+      const btnTimer = document.createElement('button');
+      btnTimer.className = 'tag-pill'; btnTimer.style.border = 'none'; btnTimer.style.fontWeight = 'bold';
+      
+      const updateTimerUI = () => {
+        if (item.speedrunActive && item.speedrunLastSplit) {
+          const elapsed = Date.now() - item.speedrunLastSplit + (item.speedrunAccumulated || 0);
+          btnTimer.innerHTML = '⏱️ ' + formatTimeMs(elapsed);
+          btnTimer.style.background = '#D6A035'; btnTimer.style.color = '#000';
+        } else {
+          btnTimer.innerHTML = '▶️ Iniciar Tempo';
+          btnTimer.style.background = 'var(--smoke)'; btnTimer.style.color = '#fff';
+        }
+      };
+      updateTimerUI();
+      toolbar.appendChild(btnTimer);
+
+      btnTimer.addEventListener('click', async () => {
+        if (item.speedrunActive) {
+          item.speedrunActive = false; // Pausa
+          item.speedrunAccumulated = (item.speedrunAccumulated || 0) + (Date.now() - item.speedrunLastSplit);
+        } else {
+          item.speedrunActive = true; // Inicia
+          item.speedrunLastSplit = Date.now();
+        }
+        item.updatedAt = Date.now(); await dbPut(item);
+        updateTimerUI();
+      });
+
+      if (viewTimerInterval) clearInterval(viewTimerInterval);
+      viewTimerInterval = setInterval(() => { if (item.speedrunActive) updateTimerUI(); }, 1000);
+    }
+    // --- FIM: RELÓGIO SPEEDRUN ---
+
+    function generateBudgetText() {
+      let totalParts = 0; let totalTimeMs = 0; let desc = []; 
+      const lines = item.content.split('\n');
+      
+      lines.forEach((line, idx) => {
+        const checkMatch = line.match(/^\[[xX]\](.*)/);
+        if (checkMatch) {
+          const textPart = stripFlowSuffix(checkMatch[1]).trim(); 
+          const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); 
+          let price = 0;
+          if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
+          
+          let stepText = `✅ ${textPart}`;
+          if (item.speedrunLog && item.speedrunLog[idx]) {
+            stepText += `\nTempo gasto ${formatTimeMs(item.speedrunLog[idx])}`;
+            totalTimeMs += item.speedrunLog[idx];
+          }
+          if (price > 0 || (item.speedrunLog && item.speedrunLog[idx])) {
+            totalParts += price; desc.push(stepText); 
+          }
+        }
+      });
+
+      if (desc.length === 0) return null;
+
+      const tituloMsg = item.vehicle || item.title;
+      let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Realizados:*\n${desc.join('\n')}\n`;
+      
+      let finalTotal = totalParts;
+      if (totalTimeMs > 0) {
+        msg += `\n*Tempo total: ${formatTimeMs(totalTimeMs)}`;
+        if (hourlyRate > 0) {
+          const hours = totalTimeMs / (1000 * 60 * 60);
+          const laborCost = hours * hourlyRate;
+          msg += `\n*Total Mão de Obra (Horas): R$ ${laborCost.toFixed(2).replace('.', ',')}*`;
+          finalTotal += laborCost;
+        }
+      }
+      msg += `\n*Total Geral: R$ ${finalTotal.toFixed(2).replace('.', ',')}*`;
+      return msg;
+    }
+
+    /* COMEÇO DA MUDANÇA: Gaveta de Fechamento de Orçamento com Descontos */
+    function hasPricedBudgetNow(){
+      return item.content.split('\n').some((line, idx) => {
         const m = line.match(/^\[[xX]\](.*)/); if (!m) return false;
         const visible = stripFlowSuffix(m[1]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
-        return nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
+        const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
+        const hasTime = item.speedrunLog && item.speedrunLog[idx];
+        return hasPrice || hasTime;
       });
     }
-    const btnBudget = document.createElement('button'); btnBudget.className = 'tag-pill'; btnBudget.style.border = 'none'; btnBudget.style.background = '#4FA65B'; btnBudget.style.color = '#fff'; btnBudget.style.fontWeight = 'bold'; btnBudget.innerHTML = '💸 Zap';
-    btnBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
-    toolbar.appendChild(btnBudget);
-    btnBudget.addEventListener('click', async () => {
-      let total = 0; let desc = []; const lines = item.content.split('\n');
-      lines.forEach(line => {
+
+    // 1. O NOVO BOTÃO ÚNICO DE ORÇAMENTO (Substitui os botões soltos de Zap)
+    const btnToggleBudget = document.createElement('button'); 
+    btnToggleBudget.className = 'tag-pill'; 
+    btnToggleBudget.style.border = 'none'; 
+    btnToggleBudget.style.background = '#4FA65B'; 
+    btnToggleBudget.style.color = '#fff'; 
+    btnToggleBudget.style.fontWeight = 'bold'; 
+    btnToggleBudget.innerHTML = '💰 Orçamento';
+    btnToggleBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
+    toolbar.appendChild(btnToggleBudget);
+
+    // 2. O PAINEL ESCONDIDO (Gaveta Embutida)
+    const budgetPanel = document.createElement('div');
+    budgetPanel.style.display = 'none';
+    budgetPanel.style.flexDirection = 'column';
+    budgetPanel.style.gap = '12px';
+    budgetPanel.style.background = 'var(--panel-2)';
+    budgetPanel.style.padding = '16px';
+    budgetPanel.style.borderRadius = '8px';
+    budgetPanel.style.marginTop = '10px';
+    budgetPanel.style.marginBottom = '15px';
+    budgetPanel.style.border = '1px solid var(--smoke)';
+
+    // Quando clica no botão, mostra ou esconde a gaveta
+    btnToggleBudget.addEventListener('click', () => {
+      const isHidden = budgetPanel.style.display === 'none';
+      budgetPanel.style.display = isHidden ? 'flex' : 'none';
+      btnToggleBudget.style.background = isHidden ? '#D6A035' : '#4FA65B'; // Fica dourado quando aberto
+      if (isHidden) updateBudgetPanel();
+    });
+
+    // 3. FUNÇÃO QUE CALCULA E DESENHA O INTERIOR DA GAVETA
+    const updateBudgetPanel = () => {
+      budgetPanel.innerHTML = ''; // Limpa a gaveta para recalcular do zero
+      
+      let totalParts = 0; let totalTimeMs = 0; let desc = []; 
+      const lines = item.content.split('\n');
+      
+      lines.forEach((line, idx) => {
         const checkMatch = line.match(/^\[[xX]\](.*)/);
         if (checkMatch) {
-          const textPart = stripFlowSuffix(checkMatch[1]).trim(); const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); let price = 0;
+          const textPart = stripFlowSuffix(checkMatch[1]).trim(); 
+          const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); 
+          let price = 0;
           if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
-          if (price > 0) { total += price; desc.push(`✅ ${textPart}`); }
+          
+          let stepText = `✅ ${textPart}`;
+          if (item.speedrunLog && item.speedrunLog[idx]) {
+            stepText += `\n   Tempo gasto: ${formatTimeMs(item.speedrunLog[idx])}`;
+            totalTimeMs += item.speedrunLog[idx];
+          }
+          if (price > 0 || (item.speedrunLog && item.speedrunLog[idx])) {
+            totalParts += price; desc.push(stepText); 
+          }
         }
       });
-      if (desc.length === 0) { showToast('Marque as caixinhas ([x]) com valor!'); return; }
-      const tituloMsg = item.vehicle || item.title;
-      let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-    });
-    const btnCopyBudget = document.createElement('button'); btnCopyBudget.className = 'tag-pill'; btnCopyBudget.style.border = 'none'; btnCopyBudget.style.background = '#25D366'; btnCopyBudget.style.color = '#fff'; btnCopyBudget.style.fontWeight = 'bold'; btnCopyBudget.innerHTML = '📋 Zap';
-    btnCopyBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
-    toolbar.appendChild(btnCopyBudget);
-    btnCopyBudget.addEventListener('click', () => {
-      let total = 0; let desc = []; const lines = item.content.split('\n');
-      lines.forEach(line => {
-        const checkMatch = line.match(/^\[[xX]\](.*)/);
-        if (checkMatch) {
-          const textPart = stripFlowSuffix(checkMatch[1]).trim(); const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); let price = 0;
-          if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
-          if (price > 0) { total += price; desc.push(`✅ ${textPart}`); }
+
+      const hours = totalTimeMs / (1000 * 60 * 60);
+      const laborCostBase = hours * hourlyRate;
+
+      // Recupera descontos salvos na nota para não perder o progresso!
+      const descParts = item.discountParts || 0;
+      const descLabor = item.discountLabor || 0;
+
+      const finalParts = totalParts * (1 - descParts / 100);
+      const finalLabor = laborCostBase * (1 - descLabor / 100);
+      const grandTotal = finalParts + finalLabor;
+
+      // === BLOCO VISUAL DAS PEÇAS ===
+      const rowParts = document.createElement('div');
+      rowParts.style.display = 'flex'; rowParts.style.justifyContent = 'space-between'; rowParts.style.alignItems = 'center';
+      rowParts.innerHTML = `<span style="font-weight:bold; font-size:14px; opacity:0.9;">🛠️ Peças (R$ ${totalParts.toFixed(2).replace('.',',')})</span>`;
+      
+      const inputParts = document.createElement('input');
+      inputParts.type = 'number'; inputParts.placeholder = '% Desc'; inputParts.value = descParts > 0 ? descParts : '';
+      inputParts.style.width = '75px'; inputParts.style.padding = '6px'; inputParts.style.borderRadius = '6px'; inputParts.style.border = '1px solid var(--smoke)'; inputParts.style.background = 'var(--bg)'; inputParts.style.color = 'var(--text)'; inputParts.style.textAlign = 'center';
+      rowParts.appendChild(inputParts);
+
+      // === BLOCO VISUAL DA MÃO DE OBRA ===
+      const rowLabor = document.createElement('div');
+      rowLabor.style.display = 'flex'; rowLabor.style.justifyContent = 'space-between'; rowLabor.style.alignItems = 'center';
+      rowLabor.innerHTML = `<span style="font-weight:bold; font-size:14px; opacity:0.9;">⏱️ Horas (R$ ${laborCostBase.toFixed(2).replace('.',',')})</span>`;
+      
+      const inputLabor = document.createElement('input');
+      inputLabor.type = 'number'; inputLabor.placeholder = '% Desc'; inputLabor.value = descLabor > 0 ? descLabor : '';
+      inputLabor.style.width = '75px'; inputLabor.style.padding = '6px'; inputLabor.style.borderRadius = '6px'; inputLabor.style.border = '1px solid var(--smoke)'; inputLabor.style.background = 'var(--bg)'; inputLabor.style.color = 'var(--text)'; inputLabor.style.textAlign = 'center';
+      rowLabor.appendChild(inputLabor);
+
+      // === BLOCO VISUAL DO VALOR TOTAL FINAL ===
+      const rowTotal = document.createElement('div');
+      rowTotal.style.textAlign = 'right'; rowTotal.style.fontSize = '18px'; rowTotal.style.fontWeight = 'bold'; rowTotal.style.color = '#4FA65B';
+      rowTotal.style.marginTop = '8px'; rowTotal.style.paddingTop = '10px'; rowTotal.style.borderTop = '1px dashed var(--smoke)';
+      rowTotal.textContent = `Total a Cobrar: R$ ${grandTotal.toFixed(2).replace('.',',')}`;
+
+      // Salvar o desconto direto no cofre da nota quando você digita!
+      const handleInput = async () => {
+        item.discountParts = parseFloat(inputParts.value) || 0;
+        item.discountLabor = parseFloat(inputLabor.value) || 0;
+        await dbPut(item); // Salvo perfeitamente! Pode fechar e voltar depois.
+        updateBudgetPanel(); // Atualiza a conta
+      };
+      
+      // Espera parar de digitar pra não travar (Debounce)
+      inputParts.addEventListener('input', debounce(handleInput, 400));
+      inputLabor.addEventListener('input', debounce(handleInput, 400));
+
+      budgetPanel.appendChild(rowParts);
+      budgetPanel.appendChild(rowLabor);
+      budgetPanel.appendChild(rowTotal);
+
+      // === BOTÕES DE AÇÃO: ENVIAR PARA O CLIENTE ===
+      const actionRow = document.createElement('div');
+      actionRow.style.display = 'flex'; actionRow.style.gap = '8px'; actionRow.style.marginTop = '10px';
+      
+      const generateText = () => {
+        const tituloMsg = item.vehicle || item.title;
+        let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Realizados:*\n${desc.join('\n')}\n`;
+        if (totalTimeMs > 0) msg += `\n*Tempo total:* ${formatTimeMs(totalTimeMs)}\n`;
+        
+        msg += `\n*Resumo Financeiro:*`;
+        if (totalParts > 0) {
+          msg += `\nPeças/Serviços: R$ ${finalParts.toFixed(2).replace('.',',')}`;
+          if (descParts > 0) msg += ` _(Desconto de ${descParts}%)_`;
         }
-      });
-      if (desc.length === 0) { showToast('Marque as caixinhas ([x]) com valor!'); return; }
-      let msg = `*Orçamento - Serviços*\nRef: ${item.vehicle || item.title}\n\n*Serviços Autorizados:*\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
-      navigator.clipboard.writeText(msg).then(() => showToast('Copiado!'));
-    });
+        if (laborCostBase > 0) {
+          msg += `\nMão de Obra: R$ ${finalLabor.toFixed(2).replace('.',',')}`;
+          if (descLabor > 0) msg += ` _(Desconto de ${descLabor}%)_`;
+        }
+        msg += `\n\n*Total Geral: R$ ${grandTotal.toFixed(2).replace('.',',')}*`;
+        return msg;
+      };
+
+      const btnZap = document.createElement('button'); btnZap.className = 'btn-primary'; btnZap.style.flex = '1'; btnZap.style.padding = '12px'; btnZap.innerHTML = '💸 WhatsApp';
+      btnZap.onclick = () => window.open(`https://wa.me/?text=${encodeURIComponent(generateText())}`, '_blank');
+      
+      const btnCopy = document.createElement('button'); btnCopy.className = 'btn-secondary'; btnCopy.style.flex = '1'; btnCopy.style.padding = '12px'; btnCopy.innerHTML = '📋 Copiar';
+      btnCopy.onclick = () => navigator.clipboard.writeText(generateText()).then(() => showToast('Orçamento Copiado!'));
+
+      actionRow.appendChild(btnZap); actionRow.appendChild(btnCopy);
+      budgetPanel.appendChild(actionRow);
+    };
+
+    // Insere o painel na tela (ele inicia invisível)
+    contentWrap.appendChild(budgetPanel);
+/* FIM DA MUDANÇA */
 
     function hasPlainChecklistNow(){
       return item.content.split('\n').some(line => {
@@ -1598,7 +1822,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
         return !hasPrice;
       });
     }
-    const btnResetPlain = document.createElement('button'); btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none'; btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff'; btnResetPlain.innerHTML = '🔄 Resetar checklist'; btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
+    const btnResetPlain = document.createElement('button'); btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none'; btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff'; btnResetPlain.innerHTML = '🔄 Limpar'; btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
     toolbar.appendChild(btnResetPlain);
     btnResetPlain.addEventListener('click', async () => {
       if (!confirm('Desmarcar os itens sem valor nesta nota?')) return;
@@ -1768,21 +1992,58 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
           }
           textContainer.appendChild(label); const currentIndex = i; lineEls[currentIndex] = label;
 
+          /* COMEÇO DA MUDANÇA 2: Gravando o Tempo */
           cb.addEventListener('change', async () => {
             span.style.textDecoration = cb.checked ? 'line-through' : 'none'; span.style.opacity = cb.checked ? '0.6' : '1';
             const marker = cb.checked ? '[x]' : '[ ]'; const freshLines = item.content.split('\n');
             freshLines[currentIndex] = freshLines[currentIndex].replace(/^\[[ xX]?\]/, marker);
-            item.content = freshLines.join('\n'); item.updatedAt = Date.now(); await dbPut(item);
-            const ramItem = allItems.find(x => x.id === item.id); if (ramItem) { ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; }
+            item.content = freshLines.join('\n'); 
+            
+            // --- INÍCIO: GRAVAR O TEMPO SPEEDRUN ---
+            if (cb.checked && item.speedrunActive) {
+              if (!item.speedrunLog) item.speedrunLog = {};
+              const elapsed = (Date.now() - item.speedrunLastSplit) + (item.speedrunAccumulated || 0);
+              item.speedrunLog[currentIndex] = elapsed;
+              
+              // Zera e recomeça o tempo para o passo seguinte
+              item.speedrunLastSplit = Date.now();
+              item.speedrunAccumulated = 0;
+              showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
+            } else if (!cb.checked && item.speedrunLog && item.speedrunLog[currentIndex]) {
+              delete item.speedrunLog[currentIndex]; // Remove tempo se desmarcar
+            }
+            // --- FIM ---
+
+            item.updatedAt = Date.now(); await dbPut(item);
+            const ramItem = allItems.find(x => x.id === item.id); 
+            if (ramItem) { 
+              ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; 
+              ramItem.speedrunLog = item.speedrunLog;
+              ramItem.speedrunLastSplit = item.speedrunLastSplit;
+              ramItem.speedrunAccumulated = item.speedrunAccumulated;
+            }
                         
             btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
-            btnBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
-            btnCopyBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
+            
+            // AQUI É A ATUALIZAÇÃO IMPORTANTE (substitui os botões antigos de Zap):
+            btnToggleBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
+            
             renderCards();
-            /* COMEÇO DA MUDANÇA: Lógica do checkbox com ✅Fim lendo a instrução */
+
+            // AQUI ENTRA A NOSSA ÚLTIMA MELHORIA:
+            if (budgetPanel.style.display === 'flex') { updateBudgetPanel(); }
+
+            // A PARTIR DAQUI CONTINUA A LÓGICA DE LER O "✅FIM" E O PRÓXIMO PASSO
             if (cb.checked && nextStepRaw){
-              // Verifica se o próximo passo é o nosso marcador de encerramento
               if (nextStepRaw.includes('✅Fim') || nextStepRaw.includes('✅ Fim')) {
+                
+                // Se chegou no Fim, pausa o cronômetro para não cobrar extra do cliente!
+                if (item.speedrunActive) {
+                  item.speedrunActive = false;
+                  item.speedrunAccumulated = (item.speedrunAccumulated || 0) + (Date.now() - item.speedrunLastSplit);
+                  await dbPut(item);
+                }
+                /* FIM DA MUDANÇA 3 */
                 // Remove a tag "✅Fim" para pegar só a instrução final real
                 const finalInstruction = nextStepRaw.replace(/✅\s*Fim/g, '').trim();
                 const toastMsg = finalInstruction ? `🏁 Fim: ${finalInstruction}` : '🏁 Fluxo Finalizado!';
@@ -1968,6 +2229,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
 
 function closeView(){
   closeSheetEl(modalView);
+  if (viewTimerInterval) { clearInterval(viewTimerInterval); viewTimerInterval = null; }
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
   viewingItem = null; viewHistory = []; 
@@ -2307,6 +2569,22 @@ modalImportChoice.addEventListener('click', (e) => {
       readNextStep = e.target.checked; 
       localStorage.setItem('memorias_read_next_step', readNextStep);
       showToast(readNextStep ? 'Leitura de fluxo ligada.' : 'Leitura de fluxo desligada.');
+    });
+  }
+  if (toggleSpeedrun) {
+    toggleSpeedrun.checked = speedrunMode;
+    toggleSpeedrun.addEventListener('change', (e) => {
+      speedrunMode = e.target.checked;
+      localStorage.setItem('memorias_speedrun_mode', speedrunMode);
+      showToast(speedrunMode ? '⏱️ Modo Speedrun Ativado' : 'Modo Speedrun Desativado');
+    });
+  }
+  // Controle do Valor por Hora
+  if (hourlyRateInput) {
+    hourlyRateInput.value = hourlyRate || '';
+    hourlyRateInput.addEventListener('input', (e) => {
+      hourlyRate = parseFloat(e.target.value) || 0;
+      localStorage.setItem('memorias_hourly_rate', hourlyRate);
     });
   }
   
