@@ -380,6 +380,7 @@
   <button type="button" id="btnInsertDivider" class="tag-pill" style="border:none; cursor:pointer;">➖ separador</button>
   <button type="button" id="btnInsertQuiz" class="tag-pill" style="border:none; cursor:pointer;">🧠 quiz</button>
   <button type="button" id="btnInsertLink" class="tag-pill" style="border:none; cursor:pointer; background:#4FA8D8; color:#fff;">🔗 link</button>
+  <button type="button" id="btnInsertEnd" class="tag-pill" style="border:none; cursor:pointer; background:#D64545; color:#fff;">✅ Fim</button>
 </div>
   <div class="textarea-wrap">
     <textarea id="fieldContent" rows="5" placeholder="Explique com suas palavras: qual era o problema, o que resolveu, o passo a passo, onde fica a peça..."></textarea>
@@ -483,6 +484,10 @@
       <label style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
         <span>🏃‍♂️ Velocidade da Voz: <strong id="speedLabel">Normal (0.95x)</strong></span>
         <input type="range" id="voiceSpeed" min="0.5" max="2.0" step="0.05" value="0.95">
+      </label>
+      <label style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+        <span>⏱️ Tempo do Aviso na tela: <strong id="toastSpeedLabel">2.2s</strong></span>
+        <input type="range" id="toastSpeed" min="1.0" max="10.0" step="0.5" value="2.2">
       </label>
       <label class="checkbox-row" style="margin-bottom: 6px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
         <input type="checkbox" id="toggleGlobalAudio">
@@ -682,6 +687,7 @@ let isAudioEnabled = localStorage.getItem('memorias_audio_global') !== 'false';
 let readQuizOptions = localStorage.getItem('memorias_read_options') !== 'false';
 let autoReadNextQuiz = localStorage.getItem('memorias_auto_read_next') !== 'false';
 let currentVoiceSpeed = parseFloat(localStorage.getItem('memorias_voice_speed')) || 0.95;
+let currentToastDuration = parseFloat(localStorage.getItem('memorias_toast_duration')) || 2200;
 
 /* ---------------- Elementos ---------------- */
 const searchInput = document.getElementById('searchInput');
@@ -734,6 +740,7 @@ const btnInsertArrow = document.getElementById('btnInsertArrow');
 const btnInsertDivider = document.getElementById('btnInsertDivider');
 const btnInsertQuiz = document.getElementById('btnInsertQuiz');
 const btnInsertLink = document.getElementById('btnInsertLink');
+const btnInsertEnd = document.getElementById('btnInsertEnd');
 const btnBackView = document.getElementById('btnBackView');
 let viewHistory = []; 
 const quizDueText = document.getElementById('quizDueText');
@@ -769,6 +776,8 @@ const toggleAutoReadNext = document.getElementById('toggleAutoReadNext');
 const toggleReadOptions = document.getElementById('toggleReadOptions');
 const voiceSpeed = document.getElementById('voiceSpeed');
 const speedLabel = document.getElementById('speedLabel');
+const toastSpeed = document.getElementById('toastSpeed');
+const toastSpeedLabel = document.getElementById('toastSpeedLabel');
 
 const budgetSummaryText = document.getElementById('budgetSummaryText');
 const btnSendBudget = document.getElementById('btnSendBudget');
@@ -892,10 +901,14 @@ function insertAtCursor(textarea, textToInsert){
   textarea.setSelectionRange(newPos, newPos);
   textarea.dispatchEvent(new Event('input'));
 }
-function showToast(msg){
-  toast.textContent = msg; toast.classList.add('show');
+function showToast(msg, keepOpen = false){
+  toast.textContent = msg; 
+  toast.classList.add('show');
   clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => toast.classList.remove('show'), 2200);
+  
+  if (!keepOpen) {
+    showToast._t = setTimeout(() => toast.classList.remove('show'), currentToastDuration);
+  }
 }
 function timeAgo(ts){
   if (!ts) return 'agora';
@@ -1760,11 +1773,32 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
             btnBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
             btnCopyBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
             renderCards();
-
+            /* COMEÇO DA MUDANÇA: Lógica do checkbox com ✅Fim lendo a instrução */
             if (cb.checked && nextStepRaw){
+              // Verifica se o próximo passo é o nosso marcador de encerramento
+              if (nextStepRaw.includes('✅Fim') || nextStepRaw.includes('✅ Fim')) {
+                // Remove a tag "✅Fim" para pegar só a instrução final real
+                const finalInstruction = nextStepRaw.replace(/✅\s*Fim/g, '').trim();
+                const toastMsg = finalInstruction ? `🏁 Fim: ${finalInstruction}` : '🏁 Fluxo Finalizado!';
+                
+                // Mostra na tela e fica travado até clicar fora
+                showToast(toastMsg, true); 
+                
+                // Se o áudio global estiver ligado, o assistente fala o diagnóstico
+                if (isAudioEnabled && 'speechSynthesis' in window) {
+                  window.speechSynthesis.cancel(); // Manda calar a boca se estiver lendo outra coisa
+                  const utterance = new SpeechSynthesisUtterance("Finalizado. " + finalInstruction);
+                  utterance.lang = 'pt-BR';
+                  utterance.rate = currentVoiceSpeed;
+                  window.speechSynthesis.speak(utterance);
+                }
+                return; 
+              }
+
               const targetNorm = normalize(nextStepRaw);
               const foundIdx = lineSearchNorm.findIndex((t, idx) => idx !== currentIndex && t && t.includes(targetNorm));
-              if (foundIdx !== -1 && lineEls[foundIdx]){
+              
+            if (foundIdx !== -1 && lineEls[foundIdx]){
                 const el = lineEls[foundIdx]; el.scrollIntoView({ behavior:'smooth', block:'center' });
                 const oldBg = el.style.background, oldRadius = el.style.borderRadius;
                 el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px';
@@ -1959,6 +1993,20 @@ function setupEventListeners(){
     const linkStr = `[[${textToWrap}]]`;
     fieldContent.value = value.slice(0, start) + linkStr + value.slice(end);
     const newCursorPos = start + 2; fieldContent.focus(); fieldContent.setSelectionRange(newCursorPos, newCursorPos + textToWrap.length); fieldContent.dispatchEvent(new Event('input'));
+  });
+
+  // NOVO: Clique no Botão de Fim de Fluxo
+  if (btnInsertEnd) {
+    btnInsertEnd.addEventListener('mousedown', (e) => e.preventDefault());
+    btnInsertEnd.addEventListener('click', () => { insertAtCursor(fieldContent, ' ✅Fim'); });
+  }
+
+  // NOVO: Clicar fora para fechar o toast (se ele estiver preso na tela)
+  document.addEventListener('click', (e) => {
+    // Fecha se o toast estiver aberto E o clique não foi numa caixinha (que abre ele)
+    if (toast.classList.contains('show') && e.target.type !== 'checkbox') {
+      toast.classList.remove('show');
+    }
   });
 
   sortSelect.addEventListener('change', () => { currentSort = sortSelect.value; renderCards(); });
@@ -2205,6 +2253,21 @@ modalImportChoice.addEventListener('click', (e) => {
     voiceSpeed.addEventListener('change', (e) => {
       currentVoiceSpeed = parseFloat(e.target.value); localStorage.setItem('memorias_voice_speed', currentVoiceSpeed);
       if ('speechSynthesis' in window) window.speechSynthesis.cancel(); 
+    });
+  }
+  // NOVO: Controle da Velocidade do Toast
+  if (toastSpeed) {
+    toastSpeed.value = (currentToastDuration / 1000).toFixed(1);
+    toastSpeedLabel.textContent = toastSpeed.value + 's';
+    
+    toastSpeed.addEventListener('input', (e) => {
+      toastSpeedLabel.textContent = parseFloat(e.target.value).toFixed(1) + 's';
+    });
+    
+    toastSpeed.addEventListener('change', (e) => {
+      currentToastDuration = parseFloat(e.target.value) * 1000;
+      localStorage.setItem('memorias_toast_duration', currentToastDuration);
+      showToast('Tempo atualizado!', false); // Testa o novo tempo na hora
     });
   }
 }
