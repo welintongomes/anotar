@@ -501,6 +501,10 @@
         <input type="checkbox" id="toggleAutoReadNext">
         🔁 Ler a próxima pergunta automaticamente
       </label>
+      <label class="checkbox-row" style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+        <input type="checkbox" id="toggleReadNextStep">
+        ➡️ Ler em voz alta o próximo passo do fluxo
+      </label>
       <hr>
       <!-- CARTUCHOS: Botões continuam iguais na gaveta -->
       <button id="btnExport" class="btn-primary">⬇️ Exportar backup (.json)</button>
@@ -686,6 +690,7 @@ let viewAudioURL = null;
 let isAudioEnabled = localStorage.getItem('memorias_audio_global') !== 'false';
 let readQuizOptions = localStorage.getItem('memorias_read_options') !== 'false';
 let autoReadNextQuiz = localStorage.getItem('memorias_auto_read_next') !== 'false';
+let readNextStep = localStorage.getItem('memorias_read_next_step') === 'true'; // Vem desligado por padrão
 let currentVoiceSpeed = parseFloat(localStorage.getItem('memorias_voice_speed')) || 0.95;
 let currentToastDuration = parseFloat(localStorage.getItem('memorias_toast_duration')) || 2200;
 
@@ -773,6 +778,7 @@ const fieldImport = document.getElementById('fieldImport');
 const statsText = document.getElementById('statsText');
 const toggleGlobalAudio = document.getElementById('toggleGlobalAudio');
 const toggleAutoReadNext = document.getElementById('toggleAutoReadNext');
+const toggleReadNextStep = document.getElementById('toggleReadNextStep');
 const toggleReadOptions = document.getElementById('toggleReadOptions');
 const voiceSpeed = document.getElementById('voiceSpeed');
 const speedLabel = document.getElementById('speedLabel');
@@ -1798,13 +1804,66 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
               const targetNorm = normalize(nextStepRaw);
               const foundIdx = lineSearchNorm.findIndex((t, idx) => idx !== currentIndex && t && t.includes(targetNorm));
               
-            if (foundIdx !== -1 && lineEls[foundIdx]){
+              if (foundIdx !== -1 && lineEls[foundIdx]){
                 const el = lineEls[foundIdx]; el.scrollIntoView({ behavior:'smooth', block:'center' });
                 const oldBg = el.style.background, oldRadius = el.style.borderRadius;
                 el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px';
                 setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
                 showToast('➡️ Próximo passo: ' + nextStepRaw);
               } else { showToast('➡️ Próximo passo sugerido: "' + nextStepRaw + '" (não encontrei esse texto na lista)'); }
+            }
+            if (cb.checked && nextStepRaw){
+              // 1. CHECA SE É O FIM DO FLUXO
+              if (nextStepRaw.includes('✅Fim') || nextStepRaw.includes('✅ Fim')) {
+                const finalInstruction = nextStepRaw.replace(/✅\s*Fim/g, '').trim();
+                const toastMsg = finalInstruction ? `🏁 Fim: ${finalInstruction}` : '🏁 Fluxo Finalizado!';
+                
+                showToast(toastMsg, true); // Trava o aviso na tela
+                
+                if (isAudioEnabled && 'speechSynthesis' in window) {
+                  window.speechSynthesis.cancel();
+                  // O "..." força a voz do celular a fazer uma pausa respirada!
+                  const utterance = new SpeechSynthesisUtterance("Finalizado! ... " + finalInstruction);
+                  utterance.lang = 'pt-BR';
+                  utterance.rate = currentVoiceSpeed;
+                  window.speechSynthesis.speak(utterance);
+                }
+                return; 
+              }
+
+              // 2. SE NÃO FOR O FIM, PROCURA O PRÓXIMO PASSO NA TELA
+              const targetNorm = normalize(nextStepRaw);
+              const foundIdx = lineSearchNorm.findIndex((t, idx) => idx !== currentIndex && t && t.includes(targetNorm));
+              
+              if (foundIdx !== -1 && lineEls[foundIdx]){
+                // Achou na tela (ilumina azul)
+                const el = lineEls[foundIdx]; el.scrollIntoView({ behavior:'smooth', block:'center' });
+                const oldBg = el.style.background, oldRadius = el.style.borderRadius;
+                el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px';
+                setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
+                showToast('➡️ Próximo passo: ' + nextStepRaw);
+                
+                // NOVO: Lê o próximo passo que ele encontrou
+                if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
+                  window.speechSynthesis.cancel();
+                  const utterance = new SpeechSynthesisUtterance("Próximo passo. " + nextStepRaw);
+                  utterance.lang = 'pt-BR';
+                  utterance.rate = currentVoiceSpeed;
+                  window.speechSynthesis.speak(utterance);
+                }
+              } else { 
+                // Não achou escrito na tela (apenas sugeriu)
+                showToast('➡️ Próximo passo sugerido: "' + nextStepRaw + '" (não encontrei esse texto na lista)'); 
+                
+                // NOVO: Lê o próximo passo sugerido
+                if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
+                  window.speechSynthesis.cancel();
+                  const utterance = new SpeechSynthesisUtterance("Sugerido. " + nextStepRaw);
+                  utterance.lang = 'pt-BR';
+                  utterance.rate = currentVoiceSpeed;
+                  window.speechSynthesis.speak(utterance);
+                }
+              }
             }
           });
           i++; continue;
@@ -2241,6 +2300,16 @@ modalImportChoice.addEventListener('click', (e) => {
       showToast(autoReadNextQuiz ? 'Auto-leitura ligada.' : 'Auto-leitura desligada.');
     });
   }
+  // NOVO: Controle da leitura do próximo passo de fluxo
+  if (toggleReadNextStep) {
+    toggleReadNextStep.checked = readNextStep;
+    toggleReadNextStep.addEventListener('change', (e) => {
+      readNextStep = e.target.checked; 
+      localStorage.setItem('memorias_read_next_step', readNextStep);
+      showToast(readNextStep ? 'Leitura de fluxo ligada.' : 'Leitura de fluxo desligada.');
+    });
+  }
+  
   if (voiceSpeed) {
     voiceSpeed.value = currentVoiceSpeed; 
     const updateSpeedLabel = (val) => {
