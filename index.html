@@ -581,7 +581,95 @@
   </div>
 </div>
 <!-- ========================================== -->
+<!-- ========================================== -->
+<!-- COMEÇO DA MUDANÇA: GUIA DE USO (MANUAL) -->
+<!-- ========================================== -->
 
+<!-- BOTÃO FLUTUANTE 💡 -->
+<button id="btnHelpGuide" style="position: fixed; bottom: 80px; right: 20px; width: 48px; height: 48px; border-radius: 50%; background: #D6A035; color: #000; border: none; font-size: 24px; z-index: 99998; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer; display: flex; justify-content: center; align-items: center;" aria-label="Manual de Uso">💡</button>
+
+<!-- GAVETA DO MANUAL -->
+<div id="modalHelpGuide" class="modal-overlay" style="display: none; z-index: 100005;">
+  <div class="modal-box" style="max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="modal-header">
+      <h2>💡 Manual de Bordo</h2>
+      <button class="icon-btn" id="btnCloseHelpGuide" aria-label="Fechar">✕</button>
+    </div>
+    
+    
+    
+    <!-- CONTEÚDO DO MANUAL -->
+    <div class="modal-body" id="helpContentBody" style="overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: var(--bg);">
+      
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="dinheiro valor cobrar orçamento financeiro peças zap">
+        <h3 style="color: #4FA65B; margin-bottom: 8px;">💸 Checklists e Orçamentos</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Crie listas marcando <code>[ ]</code> no início da linha.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Com Valor:</b> Coloque o preço no fim. Ex: <code>[ ] Trocar óleo 150</code>. O app vai somar automaticamente na gaveta de <b>💰 Orçamento</b>.</li>
+          <li><b>Sem Valor:</b> Fica apenas como um checklist simples de tarefas.</li>
+          <li><b>Descontos:</b> Na gaveta de Orçamento, você pode dar descontos separados em % para peças ou mão de obra.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="proximo passo seta fluxo finalizar final encerramento fala">
+        <h3 style="color: #4FA8D8; margin-bottom: 8px;">➡️ Fluxos de Trabalho</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Crie guias passo-a-step inteligentes.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Próximo passo:</b> Use <code>>></code>. Ex: <code>[ ] Soltar capa >> Medir Tensão</code>. Ao marcar, ele acha o texto "Medir Tensão", rola a tela até ele e brilha em azul.</li>
+          <li><b>Fim do Fluxo:</b> Use <code>✅Fim</code>. Ex: <code>[ ] Testar ignição >> Trocar vela ✅Fim</code>. Trava o aviso na tela e lê em voz alta a instrução final!</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="tempo relógio speed run cronometro hora valor trabalhada pausa zerar recomeçar longo">
+        <h3 style="color: #D6A035; margin-bottom: 8px;">⏱️ Modo Speedrun</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Ative nas configurações para medir o tempo do serviço e cobrar por hora.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Botão Iniciar:</b> Toque para rodar o tempo. Toque de novo para pausar.</li>
+          <li><b>Zerar:</b> Pressione e segure o botão do relógio por 1 segundo.</li>
+          <li><b>Registro:</b> Toda vez que marcar um checkbox, ele salva o tempo gasto naquela etapa e reinicia o relógio para a próxima. O <code>✅Fim</code> pausa o relógio sozinho.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="links urls internet paginas sites nota notas internas externo colchetes ocultar nome">
+        <h3 style="color: #8B6FD1; margin-bottom: 8px;">🌐 Links e Referências</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Como conectar suas anotações e sites.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Link Interno (🔗):</b> Envolva com dois colchetes <code>[[Nome da Nota]]</code>. Ao clicar, ele abre a outra anotação na hora.</li>
+          <li><b>Link Externo Personalizado (🌐):</b> Colchete no nome, parênteses no link. Ex: <code>[Manual Honda](www.honda.com/manual)</code>.</li>
+          <li><b>Link Externo Simples:</b> Só digitar o link que ele vira botão automático.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="estudar aprender decorar perguntas respostas sm2 repetição inteligente">
+        <h3 style="color: #D64545; margin-bottom: 8px;">🧠 Quiz e Aprendizado</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Para estudar novos idiomas ou termos técnicos.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Pergunta:</b> Comece a linha com <code>??</code>.</li>
+          <li><b>Alternativas:</b> Comece a linha com <code>()</code> para errada, ou <code>(x)</code> para a certa. O app mistura a ordem sozinho e te avisa quando é dia de revisar (Sistema SM-2).</li>
+        </ul>
+      </div>
+      
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="voz ler auto fala alto tela viva travar nao apagar">
+        <h3 style="color: #9AA0AB; margin-bottom: 8px;">🗣️ Voz e Tela</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Funções extras na barra de ferramentas.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>💡 Tela Viva:</b> Clique no botão no topo da nota para impedir que a tela do celular apague enquanto trabalha.</li>
+          <li><b>Leitura:</b> Clique nos títulos para ler em voz alta. Nas configurações, você pode pedir para ele ler os fluxos sozinho enquanto você tem as mãos ocupadas.</li>
+        </ul>
+      </div>
+      
+    </div>
+    <!-- BARRA DE PESQUISA DO MANUAL -->
+    <div style="padding: 12px 16px; background: var(--panel-2); border-bottom: 1px solid var(--smoke); display: flex; align-items: center; position: relative;">
+      <span style="position: absolute; right: 24px;">🔍</span>
+      <input type="text" id="helpSearchInput" placeholder="O que você quer aprender?..." style="width: 100%; padding: 10px 10px 10px 47px; border-radius: 6px; border: 1px solid var(--smoke); background: var(--bg); color: var(--text); outline: none; font-size: 15px;">
+      <button id="btnClearHelpSearch" style="position: absolute; left: 26px; background: transparent; border: none; color: var(--smoke); cursor: pointer; display: none; font-size: 16px;">✕</button>
+    </div>
+  </div>
+</div>
+<!-- ========================================== -->
+<!-- FIM DA MUDANÇA: GUIA DE USO -->
+<!-- ========================================== -->
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -1539,15 +1627,51 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     viewBody.appendChild(tagsContainer);
   }
 
+/* COMEÇO DA MUDANÇA: Links Perfeitos e Seguros */
   const renderText = (text) => {
     const query = internalQuery || currentSearch;
     let processed = query ? highlightHTML(text, query) : escapeHTML(text);
+    
+    // Gaveta segura para guardar os links enquanto formata o resto
+    const tokens = [];
+    const salvarLink = (html) => {
+      tokens.push(html);
+      return `__LINK_SEGURO_${tokens.length - 1}__`;
+    };
+    
+    // 1. LINKS INTERNOS: [[Nome da Nota]]
     processed = processed.replace(/\[\[(.*?)\]\]/g, (match, innerText) => {
       const cleanTitle = innerText.replace(/<[^>]*>?/gm, ''); 
-      return `<span class="internal-link" data-target="${cleanTitle}" style="color:#4FA8D8; text-decoration:underline; font-weight:bold; cursor:pointer;">🔗 ${innerText}</span>`;
+      return salvarLink(`<span class="internal-link" data-target="${cleanTitle}" style="color:#D6A035; text-decoration:underline; font-weight:bold; cursor:pointer;">🔗 ${innerText}</span>`);
     });
+
+    // 2. LINKS EXTERNOS COM NOME: [Mercado Livre](www.mercadolivre.com)
+    processed = processed.replace(/\[(.*?)\]\((https?:\/\/[^\s<"')]+|www\.[^\s<"')]+)\)/ig, (match, nome, url) => {
+      const href = url.toLowerCase().startsWith('www.') ? 'https://' + url : url;
+      return salvarLink(`<a href="${href}" target="_blank" style="color:#4FA8D8; text-decoration:underline; font-weight:bold; cursor:pointer;" onclick="event.stopPropagation()">🌐 ${nome}</a>`);
+    });
+    
+    // 3. LINKS EXTERNOS SOLTOS (O que sobrar)
+    processed = processed.replace(/(https?:\/\/[^\s<"')]+|www\.[^\s<"')]+)/ig, (match) => {
+      let url = match;
+      let trailing = '';
+      const lastChar = url.slice(-1);
+      if (['.', ',', ';', ':', '!', '?'].includes(lastChar)) {
+         trailing = lastChar;
+         url = url.slice(0, -1);
+      }
+      const href = url.toLowerCase().startsWith('www.') ? 'https://' + url : url;
+      return salvarLink(`<a href="${href}" target="_blank" style="color:#4FA8D8; text-decoration:underline; font-weight:bold; cursor:pointer;" onclick="event.stopPropagation()">🌐 ${url}</a>`) + trailing;
+    });
+
+    // 4. DEVOLVE OS LINKS PRONTOS PARA O TEXTO (Sem risco de um quebrar o outro)
+    processed = processed.replace(/__LINK_SEGURO_(\d+)__/g, (match, idx) => {
+      return tokens[idx];
+    });
+    
     return processed;
   };
+/* FIM DA MUDANÇA */
 
   let pVehicle = null; let pSpec = null;
   if (item.vehicle){ pVehicle = document.createElement('p'); pVehicle.className = 'meta-line'; pVehicle.innerHTML = '📌 ' + renderText(item.vehicle); viewBody.appendChild(pVehicle); }
@@ -2581,6 +2705,7 @@ modalImportChoice.addEventListener('click', (e) => {
     else if (sheetMore.classList.contains('open')) closeSheetEl(sheetMore);
     else if (modalExportCartridge.classList.contains('open')) closeSheetEl(modalExportCartridge);
     else if (modalImportChoice.classList.contains('open')) cancelImportChoice();
+    else if (modalHelpGuide.classList.contains('open')) closeSheetEl(modalHelpGuide);
   });
 
   if (!SpeechRecognitionAPI){ document.querySelectorAll('.mic-btn').forEach(b => b.style.display = 'none'); }
@@ -2674,7 +2799,58 @@ async function seedIfEmpty(){
   ];
   for (const ex of examples) await dbAdd(ex);
 }
+/* ========================================== */
+/* COMEÇO DA MUDANÇA: LÓGICA DO MANUAL / GUIA */
+/* ========================================== */
+  const btnHelpGuide = document.getElementById('btnHelpGuide');
+  const modalHelpGuide = document.getElementById('modalHelpGuide');
+  const btnCloseHelpGuide = document.getElementById('btnCloseHelpGuide');
+  const helpSearchInput = document.getElementById('helpSearchInput');
+  const btnClearHelpSearch = document.getElementById('btnClearHelpSearch');
+  const helpSections = document.querySelectorAll('.help-section');
 
+    // Abre o manual usando o mesmo sistema de gavetas do resto do app
+  btnHelpGuide.addEventListener('click', () => {
+    openSheet(modalHelpGuide);
+    setTimeout(() => helpSearchInput.focus(), 260);
+  });
+
+  // Fechar usa closeSheetEl, que já cuida da animação certinha
+  const closeHelpGuide = () => closeSheetEl(modalHelpGuide);
+  
+  btnCloseHelpGuide.addEventListener('click', closeHelpGuide);
+  modalHelpGuide.addEventListener('click', (e) => {
+    if(e.target === modalHelpGuide) closeHelpGuide();
+  });
+
+  // Função de Busca Interna do Manual
+  helpSearchInput.addEventListener('input', () => {
+    // Tira os acentos e deixa tudo minúsculo para busca perfeita
+    const query = helpSearchInput.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    btnClearHelpSearch.style.display = query ? 'block' : 'none';
+    
+    helpSections.forEach(section => {
+      // Pega o texto visível + as palavras chave escondidas no data-keywords
+      const textToSearch = (section.innerText + " " + section.getAttribute('data-keywords')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      
+      if(textToSearch.includes(query)) {
+        section.style.display = 'block';
+      } else {
+        section.style.display = 'none';
+      }
+    });
+  });
+
+  // Limpar a busca
+  btnClearHelpSearch.addEventListener('click', () => {
+    helpSearchInput.value = '';
+    btnClearHelpSearch.style.display = 'none';
+    helpSections.forEach(sec => sec.style.display = 'block');
+    helpSearchInput.focus();
+  });
+/* ========================================== */
+/* FIM DA MUDANÇA: LÓGICA DO MANUAL */
+/* ========================================== */
 /* ---------------- Início ---------------- */
 (async function init(){
   setupEventListeners();
