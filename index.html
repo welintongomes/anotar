@@ -388,13 +388,7 @@
   </div>
 </label>
         
-        <label>Foto (opcional)
-          <input type="file" accept="image/*" capture="environment" id="fieldPhoto">
-        </label>
-        <div id="photoPreviewWrap">
-          <img id="photoPreview" alt="Prévia da foto">
-          <button type="button" id="btnRemovePhoto" class="btn-secondary">Remover foto</button>
-        </div>
+        
         <label>Áudio (opcional)
         <input type="file" accept="audio/*" capture="microphone" id="fieldAudio">
       </label>
@@ -405,6 +399,13 @@
         <div id="audioPreviewWrap" style="display:none; flex-direction:column; gap:8px; margin-bottom:12px;">
           <audio id="audioPreview" controls style="width:100%;"></audio>
           <button type="button" id="btnRemoveAudio" class="btn-secondary">Remover áudio</button>
+        </div>
+        <label>Foto (opcional)
+          <input type="file" accept="image/*" capture="environment" id="fieldPhoto">
+        </label>
+        <div id="photoPreviewWrap">
+          <img id="photoPreview" alt="Prévia da foto">
+          <button type="button" id="btnRemovePhoto" class="btn-secondary">Remover foto</button>
         </div>
         <label>Palavras-chave para achar depois (separe por vírgula)
           <input type="text" id="fieldTags" placeholder="Ex.: motor, ignição, sensor">
@@ -464,7 +465,7 @@
 </div>
 
 <!-- Gaveta: mais opções (ordenar + backup) -->
-<div id="sheetMore" class="modal-overlay">
+<div id="sheetMore" class="modal-overlay" style="z-index: 100005;">
   <div class="modal-box">
     <div class="modal-header">
       <h2>Mais opções</h2>
@@ -586,8 +587,8 @@
 <!-- ========================================== -->
 
 <!-- BOTÃO FLUTUANTE 💡 -->
-<button id="btnHelpGuide" style="position: fixed; top: 10px; right: 210px; width: 35px; height: 35px; border-radius: 50%; background: #D6A035; color: #000; border: none; font-size: 24px; z-index: 99998; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer; display: flex; justify-content: center; align-items: center;" aria-label="Manual de Uso">💡</button>
-
+<button id="btnHelpGuide" style="position: fixed; top: 10px; right: 2vw; width: 35px; height: 35px; border-radius: 50%; background: #D6A035; color: #000; border: none; font-size: 24px; z-index: 99998; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer; display: flex; justify-content: center; align-items: center;" aria-label="Manual de Uso">💡</button>
+<button id="btnQuickSettings" style="position: fixed; top: 10px; right: 13vw; width: 35px; height: 35px; border-radius: 50%; background: #4FA8D8; color: #fff; border: none; font-size: 24px; z-index: 99998; box-shadow: 0 4px 10px rgba(0,0,0,0.5); cursor: pointer; display: flex; justify-content: center; align-items: center;" aria-label="Configurações Rápidas">⚙️</button>
 <!-- GAVETA DO MANUAL -->
 <div id="modalHelpGuide" class="modal-overlay" style="display: none; z-index: 100005;">
   <div class="modal-box" style="max-height: 90vh; display: flex; flex-direction: column;">
@@ -656,8 +657,69 @@
           <li><b>💡 Tela Viva:</b> Clique no botão no topo da nota para impedir que a tela do celular apague enquanto trabalha.</li>
           <li><b>Leitura:</b> Clique nos títulos para ler em voz alta. Nas configurações, você pode pedir para ele ler os fluxos sozinho enquanto você tem as mãos ocupadas.</li>
         </ul>
+        
       </div>
-      
+            <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="titulo categoria tag tags etiqueta favorito estrela subtitulo veiculo referencia especificacao valor organizar nova nota criar">
+        <h3 style="color: #4FA65B; margin-bottom: 8px;">📝 Criando e Organizando Notas</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Toque no botão <b>+</b> para criar um registro novo.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Título:</b> opcional! Se não preencher, o app cria um automático usando o começo do texto (ou "Foto rápida" / "Áudio rápido" quando não há texto).</li>
+          <li><b>Subtítulo/Referência:</b> ótimo para "Cliente X", "Projeto Site", nome do carro etc. Aparece com 📌 na hora de visualizar.</li>
+          <li><b>Valor/Especificação:</b> um campo de destaque para números importantes (torque, preço, medida).</li>
+          <li><b>Categoria:</b> escolha uma pronta ou crie a sua digitando um nome novo.</li>
+          <li><b>Palavras-chave (tags):</b> separadas por vírgula. Elas ficam clicáveis dentro da nota e na busca — tocar numa tag já filtra tudo que tem ela.</li>
+          <li><b>⭐ Favoritar:</b> fixa a nota sempre no topo da lista, na frente de todas as outras.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="foto imagem camera zoom ampliar audio gravar microfone gravacao computador celular tocar reproduzir">
+        <h3 style="color: #4FA8D8; margin-bottom: 8px;">📷 Fotos e 🎙️ Áudios</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Uma nota pode ter só foto, só áudio, só texto, ou os três juntos.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Foto:</b> anexe uma imagem — ela é comprimida automaticamente para não pesar. Toque na foto dentro da nota para ver em tela cheia.</li>
+          <li><b>Gravar áudio:</b> o botão 🎙️ grava direto pelo microfone, funciona tanto no computador quanto no celular. Ou, se preferir, anexe um arquivo de áudio já pronto.</li>
+          <li><b>📷 e 🎵:</b> esses ícones aparecem no card da lista sempre que a nota tiver foto ou áudio, mesmo sem abrir ela.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="buscar procurar pesquisar acento sem acentos ortografia tags clique dentro da nota anterior proximo resultado">
+        <h3 style="color: #D6A035; margin-bottom: 8px;">🔍 Busca Inteligente</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">A busca principal olha título, categoria, tags, subtítulo, valor e o texto inteiro ao mesmo tempo.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Não precisa acentuar certo:</b> buscar "oleo" acha "óleo" e vice-versa.</li>
+          <li><b>Frase exata:</b> se você digitar várias palavras juntas, notas que têm essa frase inteira aparecem primeiro.</li>
+          <li><b>Buscar por tag:</b> toque em qualquer <code>#tag</code> dentro de uma nota ou card para já filtrar todas as outras notas com aquela tag.</li>
+          <li><b>Buscar dentro da nota aberta:</b> a lupa que aparece embaixo, colada nos botões Editar/Duplicar/Excluir, procura só ali dentro, com botões para pular entre um resultado e o próximo.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="ditar falar digitar sem teclado voz para texto transcrever transcricao">
+        <h3 style="color: #8B6FD1; margin-bottom: 8px;">🎤 Ditado por Voz</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Não confunda com a leitura em voz — esse aqui é o contrário: fala vira texto.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li>O botão 🎤 aparece tanto na busca quanto no campo de anotação.</li>
+          <li>Na busca, ele substitui o texto pelo que você falou. No campo de anotação, ele vai <b>acrescentando</b> ao que já está escrito — pode ditar em várias partes.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="separar linha dividir organizar visual traço risco bloco secao">
+        <h3 style="color: #D64545; margin-bottom: 8px;">➖ Separadores Visuais</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Para notas longas com vários diagnósticos ou etapas diferentes.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li>Digite uma linha só com <code>----</code>, <code>====</code>, <code>####</code> ou <code>****</code> (não importa qual, nem quantos repetidos) e ela vira uma linha divisória de verdade na tela — sempre do mesmo tamanho, celular ou computador.</li>
+          <li>É opcional: use só onde fizer sentido separar um bloco de outro.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="backup exportar importar cartucho salvar perder dados navegador celular trocar formatar mesclar substituir">
+        <h3 style="color: #9AA0AB; margin-bottom: 8px;">💾 Backup e Cartuchos</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Seus dados ficam só neste navegador/aparelho — se formatar ou trocar de celular, perde tudo sem backup.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Criar Cartucho:</b> escolha quais categorias exportar e salve um arquivo <code>.json</code> — pode ser tudo, ou só um pedaço (ex: só "Procedimento").</li>
+          <li><b>Plugar Cartucho:</b> ao importar, escolha <b>Mesclar</b> (adiciona ao que já existe) ou <b>Substituir Tudo</b> (apaga tudo e usa só o cartucho — cuidado, isso não tem volta).</li>
+          <li>Guarde o arquivo em algum lugar seguro: e-mail, nuvem, pendrive.</li>
+        </ul>
+      </div>
     </div>
     <!-- BARRA DE PESQUISA DO MANUAL -->
     <div style="padding: 12px 16px; background: var(--panel-2); border-bottom: 1px solid var(--smoke); display: flex; align-items: center; position: relative;">
@@ -2487,7 +2549,7 @@ function setupEventListeners(){
   // NOVO: Clique no Botão de Fim de Fluxo
   if (btnInsertEnd) {
     btnInsertEnd.addEventListener('mousedown', (e) => e.preventDefault());
-    btnInsertEnd.addEventListener('click', () => { insertAtCursor(fieldContent, ' ✅Fim'); });
+    btnInsertEnd.addEventListener('click', () => { insertAtCursor(fieldContent, ' >> ✅Fim'); });
   }
 
   // NOVO: Clicar fora para fechar o toast (se ele estiver preso na tela)
@@ -2542,7 +2604,7 @@ function setupEventListeners(){
     dbDelete(item.id).then(() => { closeView(); showToast('Excluído.'); loadAndRender(); });
   });
 
-  navMore.addEventListener('click', async () => {
+  async function openMoreOptionsSheet(){
     const { due: nDue, novas: nNovas } = getGlobalQuizStatus(); let partes = [];
     if (nDue > 0) partes.push(`⏰ ${nDue} vencida(s) pra revisar`);
     if (nNovas > 0) partes.push(`🆕 ${nNovas} nova(s) esperando resposta`);
@@ -2550,7 +2612,10 @@ function setupEventListeners(){
     const items = await dbGetAll();
     statsText.textContent = items.length === 1 ? '1 registro salvo neste navegador.' : `${items.length} registros salvos neste navegador.`;
     refreshBudgetSummary(); openSheet(sheetMore);
-  });
+}
+navMore.addEventListener('click', openMoreOptionsSheet);
+btnQuickSettings.addEventListener('click', openMoreOptionsSheet);
+
   btnCloseMore.addEventListener('click', () => closeSheetEl(sheetMore));
   sheetMore.addEventListener('click', (e) => { if (e.target === sheetMore) closeSheetEl(sheetMore); });
 
@@ -2803,6 +2868,7 @@ async function seedIfEmpty(){
 /* COMEÇO DA MUDANÇA: LÓGICA DO MANUAL / GUIA */
 /* ========================================== */
   const btnHelpGuide = document.getElementById('btnHelpGuide');
+  const btnQuickSettings = document.getElementById('btnQuickSettings');
   const modalHelpGuide = document.getElementById('modalHelpGuide');
   const btnCloseHelpGuide = document.getElementById('btnCloseHelpGuide');
   const helpSearchInput = document.getElementById('helpSearchInput');
@@ -2810,9 +2876,8 @@ async function seedIfEmpty(){
   const helpSections = document.querySelectorAll('.help-section');
 
     // Abre o manual usando o mesmo sistema de gavetas do resto do app
-  btnHelpGuide.addEventListener('click', () => {
+    btnHelpGuide.addEventListener('click', () => {
     openSheet(modalHelpGuide);
-    setTimeout(() => helpSearchInput.focus(), 260);
   });
 
   // Fechar usa closeSheetEl, que já cuida da animação certinha
