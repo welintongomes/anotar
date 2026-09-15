@@ -2155,11 +2155,13 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
             }
             const shuffledOptions = quizShuffleCache[questionLineIndex];
             const qBlock = document.createElement('div'); qBlock.style.background = 'var(--panel-2)'; qBlock.style.padding = '12px'; qBlock.style.borderRadius = '8px'; qBlock.style.marginTop = '6px'; qBlock.style.marginBottom = '10px';
-            const qTitle = document.createElement('div'); qTitle.className = 'quiz-title-clicker'; qTitle.style.fontWeight = 'bold'; qTitle.style.marginBottom = '8px'; qTitle.style.cursor = 'pointer'; 
+                        const qTitle = document.createElement('div'); qTitle.className = 'quiz-title-clicker'; qTitle.style.fontWeight = 'bold'; qTitle.style.marginBottom = '8px'; qTitle.style.cursor = 'pointer'; 
             const originalQuizHtml = '❓ ' + renderText(qMatch[1].trim()); qTitle.innerHTML = originalQuizHtml;
-            let quizSpeechText = "Pergunta: " + qMatch[1].trim() + ". ";
-            if (readQuizOptions) { shuffledOptions.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; }); }
-            qTitle.addEventListener('click', () => { handleSpeech(quizSpeechText, qTitle, originalQuizHtml, 'quiz-' + questionLineIndex, true); });
+            qTitle.addEventListener('click', () => {
+              let quizSpeechText = "Pergunta: " + qMatch[1].trim() + ". ";
+              if (readQuizOptions) { shuffledOptions.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; }); }
+              handleSpeech(quizSpeechText, qTitle, originalQuizHtml, 'quiz-' + questionLineIndex, true);
+            });
             qBlock.appendChild(qTitle);
 
             const record = normalizeQuizRecord((item.quizAnswers || {})[questionLineIndex]);
