@@ -1527,7 +1527,7 @@ function openForm(item, mode){
   currentAudioBlob = item && item.audio ? item.audio : null;
   fieldAudio.value = ''; updateAudioPreview();
 
-  openSheet(modalForm); setTimeout(() => fieldTitle.focus(), 260);
+  openSheet(modalForm); setTimeout(() => fieldContent.focus(), 260);
 }
 function handleSave(){
   if (mediaRecorder && mediaRecorder.state === 'recording'){ showToast('Pare a gravação antes de salvar.'); return; }
