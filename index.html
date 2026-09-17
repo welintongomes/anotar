@@ -1567,6 +1567,7 @@ function handleSave(){
 
 /* ---------------- Visualizar detalhes ---------------- */
 async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
+  if (window.stopActiveSpeech) window.stopActiveSpeech(); else if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   const item = await dbGet(itemLight.id); 
   viewingItem = item; viewTitle.textContent = item.title; viewBody.innerHTML = '';
 
@@ -1888,48 +1889,6 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
       viewTimerInterval = setInterval(() => { if (item.speedrunActive) updateTimerUI(); }, 1000);
     }
     // --- FIM: RELÓGIO SPEEDRUN ---
-
-    function generateBudgetText() {
-      let totalParts = 0; let totalTimeMs = 0; let desc = []; 
-      const lines = item.content.split('\n');
-      
-      lines.forEach((line, idx) => {
-        const checkMatch = line.match(/^\[[xX]\](.*)/);
-        if (checkMatch) {
-          const textPart = stripFlowSuffix(checkMatch[1]).trim(); 
-          const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); 
-          let price = 0;
-          if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
-          
-          let stepText = `✅ ${textPart}`;
-          if (item.speedrunLog && item.speedrunLog[idx]) {
-            stepText += `\nTempo gasto ${formatTimeMs(item.speedrunLog[idx])}`;
-            totalTimeMs += item.speedrunLog[idx];
-          }
-          if (price > 0 || (item.speedrunLog && item.speedrunLog[idx])) {
-            totalParts += price; desc.push(stepText); 
-          }
-        }
-      });
-
-      if (desc.length === 0) return null;
-
-      const tituloMsg = item.vehicle || item.title;
-      let msg = `*Orçamento - Serviços*\nRef: ${tituloMsg}\n\n*Serviços Realizados:*\n${desc.join('\n')}\n`;
-      
-      let finalTotal = totalParts;
-      if (totalTimeMs > 0) {
-        msg += `\n*Tempo total: ${formatTimeMs(totalTimeMs)}`;
-        if (hourlyRate > 0) {
-          const hours = totalTimeMs / (1000 * 60 * 60);
-          const laborCost = hours * hourlyRate;
-          msg += `\n*Total Mão de Obra (Horas): R$ ${laborCost.toFixed(2).replace('.', ',')}*`;
-          finalTotal += laborCost;
-        }
-      }
-      msg += `\n*Total Geral: R$ ${finalTotal.toFixed(2).replace('.', ',')}*`;
-      return msg;
-    }
 
     /* COMEÇO DA MUDANÇA: Gaveta de Fechamento de Orçamento com Descontos */
     function hasPricedBudgetNow(){
@@ -2319,7 +2278,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
                 showToast(toastMsg, true); // Trava o aviso na tela
                 
                 if (isAudioEnabled && 'speechSynthesis' in window) {
-                  window.speechSynthesis.cancel();
+                  if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
                   // O "..." força a voz do celular a fazer uma pausa respirada!
                   const utterance = new SpeechSynthesisUtterance("Finalizado! ... " + finalInstruction);
                   utterance.lang = 'pt-BR';
@@ -2343,8 +2302,8 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
                 
                 // NOVO: Lê o próximo passo que ele encontrou
                 if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
-                  window.speechSynthesis.cancel();
-                  const utterance = new SpeechSynthesisUtterance("Próximo passo. " + nextStepRaw);
+                  if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
+                  const utterance = new SpeechSynthesisUtterance("Sugerido. " + nextStepRaw);
                   utterance.lang = 'pt-BR';
                   utterance.rate = currentVoiceSpeed;
                   window.speechSynthesis.speak(utterance);
