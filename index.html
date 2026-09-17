@@ -1593,7 +1593,9 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
   }
 
   let readingWakeLock = null; let activeSpeechTarget = null;
-  let restorePreviousVisuals = null; let isSpeechPaused = false; 
+  let restorePreviousVisuals = null; let isSpeechPaused = false;
+  let speechSentences = []; let speechSentenceIndex = 0;
+  let speechTargetElement = null; let speechOriginalHtml = ''; let speechIsQuiz = false;
 
   function getCleanTextToRead() {
     let text = item.title + ". ";
@@ -1604,34 +1606,78 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     }
     return text;
   }
-  async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz) {
-    if (!isAudioEnabled) { showToast('Áudio desativado.'); return; }
-    if (!('speechSynthesis' in window)) { showToast('Sem suporte a voz.'); return; }
-    const synth = window.speechSynthesis;
-    if (activeSpeechTarget === targetId) {
-      if (synth.speaking && !isSpeechPaused) { synth.pause(); isSpeechPaused = true; element.style.opacity = '0.5'; showToast('Pausada.'); return; }
-      if (synth.speaking && isSpeechPaused) { synth.resume(); isSpeechPaused = false; element.style.opacity = '1'; showToast('Retomada.'); return; }
-    }
-    synth.cancel(); isSpeechPaused = false; 
-    if (restorePreviousVisuals) restorePreviousVisuals();
-    activeSpeechTarget = targetId; element.style.opacity = '1';
-    restorePreviousVisuals = () => { element.innerHTML = originalHtml; element.style.opacity = '1'; };
 
-    const utterance = new SpeechSynthesisUtterance(textToRead);
+  // Quebra o texto em frases pequenas -- é isso que permite "pausar" sem depender
+  // do pause()/resume() nativo do navegador, que é instável no celular.
+  function splitIntoSentences(text){
+    const matches = text.match(/[^.!?]+[.!?]+/g);
+    const sentences = matches ? matches.map(s => s.trim()).filter(Boolean) : [];
+    const cleaned = sentences.filter(s => /[a-zA-ZÀ-ÿ0-9]/.test(s));
+    if (cleaned.length) return cleaned;
+    return text.trim() ? [text.trim()] : [];
+  }
+
+  function speakSentenceAt(idx){
+    const synth = window.speechSynthesis;
+    if (idx >= speechSentences.length){
+      if (restorePreviousVisuals) restorePreviousVisuals();
+      restorePreviousVisuals = null; activeSpeechTarget = null; isSpeechPaused = false;
+      if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
+      return;
+    }
+    const myTarget = activeSpeechTarget;
+    const utterance = new SpeechSynthesisUtterance(speechSentences[idx]);
     utterance.lang = 'pt-BR'; utterance.rate = currentVoiceSpeed;
     utterance.onstart = async () => {
-      if (isQuiz) { element.innerHTML = originalHtml.replace('❓', '🔊'); } else { element.innerHTML = '🔊 ' + originalHtml; }
+      if (speechIsQuiz) { speechTargetElement.innerHTML = speechOriginalHtml.replace('❓', '🔊'); }
+      else { speechTargetElement.innerHTML = '🔊 ' + speechOriginalHtml; }
       if ('wakeLock' in navigator && !window.currentWakeLock && !readingWakeLock) {
         try { readingWakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
       }
     };
     utterance.onend = () => {
-      if (restorePreviousVisuals) restorePreviousVisuals();
-      restorePreviousVisuals = null; if (activeSpeechTarget === targetId) activeSpeechTarget = null;
-      isSpeechPaused = false; 
-      if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
+      if (activeSpeechTarget !== myTarget || isSpeechPaused) return; // pausado ou trocou de assunto no meio
+      speechSentenceIndex = idx + 1;
+      speakSentenceAt(speechSentenceIndex);
     };
-    utterance.onerror = utterance.onend; synth.speak(utterance);
+    utterance.onerror = () => { /* cancelado ou deu erro -- não continua a cadeia */ };
+    synth.speak(utterance);
+  }
+
+  // Hook público: qualquer parte do app pode chamar isso pra desligar a voz
+  // de forma limpa (usado quando você muda a velocidade, desliga o áudio, etc.)
+  window.stopActiveSpeech = () => {
+    window.speechSynthesis.cancel();
+    isSpeechPaused = false; activeSpeechTarget = null;
+    if (restorePreviousVisuals) restorePreviousVisuals();
+    restorePreviousVisuals = null;
+    if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
+  };
+
+  async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz) {
+    if (!isAudioEnabled) { showToast('Áudio desativado.'); return; }
+    if (!('speechSynthesis' in window)) { showToast('Sem suporte a voz.'); return; }
+    const synth = window.speechSynthesis;
+
+    if (activeSpeechTarget === targetId) {
+      if (!isSpeechPaused) {
+        synth.cancel();
+        isSpeechPaused = true; element.style.opacity = '0.5'; showToast('Pausada.'); return;
+      } else {
+        isSpeechPaused = false; element.style.opacity = '1'; showToast('Retomada.');
+        speakSentenceAt(speechSentenceIndex); return;
+      }
+    }
+
+    synth.cancel(); isSpeechPaused = false;
+    if (restorePreviousVisuals) restorePreviousVisuals();
+
+    activeSpeechTarget = targetId; element.style.opacity = '1';
+    restorePreviousVisuals = () => { element.innerHTML = originalHtml; element.style.opacity = '1'; };
+    speechTargetElement = element; speechOriginalHtml = originalHtml; speechIsQuiz = isQuiz;
+    speechSentences = splitIntoSentences(textToRead);
+    speechSentenceIndex = 0;
+    speakSentenceAt(0);
   }
   
   viewTitle.style.cursor = 'pointer';
@@ -2265,45 +2311,6 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
 
             // A PARTIR DAQUI CONTINUA A LÓGICA DE LER O "✅FIM" E O PRÓXIMO PASSO
             if (cb.checked && nextStepRaw){
-              if (nextStepRaw.includes('✅Fim') || nextStepRaw.includes('✅ Fim')) {
-                
-                // Se chegou no Fim, pausa o cronômetro para não cobrar extra do cliente!
-                if (item.speedrunActive) {
-                  item.speedrunActive = false;
-                  item.speedrunAccumulated = (item.speedrunAccumulated || 0) + (Date.now() - item.speedrunLastSplit);
-                  await dbPut(item);
-                }
-                /* FIM DA MUDANÇA 3 */
-                // Remove a tag "✅Fim" para pegar só a instrução final real
-                const finalInstruction = nextStepRaw.replace(/✅\s*Fim/g, '').trim();
-                const toastMsg = finalInstruction ? `🏁 Fim: ${finalInstruction}` : '🏁 Fluxo Finalizado!';
-                
-                // Mostra na tela e fica travado até clicar fora
-                showToast(toastMsg, true); 
-                
-                // Se o áudio global estiver ligado, o assistente fala o diagnóstico
-                if (isAudioEnabled && 'speechSynthesis' in window) {
-                  window.speechSynthesis.cancel(); // Manda calar a boca se estiver lendo outra coisa
-                  const utterance = new SpeechSynthesisUtterance("Finalizado. " + finalInstruction);
-                  utterance.lang = 'pt-BR';
-                  utterance.rate = currentVoiceSpeed;
-                  window.speechSynthesis.speak(utterance);
-                }
-                return; 
-              }
-
-              const targetNorm = normalize(nextStepRaw);
-              const foundIdx = lineSearchNorm.findIndex((t, idx) => idx !== currentIndex && t && t.includes(targetNorm));
-              
-              if (foundIdx !== -1 && lineEls[foundIdx]){
-                const el = lineEls[foundIdx]; el.scrollIntoView({ behavior:'smooth', block:'center' });
-                const oldBg = el.style.background, oldRadius = el.style.borderRadius;
-                el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px';
-                setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
-                showToast('➡️ Próximo passo: ' + nextStepRaw);
-              } else { showToast('➡️ Próximo passo sugerido: "' + nextStepRaw + '" (não encontrei esse texto na lista)'); }
-            }
-            if (cb.checked && nextStepRaw){
               // 1. CHECA SE É O FIM DO FLUXO
               if (nextStepRaw.includes('✅Fim') || nextStepRaw.includes('✅ Fim')) {
                 const finalInstruction = nextStepRaw.replace(/✅\s*Fim/g, '').trim();
@@ -2348,7 +2355,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
                 
                 // NOVO: Lê o próximo passo sugerido
                 if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
-                  window.speechSynthesis.cancel();
+                  if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
                   const utterance = new SpeechSynthesisUtterance("Sugerido. " + nextStepRaw);
                   utterance.lang = 'pt-BR';
                   utterance.rate = currentVoiceSpeed;
@@ -2463,7 +2470,8 @@ function closeView(){
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
   viewingItem = null; viewHistory = []; 
-  if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); }
+    if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); }
+  window.stopActiveSpeech = null;
   if (window.currentWakeLock) { window.currentWakeLock.release().catch(() => {}); window.currentWakeLock = null; }
 }
 
@@ -2778,7 +2786,7 @@ modalImportChoice.addEventListener('click', (e) => {
     toggleGlobalAudio.checked = isAudioEnabled;
     toggleGlobalAudio.addEventListener('change', (e) => {
       isAudioEnabled = e.target.checked; localStorage.setItem('memorias_audio_global', isAudioEnabled);
-      if (!isAudioEnabled && 'speechSynthesis' in window) { window.speechSynthesis.cancel(); }
+            if (!isAudioEnabled) { if (window.stopActiveSpeech) window.stopActiveSpeech(); else if ('speechSynthesis' in window) window.speechSynthesis.cancel(); }
       showToast(isAudioEnabled ? 'Áudio liberado.' : 'Modo Silencioso ativado.');
     });
   }
@@ -2833,7 +2841,7 @@ modalImportChoice.addEventListener('click', (e) => {
     voiceSpeed.addEventListener('input', (e) => { updateSpeedLabel(parseFloat(e.target.value)); });
     voiceSpeed.addEventListener('change', (e) => {
       currentVoiceSpeed = parseFloat(e.target.value); localStorage.setItem('memorias_voice_speed', currentVoiceSpeed);
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel(); 
+            if (window.stopActiveSpeech) window.stopActiveSpeech(); else if ('speechSynthesis' in window) window.speechSynthesis.cancel(); 
     });
   }
   // NOVO: Controle da Velocidade do Toast
