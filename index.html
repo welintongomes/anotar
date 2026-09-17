@@ -2234,7 +2234,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
             freshLines[currentIndex] = freshLines[currentIndex].replace(/^\[[ xX]?\]/, marker);
             item.content = freshLines.join('\n'); 
             
-            // --- INÍCIO: GRAVAR O TEMPO SPEEDRUN ---
+                        // --- INÍCIO: GRAVAR O TEMPO SPEEDRUN ---
             if (cb.checked && item.speedrunActive) {
               if (!item.speedrunLog) item.speedrunLog = {};
               const elapsed = (Date.now() - item.speedrunLastSplit) + (item.speedrunAccumulated || 0);
@@ -2244,8 +2244,13 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
               item.speedrunLastSplit = Date.now();
               item.speedrunAccumulated = 0;
               showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
-            } else if (!cb.checked && item.speedrunLog && item.speedrunLog[currentIndex]) {
-              delete item.speedrunLog[currentIndex]; // Remove tempo se desmarcar
+            } else if (!cb.checked && item.speedrunLog && item.speedrunLog[currentIndex] !== undefined) {
+              // Não descarta: devolve o tempo pro "bolso" (speedrunAccumulated).
+              // Ele fica pendurado e entra automaticamente na próxima caixinha que você marcar.
+              const returnedTime = item.speedrunLog[currentIndex];
+              item.speedrunAccumulated = (item.speedrunAccumulated || 0) + returnedTime;
+              delete item.speedrunLog[currentIndex];
+              showToast(`⏱️ Tempo devolvido ao relógio: ${formatTimeMs(returnedTime)}`, false);
             }
             // --- FIM ---
 
