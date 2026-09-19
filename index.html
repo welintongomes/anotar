@@ -2143,7 +2143,11 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
 
     const textContainer = document.createElement('div'); textContainer.className = 'content-block'; let isCode = false; const quizShuffleCache = {};
 
-    const renderContent = (isCodeMode) => {
+    let contentRenderLimit = 300; // Textos gigantes (tipo um livro colado na nota) só desenham um pedaço por vez
+    let renderGeneration = 0; // Evita que uma renderização antiga "vaze" por cima de uma nova
+
+    const renderContent = async (isCodeMode) => {
+      const myGeneration = ++renderGeneration;
       textContainer.innerHTML = '';
       if (isCodeMode) {
         textContainer.style.fontFamily = 'monospace'; textContainer.style.background = 'var(--panel-2)'; textContainer.style.padding = '12px'; textContainer.style.borderRadius = '8px'; textContainer.style.fontSize = '13.5px'; textContainer.style.overflowX = 'auto'; textContainer.style.whiteSpace = 'pre'; textContainer.textContent = item.content; return;
@@ -2155,8 +2159,13 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
       });
       const lineEls = [];
 
+      // Com busca interna ativa, desenha tudo (senão a busca não acha o resto do texto).
+      // Sem busca, desenha só um pedaço -- essencial pra textos gigantes.
+      const renderThisPass = internalQuery ? lines.length : Math.min(contentRenderLimit, lines.length);
+
       let i = 0;
-      while (i < lines.length){
+      let processedSinceYield = 0;
+      while (i < renderThisPass){
         const line = lines[i];
         const qMatch = line.match(/^\?\?\s*(.*)/);
         if (qMatch){
@@ -2173,7 +2182,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
             }
             const shuffledOptions = quizShuffleCache[questionLineIndex];
             const qBlock = document.createElement('div'); qBlock.style.background = 'var(--panel-2)'; qBlock.style.padding = '12px'; qBlock.style.borderRadius = '8px'; qBlock.style.marginTop = '6px'; qBlock.style.marginBottom = '10px';
-                        const qTitle = document.createElement('div'); qTitle.className = 'quiz-title-clicker'; qTitle.style.fontWeight = 'bold'; qTitle.style.marginBottom = '8px'; qTitle.style.cursor = 'pointer'; 
+            const qTitle = document.createElement('div'); qTitle.className = 'quiz-title-clicker'; qTitle.style.fontWeight = 'bold'; qTitle.style.marginBottom = '8px'; qTitle.style.cursor = 'pointer'; 
             const originalQuizHtml = '❓ ' + renderText(qMatch[1].trim()); qTitle.innerHTML = originalQuizHtml;
             qTitle.addEventListener('click', () => {
               let quizSpeechText = "Pergunta: " + qMatch[1].trim() + ". ";
@@ -2221,7 +2230,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
               qBlock.appendChild(optBtn);
             });
             textContainer.appendChild(qBlock); for (let k = i; k < j; k++) lineEls[k] = qBlock;
-            i = j; continue;
+            i = j; processedSinceYield++; continue;
           }
         }
 
@@ -2242,32 +2251,25 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
           }
           textContainer.appendChild(label); const currentIndex = i; lineEls[currentIndex] = label;
 
-          /* COMEÇO DA MUDANÇA 2: Gravando o Tempo */
           cb.addEventListener('change', async () => {
             span.style.textDecoration = cb.checked ? 'line-through' : 'none'; span.style.opacity = cb.checked ? '0.6' : '1';
             const marker = cb.checked ? '[x]' : '[ ]'; const freshLines = item.content.split('\n');
             freshLines[currentIndex] = freshLines[currentIndex].replace(/^\[[ xX]?\]/, marker);
             item.content = freshLines.join('\n'); 
             
-                        // --- INÍCIO: GRAVAR O TEMPO SPEEDRUN ---
             if (cb.checked && item.speedrunActive) {
               if (!item.speedrunLog) item.speedrunLog = {};
               const elapsed = (Date.now() - item.speedrunLastSplit) + (item.speedrunAccumulated || 0);
               item.speedrunLog[currentIndex] = elapsed;
-              
-              // Zera e recomeça o tempo para o passo seguinte
               item.speedrunLastSplit = Date.now();
               item.speedrunAccumulated = 0;
               showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
             } else if (!cb.checked && item.speedrunLog && item.speedrunLog[currentIndex] !== undefined) {
-              // Não descarta: devolve o tempo pro "bolso" (speedrunAccumulated).
-              // Ele fica pendurado e entra automaticamente na próxima caixinha que você marcar.
               const returnedTime = item.speedrunLog[currentIndex];
               item.speedrunAccumulated = (item.speedrunAccumulated || 0) + returnedTime;
               delete item.speedrunLog[currentIndex];
               showToast(`⏱️ Tempo devolvido ao relógio: ${formatTimeMs(returnedTime)}`, false);
             }
-            // --- FIM ---
 
             item.updatedAt = Date.now(); await dbPut(item);
             const ramItem = allItems.find(x => x.id === item.id); 
@@ -2279,27 +2281,17 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
             }
                         
             btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
-            
-            // AQUI É A ATUALIZAÇÃO IMPORTANTE (substitui os botões antigos de Zap):
             btnToggleBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
-            
             renderCards();
-
-            // AQUI ENTRA A NOSSA ÚLTIMA MELHORIA:
             if (budgetPanel.style.display === 'flex') { updateBudgetPanel(); }
 
-            // A PARTIR DAQUI CONTINUA A LÓGICA DE LER O "✅FIM" E O PRÓXIMO PASSO
             if (cb.checked && nextStepRaw){
-              // 1. CHECA SE É O FIM DO FLUXO
               if (nextStepRaw.includes('✅Fim') || nextStepRaw.includes('✅ Fim')) {
                 const finalInstruction = nextStepRaw.replace(/✅\s*Fim/g, '').trim();
                 const toastMsg = finalInstruction ? `🏁 Fim: ${finalInstruction}` : '🏁 Fluxo Finalizado!';
-                
-                showToast(toastMsg, true); // Trava o aviso na tela
-                
+                showToast(toastMsg, true);
                 if (isAudioEnabled && 'speechSynthesis' in window) {
                   if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
-                  // O "..." força a voz do celular a fazer uma pausa respirada!
                   const utterance = new SpeechSynthesisUtterance("Finalizado! ... " + finalInstruction);
                   utterance.lang = 'pt-BR';
                   utterance.rate = currentVoiceSpeed;
@@ -2308,31 +2300,24 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
                 return; 
               }
 
-              // 2. SE NÃO FOR O FIM, PROCURA O PRÓXIMO PASSO NA TELA
               const targetNorm = normalize(nextStepRaw);
               const foundIdx = lineSearchNorm.findIndex((t, idx) => idx !== currentIndex && t && t.includes(targetNorm));
               
               if (foundIdx !== -1 && lineEls[foundIdx]){
-                // Achou na tela (ilumina azul)
                 const el = lineEls[foundIdx]; el.scrollIntoView({ behavior:'smooth', block:'center' });
                 const oldBg = el.style.background, oldRadius = el.style.borderRadius;
-                el.style.transition = 'background 0.3s'; el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px'; el.style.padding = '6px';
+                el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px';
                 setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
                 showToast('➡️ Próximo passo: ' + nextStepRaw);
-                
-                // NOVO: Lê o próximo passo que ele encontrou
                 if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
                   if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
-                  const utterance = new SpeechSynthesisUtterance("Sugerido. " + nextStepRaw);
+                  const utterance = new SpeechSynthesisUtterance("Próximo passo. " + nextStepRaw);
                   utterance.lang = 'pt-BR';
                   utterance.rate = currentVoiceSpeed;
                   window.speechSynthesis.speak(utterance);
                 }
               } else { 
-                // Não achou escrito na tela (apenas sugeriu)
                 showToast('➡️ Próximo passo sugerido: "' + nextStepRaw + '" (não encontrei esse texto na lista)'); 
-                
-                // NOVO: Lê o próximo passo sugerido
                 if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
                   if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
                   const utterance = new SpeechSynthesisUtterance("Sugerido. " + nextStepRaw);
@@ -2343,24 +2328,39 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
               }
             }
           });
-          i++; continue;
+          i++; processedSinceYield++; continue;
         }
 
         const trimmed = line.trim(); const isDivider = /^(.)\1{2,}$/.test(trimmed) && /^[-=#*]+$/.test(trimmed);
         if (isDivider){
           const hr = document.createElement('hr'); hr.style.border = 'none'; hr.style.borderTop = '2px dashed var(--smoke, #9AA0AB)'; hr.style.margin = '14px 0';
-          textContainer.appendChild(hr); lineEls[i] = hr; i++; continue;
+          textContainer.appendChild(hr); lineEls[i] = hr; i++; processedSinceYield++; continue;
         }
-                const p = document.createElement('div'); p.style.minHeight = '1.4em'; p.innerHTML = renderText(line);
+
+        const p = document.createElement('div'); p.style.minHeight = '1.4em'; p.innerHTML = renderText(line);
         if (line.trim()){
-          const currentIndex = i; // precisa "congelar" o índice aqui, senão todo clique leria a última linha do texto
+          const currentIndex = i;
           p.style.cursor = 'pointer';
           const originalLineHtml = p.innerHTML;
-          p.addEventListener('click', () => {
-            handleSpeech(line, p, originalLineHtml, 'text-' + currentIndex, false);
-          });
+          p.addEventListener('click', () => { handleSpeech(line, p, originalLineHtml, 'text-' + currentIndex, false); });
         }
-        textContainer.appendChild(p); lineEls[i] = p; i++;
+        textContainer.appendChild(p); lineEls[i] = p; i++; processedSinceYield++;
+
+        if (processedSinceYield >= 200){
+          processedSinceYield = 0;
+          await new Promise(resolve => setTimeout(resolve, 0));
+          if (myGeneration !== renderGeneration) return; // uma renderização mais nova já começou, abandona esta
+        }
+      }
+
+      if (myGeneration !== renderGeneration) return;
+
+      if (!internalQuery && lines.length > contentRenderLimit){
+        const btnMoreContent = document.createElement('button');
+        btnMoreContent.className = 'btn-secondary'; btnMoreContent.style.width = '100%'; btnMoreContent.style.padding = '14px'; btnMoreContent.style.marginTop = '10px';
+        btnMoreContent.textContent = `Mostrar mais texto (restam ${lines.length - contentRenderLimit} linhas)`;
+        btnMoreContent.addEventListener('click', () => { contentRenderLimit += 300; renderContent(isCode); });
+        textContainer.appendChild(btnMoreContent);
       }
 
       setTimeout(() => {
@@ -2378,7 +2378,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
         else { matchIndex = -1; internalSearchCount.textContent = '0/0'; }
       }, 10);
     };
-
+    
     renderContent(false); contentWrap.appendChild(textContainer); viewBody.appendChild(contentWrap);
     btnCopy.addEventListener('click', () => { navigator.clipboard.writeText(item.content).then(() => showToast('Copiado!')); });
     btnCode.addEventListener('click', () => { isCode = !isCode; btnCode.innerHTML = isCode ? '📝 Texto' : '💻 Código'; renderContent(isCode); });
