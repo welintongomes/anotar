@@ -526,7 +526,10 @@
         ⬆️ Importar backup
         <input type="file" accept="application/json" id="fieldImport" style="display:none">
       </label>
-      
+      <label class="checkbox-row" style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+        <input type="checkbox" id="toggleAdaptiveDifficulty">
+        🎓 Dificuldade automática no quiz (aumenta sozinha conforme você domina)
+      </label>
       <label style="flex-direction:row;align-items:center;justify-content:space-between;">
         Ordenar
         <select id="sortSelect">
@@ -857,6 +860,7 @@ let readQuizOptions = localStorage.getItem('memorias_read_options') !== 'false';
 let autoReadNextQuiz = localStorage.getItem('memorias_auto_read_next') !== 'false';
 let readNextStep = localStorage.getItem('memorias_read_next_step') === 'true';
 let speedrunMode = localStorage.getItem('memorias_speedrun_mode') === 'true';
+let adaptiveDifficulty = localStorage.getItem('memorias_adaptive_difficulty') === 'true';
 let hourlyRate = parseFloat(localStorage.getItem('memorias_hourly_rate')) || 0;
 let currentVoiceSpeed = parseFloat(localStorage.getItem('memorias_voice_speed')) || 0.95;
 let currentToastDuration = parseFloat(localStorage.getItem('memorias_toast_duration')) || 2200;
@@ -947,6 +951,7 @@ const toggleGlobalAudio = document.getElementById('toggleGlobalAudio');
 const toggleAutoReadNext = document.getElementById('toggleAutoReadNext');
 const toggleReadNextStep = document.getElementById('toggleReadNextStep');
 const toggleSpeedrun = document.getElementById('toggleSpeedrun'); // NOVO
+const toggleAdaptiveDifficulty = document.getElementById('toggleAdaptiveDifficulty');
 const hourlyRateInput = document.getElementById('hourlyRate'); // NOVO
 let viewTimerInterval = null; // Cronômetro ao vivo na tela
 const toggleReadOptions = document.getElementById('toggleReadOptions');
@@ -1170,6 +1175,16 @@ function normalizeQuizRecord(raw){
   if (typeof raw === 'number'){ return { chosen: raw, ef: 2.5, reps: 0, interval: 0, dueAt: 0 }; }
   return raw;
 }
+
+function computeAdaptiveQuizMode(record){
+  if (!record) return 'choice';
+  const reps = record.reps || 0;
+  const interval = record.interval || 0;
+  if (reps >= 4 && interval >= 30) return 'write';
+  if (reps >= 2 && interval >= 6) return 'build';
+  return 'choice';
+}
+
 function isRecordDue(record){ return !!record && Date.now() >= record.dueAt; }
 function getGlobalQuizStatus(){
   let due = 0, novas = 0;
@@ -2116,12 +2131,13 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
       quizScoreLabel = document.createElement('span'); quizScoreLabel.className = 'tag-pill'; quizScoreLabel.style.border = 'none'; toolbar.appendChild(quizScoreLabel);
       const btnResetQuiz = document.createElement('button'); btnResetQuiz.type = 'button'; btnResetQuiz.className = 'tag-pill'; btnResetQuiz.style.border = 'none'; btnResetQuiz.style.background = '#9AA0AB'; btnResetQuiz.style.color = '#fff'; btnResetQuiz.innerHTML = '🔄 Refazer quiz';
       toolbar.appendChild(btnResetQuiz);
-      btnResetQuiz.addEventListener('click', async () => {
+            btnResetQuiz.addEventListener('click', async () => {
         const { mastered, dueForReview } = getQuizScore();
         if (!mastered && !dueForReview){ showToast('Nada respondido ainda.'); return; }
         if (!confirm('Reiniciar este quiz?')) return;
         item.quizAnswers = {}; await dbPut(item);
         const ram = allItems.find(x => x.id === item.id); if (ram) ram.quizAnswers = {};
+        Object.keys(quizBuildShuffleCache).forEach(k => delete quizBuildShuffleCache[k]);
         refreshQuizScoreLabel(); renderContent(isCode); showToast('Quiz reiniciado.');
       });
     }
@@ -2141,7 +2157,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     const btnCopy = document.createElement('button'); btnCopy.className = 'tag-pill'; btnCopy.style.border = 'none'; btnCopy.innerHTML = '📋 Copiar';
     toolbar.appendChild(btnCode); toolbar.appendChild(btnCopy); contentWrap.appendChild(toolbar);
 
-    const textContainer = document.createElement('div'); textContainer.className = 'content-block'; let isCode = false; const quizShuffleCache = {};
+    const textContainer = document.createElement('div'); textContainer.className = 'content-block'; let isCode = false; const quizShuffleCache = {}; const quizBuildShuffleCache = {};
 
     let contentRenderLimit = 300; // Textos gigantes (tipo um livro colado na nota) só desenham um pedaço por vez
     let renderGeneration = 0; // Evita que uma renderização antiga "vaze" por cima de uma nova
@@ -2167,7 +2183,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
       let processedSinceYield = 0;
       while (i < renderThisPass){
         const line = lines[i];
-        const qMatch = line.match(/^\?\?\s*(.*)/);
+                const qMatch = line.match(/^\?\?\s*(.*)/);
         if (qMatch){
           const options = []; let j = i + 1;
           while (j < lines.length){
@@ -2181,59 +2197,244 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
               shuffled.sort(() => Math.random() - 0.5); quizShuffleCache[questionLineIndex] = shuffled;
             }
             const shuffledOptions = quizShuffleCache[questionLineIndex];
+
+            const record = normalizeQuizRecord((item.quizAnswers || {})[questionLineIndex]);
+            const due = isRecordDue(record); const locked = !!record && !due;
+
+            const hasManualMode = !!(item.quizModes && item.quizModes[questionLineIndex]);
+            const quizMode = hasManualMode ? item.quizModes[questionLineIndex]
+              : (adaptiveDifficulty ? computeAdaptiveQuizMode(record) : 'choice');
+
             const qBlock = document.createElement('div'); qBlock.style.background = 'var(--panel-2)'; qBlock.style.padding = '12px'; qBlock.style.borderRadius = '8px'; qBlock.style.marginTop = '6px'; qBlock.style.marginBottom = '10px';
             const qTitle = document.createElement('div'); qTitle.className = 'quiz-title-clicker'; qTitle.style.fontWeight = 'bold'; qTitle.style.marginBottom = '8px'; qTitle.style.cursor = 'pointer'; 
             const originalQuizHtml = '❓ ' + renderText(qMatch[1].trim()); qTitle.innerHTML = originalQuizHtml;
             qTitle.addEventListener('click', () => {
               let quizSpeechText = "Pergunta: " + qMatch[1].trim() + ". ";
-              if (readQuizOptions) { shuffledOptions.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; }); }
+              if (readQuizOptions && quizMode === 'choice') { shuffledOptions.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; }); }
               handleSpeech(quizSpeechText, qTitle, originalQuizHtml, 'quiz-' + questionLineIndex, true);
             });
             qBlock.appendChild(qTitle);
 
-            const record = normalizeQuizRecord((item.quizAnswers || {})[questionLineIndex]);
-            const due = isRecordDue(record); const locked = !!record && !due; 
             if (!locked) { qBlock.classList.add('quiz-unanswered'); }
             if (due){ const dueTag = document.createElement('div'); dueTag.style.fontSize = '0.8em'; dueTag.style.opacity = '0.7'; dueTag.style.marginBottom = '6px'; dueTag.textContent = '⏰ Hora de revisar — responda de novo'; qBlock.appendChild(dueTag); }
 
-            shuffledOptions.forEach((opt) => {
-              const optBtn = document.createElement('button'); optBtn.type = 'button'; optBtn.className = 'btn-secondary'; optBtn.style.display = 'block'; optBtn.style.width = '100%'; optBtn.style.textAlign = 'left'; optBtn.style.marginBottom = '6px'; optBtn.innerHTML = renderText(opt.text);
-              if (locked){
-                optBtn.disabled = true;
-                if (opt.correct){ optBtn.style.background = '#4FA65B'; optBtn.style.color = '#fff'; }
-                else if (opt.originalIndex === record.chosen){ optBtn.style.background = '#D64545'; optBtn.style.color = '#fff'; }
-              }
-              optBtn.addEventListener('click', async () => {
-                if (locked) return;
-                const isCorrect = opt.correct; const prevForSm2 = due ? record : null; 
-                const updated = sm2Update(prevForSm2, isCorrect); updated.chosen = opt.originalIndex;
-                if (!item.quizAnswers) item.quizAnswers = {};
-                item.quizAnswers[questionLineIndex] = updated; item.updatedAt = Date.now(); await dbPut(item);
-                const ram = allItems.find(x => x.id === item.id); if (ram){ ram.quizAnswers = item.quizAnswers; ram.updatedAt = item.updatedAt; }
-                const dias = updated.interval === 1 ? '1 dia' : `${updated.interval} dias`;
-                showToast((isCorrect ? '✅ Certo! ' : '❌ Errado. ') + `Vai revisar de novo em ${dias}.`);
-                refreshQuizScoreLabel(); renderContent(isCode);
-                setTimeout(() => {
-                  const nextQuiz = textContainer.querySelector('.quiz-unanswered');
-                  if (nextQuiz) {
-                    nextQuiz.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    const oldBg = nextQuiz.style.background; const oldRadius = nextQuiz.style.borderRadius;
-                    nextQuiz.style.transition = 'background 0.3s'; nextQuiz.style.background = '#4FA8D8'; nextQuiz.style.borderRadius = '6px';
-                    setTimeout(() => { nextQuiz.style.background = oldBg; nextQuiz.style.borderRadius = oldRadius; }, 900);
-                    if (isAudioEnabled && autoReadNextQuiz) {
-                      const titleToClick = nextQuiz.querySelector('.quiz-title-clicker');
-                      if (titleToClick) { setTimeout(() => titleToClick.click(), 500); }
-                    }
+            // --- Seletor de modo ---
+            const modeRow = document.createElement('div');
+            modeRow.style.display = 'flex'; modeRow.style.gap = '6px'; modeRow.style.marginBottom = '10px'; modeRow.style.flexWrap = 'wrap';
+
+            const setQuizMode = async (newMode) => {
+              if (!item.quizModes) item.quizModes = {};
+              if (newMode === null) { delete item.quizModes[questionLineIndex]; }
+              else { item.quizModes[questionLineIndex] = newMode; }
+              item.updatedAt = Date.now();
+              await dbPut(item);
+              const ram = allItems.find(x => x.id === item.id); if (ram) ram.quizModes = item.quizModes;
+              renderContent(isCode);
+            };
+
+            const btnModeChoice = document.createElement('button');
+            btnModeChoice.type = 'button'; btnModeChoice.className = 'tag-pill'; btnModeChoice.style.border = 'none';
+            btnModeChoice.innerHTML = '🔤 Múltipla escolha';
+            btnModeChoice.style.background = quizMode === 'choice' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
+            btnModeChoice.style.color = quizMode === 'choice' && hasManualMode ? '#fff' : 'var(--text)';
+            btnModeChoice.addEventListener('click', () => setQuizMode('choice'));
+
+            const btnModeBuild = document.createElement('button');
+            btnModeBuild.type = 'button'; btnModeBuild.className = 'tag-pill'; btnModeBuild.style.border = 'none';
+            btnModeBuild.innerHTML = '✏️ Formar palavra';
+            btnModeBuild.style.background = quizMode === 'build' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
+            btnModeBuild.style.color = quizMode === 'build' && hasManualMode ? '#fff' : 'var(--text)';
+            btnModeBuild.addEventListener('click', () => setQuizMode('build'));
+
+            const btnModeWrite = document.createElement('button');
+            btnModeWrite.type = 'button'; btnModeWrite.className = 'tag-pill'; btnModeWrite.style.border = 'none';
+            btnModeWrite.innerHTML = '✍️ Escrever';
+            btnModeWrite.style.background = quizMode === 'write' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
+            btnModeWrite.style.color = quizMode === 'write' && hasManualMode ? '#fff' : 'var(--text)';
+            btnModeWrite.addEventListener('click', () => setQuizMode('write'));
+
+            modeRow.appendChild(btnModeChoice); modeRow.appendChild(btnModeBuild); modeRow.appendChild(btnModeWrite);
+
+            if (adaptiveDifficulty){
+              const autoResolved = computeAdaptiveQuizMode(record);
+              const autoLabel = autoResolved === 'write' ? 'Escrever' : autoResolved === 'build' ? 'Formar palavra' : 'Múltipla escolha';
+              const btnModeAuto = document.createElement('button');
+              btnModeAuto.type = 'button'; btnModeAuto.className = 'tag-pill'; btnModeAuto.style.border = 'none';
+              btnModeAuto.innerHTML = `🎓 Automático (${autoLabel})`;
+              btnModeAuto.style.background = !hasManualMode ? '#D6A035' : 'var(--bg)';
+              btnModeAuto.style.color = !hasManualMode ? '#000' : 'var(--text)';
+              btnModeAuto.addEventListener('click', () => setQuizMode(null));
+              modeRow.appendChild(btnModeAuto);
+            }
+            qBlock.appendChild(modeRow);
+
+            // --- MODO: FORMAR PALAVRA/FRASE ---
+            if (quizMode === 'build'){
+              const correctOption = options.find(o => o.correct);
+              const correctText = correctOption ? correctOption.text.trim() : '';
+              const wordUnits = correctText.split(/\s+/).filter(Boolean);
+              const units = wordUnits.length > 1 ? wordUnits : correctText.split('');
+
+              if (!units.length){
+                const warn = document.createElement('div');
+                warn.style.opacity = '0.7'; warn.style.fontSize = '0.85em';
+                warn.textContent = 'Não foi possível montar esta pergunta no modo "Formar palavra".';
+                qBlock.appendChild(warn);
+              } else {
+                if (!quizBuildShuffleCache[questionLineIndex]) {
+                  const shuffledPieces = units.map((value, originalIndex) => ({ value, originalIndex, used: false }));
+                  shuffledPieces.sort(() => Math.random() - 0.5);
+                  quizBuildShuffleCache[questionLineIndex] = { pieces: shuffledPieces, builtValues: [], hadMistake: false };
+                }
+                const buildState = quizBuildShuffleCache[questionLineIndex];
+
+                if (locked){
+                  const doneWrap = document.createElement('div');
+                  doneWrap.style.background = 'var(--bg)'; doneWrap.style.padding = '10px'; doneWrap.style.borderRadius = '6px';
+                  doneWrap.style.fontWeight = 'bold'; doneWrap.style.color = '#4FA65B';
+                  doneWrap.textContent = '✅ ' + correctText;
+                  qBlock.appendChild(doneWrap);
+                } else {
+                  if (due && buildState.builtValues.length === units.length){
+                    buildState.pieces.forEach(p => p.used = false);
+                    buildState.builtValues = []; buildState.hadMistake = false;
                   }
-                }, 2500);
+                  const answerArea = document.createElement('div');
+                  answerArea.style.display = 'flex'; answerArea.style.flexWrap = 'wrap'; answerArea.style.gap = '6px';
+                  answerArea.style.minHeight = '40px'; answerArea.style.padding = '8px';
+                  answerArea.style.background = 'var(--bg)'; answerArea.style.borderRadius = '6px'; answerArea.style.marginBottom = '10px';
+                  const paletteArea = document.createElement('div');
+                  paletteArea.style.display = 'flex'; paletteArea.style.flexWrap = 'wrap'; paletteArea.style.gap = '6px';
+                  const btnResetBuild = document.createElement('button');
+                  btnResetBuild.type = 'button'; btnResetBuild.className = 'tag-pill'; btnResetBuild.style.border = 'none';
+                  btnResetBuild.style.background = '#9AA0AB'; btnResetBuild.style.color = '#fff';
+                  btnResetBuild.innerHTML = '🔄 Recomeçar'; btnResetBuild.style.marginTop = '8px';
+
+                  const renderAnswer = () => {
+                    answerArea.innerHTML = '';
+                    buildState.builtValues.forEach(v => {
+                      const chip = document.createElement('span');
+                      chip.className = 'tag-pill'; chip.style.border = 'none'; chip.style.background = '#4FA65B'; chip.style.color = '#fff'; chip.style.fontWeight = 'bold';
+                      chip.textContent = v; answerArea.appendChild(chip);
+                    });
+                  };
+                  const renderPalette = () => {
+                    paletteArea.innerHTML = '';
+                    buildState.pieces.forEach(piece => {
+                      if (piece.used) return;
+                      const tile = document.createElement('button');
+                      tile.type = 'button'; tile.className = 'btn-secondary'; tile.style.padding = '8px 12px'; tile.style.fontWeight = 'bold';
+                      tile.textContent = piece.value;
+                      tile.addEventListener('click', async () => {
+                        const expected = units[buildState.builtValues.length];
+                        if (piece.value === expected){
+                          piece.used = true; buildState.builtValues.push(piece.value);
+                          renderAnswer(); renderPalette();
+                          if (buildState.builtValues.length === units.length) await finishQuizAttempt(!buildState.hadMistake, null);
+                        } else {
+                          tile.style.background = '#D64545'; tile.style.color = '#fff'; buildState.hadMistake = true;
+                          setTimeout(() => { tile.style.background = ''; tile.style.color = ''; }, 350);
+                        }
+                      });
+                      paletteArea.appendChild(tile);
+                    });
+                  };
+                  btnResetBuild.addEventListener('click', () => {
+                    buildState.pieces.forEach(p => { p.used = false; });
+                    buildState.builtValues = []; buildState.hadMistake = false;
+                    renderAnswer(); renderPalette();
+                  });
+
+                  renderAnswer(); renderPalette();
+                  qBlock.appendChild(answerArea); qBlock.appendChild(paletteArea); qBlock.appendChild(btnResetBuild);
+                }
+            }
+
+            // --- MODO: ESCREVER SEM DICAS ---
+            } else if (quizMode === 'write'){
+              const correctOption = options.find(o => o.correct);
+              const correctText = correctOption ? correctOption.text.trim() : '';
+
+              if (locked){
+                const wasCorrect = record.chosen === 'ok';
+                const doneWrap = document.createElement('div');
+                doneWrap.style.background = 'var(--bg)'; doneWrap.style.padding = '10px'; doneWrap.style.borderRadius = '6px';
+                doneWrap.style.fontWeight = 'bold'; doneWrap.style.color = wasCorrect ? '#4FA65B' : '#D64545';
+                doneWrap.textContent = (wasCorrect ? '✅ ' : '❌ Resposta certa: ') + correctText;
+                qBlock.appendChild(doneWrap);
+              } else {
+                const writeInput = document.createElement('input');
+                writeInput.type = 'text'; writeInput.placeholder = 'Digite a resposta completa, sem dicas...';
+                writeInput.style.width = '100%'; writeInput.style.padding = '10px'; writeInput.style.borderRadius = '6px';
+                writeInput.style.border = '1px solid var(--smoke)'; writeInput.style.background = 'var(--bg)'; writeInput.style.color = 'var(--text)';
+                writeInput.style.fontSize = '15px'; writeInput.style.marginBottom = '8px'; writeInput.style.outline = 'none'; writeInput.style.boxSizing = 'border-box';
+
+                const btnCheckWrite = document.createElement('button');
+                btnCheckWrite.type = 'button'; btnCheckWrite.className = 'btn-primary'; btnCheckWrite.style.width = '100%';
+                btnCheckWrite.textContent = 'Verificar';
+
+                const checkWrite = async () => {
+                  const typed = normalize(writeInput.value.trim());
+                  const expected = normalize(correctText);
+                  const isCorrect = typed.length > 0 && typed === expected;
+                  await finishQuizAttempt(isCorrect, isCorrect ? 'ok' : 'fail', correctText);
+                };
+                writeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter'){ e.preventDefault(); checkWrite(); } });
+                btnCheckWrite.addEventListener('click', checkWrite);
+
+                qBlock.appendChild(writeInput);
+                qBlock.appendChild(btnCheckWrite);
+              }
+
+            // --- MODO: MÚLTIPLA ESCOLHA (o de sempre) ---
+            } else {
+              shuffledOptions.forEach((opt) => {
+                const optBtn = document.createElement('button'); optBtn.type = 'button'; optBtn.className = 'btn-secondary'; optBtn.style.display = 'block'; optBtn.style.width = '100%'; optBtn.style.textAlign = 'left'; optBtn.style.marginBottom = '6px'; optBtn.innerHTML = renderText(opt.text);
+                if (locked){
+                  optBtn.disabled = true;
+                  if (opt.correct){ optBtn.style.background = '#4FA65B'; optBtn.style.color = '#fff'; }
+                  else if (opt.originalIndex === record.chosen){ optBtn.style.background = '#D64545'; optBtn.style.color = '#fff'; }
+                }
+                optBtn.addEventListener('click', async () => {
+                  if (locked) return;
+                  await finishQuizAttempt(opt.correct, opt.originalIndex);
+                });
+                qBlock.appendChild(optBtn);
               });
-              qBlock.appendChild(optBtn);
-            });
+            }
+
+            // --- Função compartilhada: fecha a resposta, atualiza SM-2, avança pra próxima ---
+            async function finishQuizAttempt(isCorrect, chosenValue, revealText){
+              const prevForSm2 = due ? record : null;
+              const updated = sm2Update(prevForSm2, isCorrect); updated.chosen = chosenValue;
+              if (!item.quizAnswers) item.quizAnswers = {};
+              item.quizAnswers[questionLineIndex] = updated; item.updatedAt = Date.now();
+              await dbPut(item);
+              const ram = allItems.find(x => x.id === item.id); if (ram){ ram.quizAnswers = item.quizAnswers; ram.updatedAt = item.updatedAt; }
+              const dias = updated.interval === 1 ? '1 dia' : `${updated.interval} dias`;
+              let msg = isCorrect ? '✅ Certo! ' : (revealText ? `❌ Errado. Resposta certa: ${revealText}. ` : '❌ Errado. ');
+              showToast(msg + `Vai revisar de novo em ${dias}.`);
+              refreshQuizScoreLabel(); renderContent(isCode);
+              setTimeout(() => {
+                const nextQuiz = textContainer.querySelector('.quiz-unanswered');
+                if (nextQuiz) {
+                  nextQuiz.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  const oldBg = nextQuiz.style.background; const oldRadius = nextQuiz.style.borderRadius;
+                  nextQuiz.style.transition = 'background 0.3s'; nextQuiz.style.background = '#4FA8D8'; nextQuiz.style.borderRadius = '6px';
+                  setTimeout(() => { nextQuiz.style.background = oldBg; nextQuiz.style.borderRadius = oldRadius; }, 900);
+                  if (isAudioEnabled && autoReadNextQuiz) {
+                    const titleToClick = nextQuiz.querySelector('.quiz-title-clicker');
+                    if (titleToClick) { setTimeout(() => titleToClick.click(), 500); }
+                  }
+                }
+              }, 2500);
+            }
+
             textContainer.appendChild(qBlock); for (let k = i; k < j; k++) lineEls[k] = qBlock;
             i = j; processedSinceYield++; continue;
           }
         }
-
+                
         const checkMatch = line.match(/^\[([ xX]?)\](.*)/);
         if (checkMatch) {
           const isChecked = checkMatch[1].toLowerCase() === 'x'; const rawText = checkMatch[2];
@@ -2306,7 +2507,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
               if (foundIdx !== -1 && lineEls[foundIdx]){
                 const el = lineEls[foundIdx]; el.scrollIntoView({ behavior:'smooth', block:'center' });
                 const oldBg = el.style.background, oldRadius = el.style.borderRadius;
-                el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px';
+                el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px'; el.style.padding = '6px';
                 setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
                 showToast('➡️ Próximo passo: ' + nextStepRaw);
                 if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
@@ -2809,6 +3010,14 @@ modalImportChoice.addEventListener('click', (e) => {
       showToast(speedrunMode ? '⏱️ Modo Speedrun Ativado' : 'Modo Speedrun Desativado');
     });
   }
+  if (toggleAdaptiveDifficulty) {
+  toggleAdaptiveDifficulty.checked = adaptiveDifficulty;
+  toggleAdaptiveDifficulty.addEventListener('change', (e) => {
+    adaptiveDifficulty = e.target.checked;
+    localStorage.setItem('memorias_adaptive_difficulty', adaptiveDifficulty);
+    showToast(adaptiveDifficulty ? '🎓 Dificuldade automática ativada.' : 'Dificuldade automática desativada.');
+  });
+}
   // Controle do Valor por Hora
   if (hourlyRateInput) {
     hourlyRateInput.value = hourlyRate || '';
