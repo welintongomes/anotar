@@ -119,7 +119,7 @@
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
   }
   .tags-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;scrollbar-width: none;}
-  .tag-pill{background:var(--panel-2);color:var(--smoke);border-radius:5px;padding:2px 8px;font-size:12px;}
+  .tag-pill{background:var(--panel-2);color:var(--smoke);border-radius:5px;padding:2px 7px;font-size:11px;}
   .card-footer{margin:6px 0 0;color:var(--smoke);font-size:12px;}
 
   #emptyState{
@@ -2220,7 +2220,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
 
             // --- Seletor de modo ---
             const modeRow = document.createElement('div');
-            modeRow.style.display = 'flex'; modeRow.style.gap = '6px'; modeRow.style.marginBottom = '10px'; modeRow.style.flexWrap = 'wrap';
+            modeRow.style.display = 'flex'; modeRow.style.gap = '5px'; modeRow.style.marginBottom = '10px'; modeRow.style.flexWrap = 'nowrap';
 
             const setQuizMode = async (newMode) => {
               if (!item.quizModes) item.quizModes = {};
@@ -2234,21 +2234,21 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
 
             const btnModeChoice = document.createElement('button');
             btnModeChoice.type = 'button'; btnModeChoice.className = 'tag-pill'; btnModeChoice.style.border = 'none';
-            btnModeChoice.innerHTML = '🔤 Múltipla escolha';
+            btnModeChoice.innerHTML = '🔤 Escolha';
             btnModeChoice.style.background = quizMode === 'choice' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
             btnModeChoice.style.color = quizMode === 'choice' && hasManualMode ? '#fff' : 'var(--text)';
             btnModeChoice.addEventListener('click', () => setQuizMode('choice'));
 
             const btnModeBuild = document.createElement('button');
             btnModeBuild.type = 'button'; btnModeBuild.className = 'tag-pill'; btnModeBuild.style.border = 'none';
-            btnModeBuild.innerHTML = '✏️ Formar palavra';
+            btnModeBuild.innerHTML = '✏️ Formar';
             btnModeBuild.style.background = quizMode === 'build' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
             btnModeBuild.style.color = quizMode === 'build' && hasManualMode ? '#fff' : 'var(--text)';
             btnModeBuild.addEventListener('click', () => setQuizMode('build'));
 
             const btnModeWrite = document.createElement('button');
             btnModeWrite.type = 'button'; btnModeWrite.className = 'tag-pill'; btnModeWrite.style.border = 'none';
-            btnModeWrite.innerHTML = '✍️ Escrever';
+            btnModeWrite.innerHTML = '✍️ Digitar';
             btnModeWrite.style.background = quizMode === 'write' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
             btnModeWrite.style.color = quizMode === 'write' && hasManualMode ? '#fff' : 'var(--text)';
             btnModeWrite.addEventListener('click', () => setQuizMode('write'));
@@ -2257,10 +2257,10 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
 
             if (adaptiveDifficulty){
               const autoResolved = computeAdaptiveQuizMode(record);
-              const autoLabel = autoResolved === 'write' ? 'Escrever' : autoResolved === 'build' ? 'Formar palavra' : 'Múltipla escolha';
+              const autoLabel = autoResolved === 'write' ? 'Digitar' : autoResolved === 'build' ? 'Formar' : 'Escolha';
               const btnModeAuto = document.createElement('button');
               btnModeAuto.type = 'button'; btnModeAuto.className = 'tag-pill'; btnModeAuto.style.border = 'none';
-              btnModeAuto.innerHTML = `🎓 Automático (${autoLabel})`;
+              btnModeAuto.innerHTML = `🎓 Sugerido (${autoLabel})`;
               btnModeAuto.style.background = !hasManualMode ? '#D6A035' : 'var(--bg)';
               btnModeAuto.style.color = !hasManualMode ? '#000' : 'var(--text)';
               btnModeAuto.addEventListener('click', () => setQuizMode(null));
@@ -2729,7 +2729,7 @@ function setupEventListeners(){
     const start = fieldContent.selectionStart ?? fieldContent.value.length; const end = fieldContent.selectionEnd ?? start;
     const value = fieldContent.value; const atLineStart = start === 0 || value[start - 1] === '\n';
     const prefix = (atLineStart ? '' : '\n') + '?? '; const placeholder = 'Pergunta';
-    const rest = placeholder + '\n() Opção 1\n() Opção 2\n(x) Opção correta\n';
+    const rest = placeholder + '\n() Opção\n() Opção\n(x) OpçãoCorreta\n';
     fieldContent.value = value.slice(0, start) + prefix + rest + value.slice(end);
     const selStart = start + prefix.length; fieldContent.focus(); fieldContent.setSelectionRange(selStart, selStart + placeholder.length); fieldContent.dispatchEvent(new Event('input'));
   });
