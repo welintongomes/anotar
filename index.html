@@ -2316,7 +2316,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
                 // Achou na tela (ilumina azul)
                 const el = lineEls[foundIdx]; el.scrollIntoView({ behavior:'smooth', block:'center' });
                 const oldBg = el.style.background, oldRadius = el.style.borderRadius;
-                el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px';
+                el.style.transition = 'background 0.3s'; el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px'; el.style.padding = '6px';
                 setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
                 showToast('➡️ Próximo passo: ' + nextStepRaw);
                 
