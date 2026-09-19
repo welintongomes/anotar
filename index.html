@@ -1324,11 +1324,14 @@ function getFilteredSorted(){
   else if (currentCategory !== 'Todos'){ items = items.filter(i => i.category === currentCategory); }
   const q = normalize(currentSearch.trim());
   if (q){
-    return items.map(i => ({ item:i, score: scoreMatch(i,q) }))
+    const scored = items.map(i => ({ item:i, score: scoreMatch(i,q) }))
       .filter(x => x.score > 0)
-      .sort((a,b) => (b.score - a.score) || ((b.item.favorite?1:0) - (a.item.favorite?1:0)) || (b.item.updatedAt - a.item.updatedAt))
-      .map(x => x.item);
+      .sort((a,b) => (b.score - a.score) || ((b.item.favorite?1:0) - (a.item.favorite?1:0)) || (b.item.updatedAt - a.item.updatedAt));
+    const topScore = scored.length ? scored[0].score : 0;
+    scored.forEach(x => { x.item._matchPercent = topScore > 0 ? Math.round((x.score / topScore) * 100) : 0; });
+    return scored.map(x => x.item);
   }
+  allItems.forEach(i => { delete i._matchPercent; }); // limpa resquício de busca anterior
   items.sort((a,b) => {
     const favA = a.favorite ? 1 : 0, favB = b.favorite ? 1 : 0;
     if (favA !== favB) return favB - favA;
@@ -1354,6 +1357,18 @@ function buildCard(item){
   const badge = document.createElement('span'); badge.className = 'badge';
   badge.textContent = item.category; badge.style.color = categoryColor(item.category);
   top.appendChild(badge);
+
+  if (currentSearch && item._matchPercent !== undefined){
+    const matchBadge = document.createElement('span');
+    matchBadge.className = 'tag-pill'; matchBadge.style.border = 'none'; matchBadge.style.fontWeight = 'bold';
+    let color = '#D64545';
+    if (item._matchPercent >= 40) color = '#D6A035';
+    if (item._matchPercent >= 75) color = '#4FA65B';
+    matchBadge.style.background = color; matchBadge.style.color = '#fff';
+    matchBadge.title = 'Relevância comparada ao melhor resultado desta busca';
+    matchBadge.textContent = `🎯 ${item._matchPercent}%`;
+    top.appendChild(matchBadge);
+  }
 
   if (item.photo || item.hasPhoto){ const flag = document.createElement('span'); flag.className = 'photo-flag'; flag.textContent = '📷'; top.appendChild(flag); }
   if (item.audio || item.hasAudio){ const flag = document.createElement('span'); flag.className = 'photo-flag'; flag.textContent = '🎵'; top.appendChild(flag); }
@@ -2336,7 +2351,16 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
           const hr = document.createElement('hr'); hr.style.border = 'none'; hr.style.borderTop = '2px dashed var(--smoke, #9AA0AB)'; hr.style.margin = '14px 0';
           textContainer.appendChild(hr); lineEls[i] = hr; i++; continue;
         }
-        const p = document.createElement('div'); p.style.minHeight = '1.4em'; p.innerHTML = renderText(line); textContainer.appendChild(p); lineEls[i] = p; i++;
+                const p = document.createElement('div'); p.style.minHeight = '1.4em'; p.innerHTML = renderText(line);
+        if (line.trim()){
+          const currentIndex = i; // precisa "congelar" o índice aqui, senão todo clique leria a última linha do texto
+          p.style.cursor = 'pointer';
+          const originalLineHtml = p.innerHTML;
+          p.addEventListener('click', () => {
+            handleSpeech(line, p, originalLineHtml, 'text-' + currentIndex, false);
+          });
+        }
+        textContainer.appendChild(p); lineEls[i] = p; i++;
       }
 
       setTimeout(() => {
