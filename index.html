@@ -487,6 +487,43 @@
         <input type="range" id="voiceSpeed" min="0.5" max="2.0" step="0.05" value="0.95">
       </label>
       <label style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+  <span>🏃‍♂️ Velocidade das Alternativas: <strong id="optionsSpeedLabel">Normal (0.95x)</strong></span>
+  <input type="range" id="optionsVoiceSpeed" min="0.5" max="2.0" step="0.05" value="0.95">
+</label>
+<label style="display:flex; flex-direction:column; gap:6px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+  <span>🌐 Idioma da Pergunta (quiz)</span>
+  <select id="voiceLangQuestion" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
+    <option value="pt-BR">Português</option>
+    <option value="en-US">Inglês</option>
+    <option value="es-ES">Espanhol</option>
+    <option value="fr-FR">Francês</option>
+    <option value="de-DE">Alemão</option>
+    <option value="it-IT">Italiano</option>
+  </select>
+</label>
+<label style="display:flex; flex-direction:column; gap:6px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+  <span>🌐 Idioma das Alternativas (quiz)</span>
+  <select id="voiceLangOptions" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
+    <option value="pt-BR">Português</option>
+    <option value="en-US">Inglês</option>
+    <option value="es-ES">Espanhol</option>
+    <option value="fr-FR">Francês</option>
+    <option value="de-DE">Alemão</option>
+    <option value="it-IT">Italiano</option>
+  </select>
+</label>
+<label style="display:flex; flex-direction:column; gap:6px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
+  <span>🌐 Idioma do Texto Normal (fora do quiz)</span>
+  <select id="voiceLangNormal" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
+    <option value="pt-BR">Português</option>
+    <option value="en-US">Inglês</option>
+    <option value="es-ES">Espanhol</option>
+    <option value="fr-FR">Francês</option>
+    <option value="de-DE">Alemão</option>
+    <option value="it-IT">Italiano</option>
+  </select>
+</label>
+      <label style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
         <span>⏱️ Tempo do Aviso na tela: <strong id="toastSpeedLabel">2.2s</strong></span>
         <input type="range" id="toastSpeed" min="1.0" max="10.0" step="0.5" value="2.2">
       </label>
@@ -864,6 +901,11 @@ let adaptiveDifficulty = localStorage.getItem('memorias_adaptive_difficulty') ==
 let hourlyRate = parseFloat(localStorage.getItem('memorias_hourly_rate')) || 0;
 let currentVoiceSpeed = parseFloat(localStorage.getItem('memorias_voice_speed')) || 0.95;
 let currentToastDuration = parseFloat(localStorage.getItem('memorias_toast_duration')) || 2200;
+// idiomas do texto perguntas quiz e opçoes quiz
+let voiceLangQuestion = localStorage.getItem('memorias_voice_lang_question') || 'pt-BR';
+let voiceLangOptions = localStorage.getItem('memorias_voice_lang_options') || 'pt-BR';
+let voiceLangNormal = localStorage.getItem('memorias_voice_lang_normal') || 'pt-BR';
+let optionsVoiceSpeed = parseFloat(localStorage.getItem('memorias_options_voice_speed')) || 0.95;
 
 /* ---------------- Elementos ---------------- */
 const searchInput = document.getElementById('searchInput');
@@ -956,6 +998,13 @@ const hourlyRateInput = document.getElementById('hourlyRate'); // NOVO
 let viewTimerInterval = null; // Cronômetro ao vivo na tela
 const toggleReadOptions = document.getElementById('toggleReadOptions');
 const voiceSpeed = document.getElementById('voiceSpeed');
+// idiomas quiz leitura normal
+const optionsVoiceSpeedInput = document.getElementById('optionsVoiceSpeed');
+const optionsSpeedLabel = document.getElementById('optionsSpeedLabel');
+const voiceLangQuestionSelect = document.getElementById('voiceLangQuestion');
+const voiceLangOptionsSelect = document.getElementById('voiceLangOptions');
+const voiceLangNormalSelect = document.getElementById('voiceLangNormal');
+
 const speedLabel = document.getElementById('speedLabel');
 const toastSpeed = document.getElementById('toastSpeed');
 const toastSpeedLabel = document.getElementById('toastSpeedLabel');
@@ -1648,6 +1697,18 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     return text.trim() ? [text.trim()] : [];
   }
 
+  // Recebe pedaços { text, lang, rate } e devolve a fila final já quebrada em frases,
+  // cada uma carregando o idioma/velocidade do pedaço de onde veio.
+  function buildSpeechQueue(parts){
+    const queue = [];
+    parts.forEach(part => {
+      if (!part.text || !part.text.trim()) return;
+      const sentences = splitIntoSentences(part.text);
+      sentences.forEach(s => queue.push({ text: s, lang: part.lang, rate: part.rate }));
+    });
+    return queue;
+  }
+
   function speakSentenceAt(idx){
     const synth = window.speechSynthesis;
     if (idx >= speechSentences.length){
@@ -1657,8 +1718,9 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
       return;
     }
     const myTarget = activeSpeechTarget;
-    const utterance = new SpeechSynthesisUtterance(speechSentences[idx]);
-    utterance.lang = 'pt-BR'; utterance.rate = currentVoiceSpeed;
+    const unit = speechSentences[idx];
+    const utterance = new SpeechSynthesisUtterance(unit.text);
+    utterance.lang = unit.lang || 'pt-BR'; utterance.rate = unit.rate || currentVoiceSpeed;
     utterance.onstart = async () => {
       if (speechIsQuiz) { speechTargetElement.innerHTML = speechOriginalHtml.replace('❓', '🔊'); }
       else { speechTargetElement.innerHTML = '🔊 ' + speechOriginalHtml; }
@@ -1667,16 +1729,36 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
       }
     };
     utterance.onend = () => {
-      if (activeSpeechTarget !== myTarget || isSpeechPaused) return; // pausado ou trocou de assunto no meio
+      if (activeSpeechTarget !== myTarget || isSpeechPaused) return;
       speechSentenceIndex = idx + 1;
-      speakSentenceAt(speechSentenceIndex);
+      /*
+         * No quiz:
+         * - depois da pergunta mantém a pausa original
+         * - depois de cada alternativa cria uma pausa real de 800ms
+         */
+        if (speechIsQuiz && idx > 0) {
+
+            setTimeout(() => {
+
+                if (
+                    activeSpeechTarget !== myTarget ||
+                    isSpeechPaused
+                ) return;
+
+                speakSentenceAt(speechSentenceIndex);
+
+            }, 1000);
+
+        }else {
+
+            speakSentenceAt(speechSentenceIndex);
+
+        }
     };
     utterance.onerror = () => { /* cancelado ou deu erro -- não continua a cadeia */ };
     synth.speak(utterance);
   }
 
-  // Hook público: qualquer parte do app pode chamar isso pra desligar a voz
-  // de forma limpa (usado quando você muda a velocidade, desliga o áudio, etc.)
   window.stopActiveSpeech = () => {
     window.speechSynthesis.cancel();
     isSpeechPaused = false; activeSpeechTarget = null;
@@ -1685,7 +1767,9 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
   };
 
-  async function handleSpeech(textToRead, element, originalHtml, targetId, isQuiz) {
+  // Aceita um texto simples (lê em voiceLangNormal, como antes) OU uma lista de
+  // pedaços [{text, lang, rate}, ...] pra misturar idiomas/velocidades numa só leitura.
+  async function handleSpeech(input, element, originalHtml, targetId, isQuiz) {
     if (!isAudioEnabled) { showToast('Áudio desativado.'); return; }
     if (!('speechSynthesis' in window)) { showToast('Sem suporte a voz.'); return; }
     const synth = window.speechSynthesis;
@@ -1706,11 +1790,13 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     activeSpeechTarget = targetId; element.style.opacity = '1';
     restorePreviousVisuals = () => { element.innerHTML = originalHtml; element.style.opacity = '1'; };
     speechTargetElement = element; speechOriginalHtml = originalHtml; speechIsQuiz = isQuiz;
-    speechSentences = splitIntoSentences(textToRead);
+
+    const parts = Array.isArray(input) ? input : [{ text: input, lang: voiceLangNormal, rate: currentVoiceSpeed }];
+    speechSentences = buildSpeechQueue(parts);
     speechSentenceIndex = 0;
     speakSentenceAt(0);
   }
-  
+
   viewTitle.style.cursor = 'pointer';
   const mainTitleOriginal = escapeHTML(item.title);
   viewTitle.onclick = () => { handleSpeech(getCleanTextToRead(), viewTitle, mainTitleOriginal, 'main', false); };
@@ -2208,10 +2294,12 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
             const qBlock = document.createElement('div'); qBlock.style.background = 'var(--panel-2)'; qBlock.style.padding = '12px'; qBlock.style.borderRadius = '8px'; qBlock.style.marginTop = '6px'; qBlock.style.marginBottom = '10px';
             const qTitle = document.createElement('div'); qTitle.className = 'quiz-title-clicker'; qTitle.style.fontWeight = 'bold'; qTitle.style.marginBottom = '8px'; qTitle.style.cursor = 'pointer'; 
             const originalQuizHtml = '❓ ' + renderText(qMatch[1].trim()); qTitle.innerHTML = originalQuizHtml;
-            qTitle.addEventListener('click', () => {
-              let quizSpeechText = "Pergunta: " + qMatch[1].trim() + ". ";
-              if (readQuizOptions && quizMode === 'choice') { shuffledOptions.forEach(opt => { quizSpeechText += "Alternativa: " + opt.text + ". "; }); }
-              handleSpeech(quizSpeechText, qTitle, originalQuizHtml, 'quiz-' + questionLineIndex, true);
+                        qTitle.addEventListener('click', () => {
+              const speechParts = [{ text: "Pergunta: " + qMatch[1].trim() + ".", lang: voiceLangQuestion, rate: currentVoiceSpeed }];
+              if (readQuizOptions && quizMode === 'choice') {
+                shuffledOptions.forEach(opt => { speechParts.push({ text: "." + opt.text + ".", lang: voiceLangOptions, rate: optionsVoiceSpeed }); });
+              }
+              handleSpeech(speechParts, qTitle, originalQuizHtml, 'quiz-' + questionLineIndex, true);
             });
             qBlock.appendChild(qTitle);
 
@@ -2494,7 +2582,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
                 if (isAudioEnabled && 'speechSynthesis' in window) {
                   if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
                   const utterance = new SpeechSynthesisUtterance("Finalizado! ... " + finalInstruction);
-                  utterance.lang = 'pt-BR';
+                  utterance.lang = voiceLangNormal;
                   utterance.rate = currentVoiceSpeed;
                   window.speechSynthesis.speak(utterance);
                 }
@@ -2513,7 +2601,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
                 if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
                   if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
                   const utterance = new SpeechSynthesisUtterance("Próximo passo. " + nextStepRaw);
-                  utterance.lang = 'pt-BR';
+                  utterance.lang = voiceLangNormal;
                   utterance.rate = currentVoiceSpeed;
                   window.speechSynthesis.speak(utterance);
                 }
@@ -2522,7 +2610,7 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
                 if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
                   if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
                   const utterance = new SpeechSynthesisUtterance("Sugerido. " + nextStepRaw);
-                  utterance.lang = 'pt-BR';
+                  utterance.lang = voiceLangNormal;
                   utterance.rate = currentVoiceSpeed;
                   window.speechSynthesis.speak(utterance);
                 }
@@ -2729,7 +2817,7 @@ function setupEventListeners(){
     const start = fieldContent.selectionStart ?? fieldContent.value.length; const end = fieldContent.selectionEnd ?? start;
     const value = fieldContent.value; const atLineStart = start === 0 || value[start - 1] === '\n';
     const prefix = (atLineStart ? '' : '\n') + '?? '; const placeholder = 'Pergunta';
-    const rest = placeholder + '\n() Opção\n() Opção\n(x) OpçãoCorreta\n';
+    const rest = placeholder + '\n() Opção1\n() Opção2\n(x) OpçãoCorreta\n';
     fieldContent.value = value.slice(0, start) + prefix + rest + value.slice(end);
     const selStart = start + prefix.length; fieldContent.focus(); fieldContent.setSelectionRange(selStart, selStart + placeholder.length); fieldContent.dispatchEvent(new Event('input'));
   });
@@ -3056,6 +3144,42 @@ modalImportChoice.addEventListener('click', (e) => {
       showToast('Tempo atualizado!', false); // Testa o novo tempo na hora
     });
   }
+  if (optionsVoiceSpeedInput) {
+  optionsVoiceSpeedInput.value = optionsVoiceSpeed;
+  const updateOptionsSpeedLabel = (val) => {
+    if (val < 0.9) optionsSpeedLabel.textContent = `Devagar (${val}x)`;
+    else if (val > 1.1) optionsSpeedLabel.textContent = `Rápido (${val}x)`;
+    else optionsSpeedLabel.textContent = `Normal (${val}x)`;
+  };
+  updateOptionsSpeedLabel(optionsVoiceSpeed);
+  optionsVoiceSpeedInput.addEventListener('input', (e) => { updateOptionsSpeedLabel(parseFloat(e.target.value)); });
+  optionsVoiceSpeedInput.addEventListener('change', (e) => {
+    optionsVoiceSpeed = parseFloat(e.target.value);
+    localStorage.setItem('memorias_options_voice_speed', optionsVoiceSpeed);
+    if (window.stopActiveSpeech) window.stopActiveSpeech(); else if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  });
+}
+if (voiceLangQuestionSelect) {
+  voiceLangQuestionSelect.value = voiceLangQuestion;
+  voiceLangQuestionSelect.addEventListener('change', (e) => {
+    voiceLangQuestion = e.target.value; localStorage.setItem('memorias_voice_lang_question', voiceLangQuestion);
+    showToast('Idioma da pergunta atualizado.');
+  });
+}
+if (voiceLangOptionsSelect) {
+  voiceLangOptionsSelect.value = voiceLangOptions;
+  voiceLangOptionsSelect.addEventListener('change', (e) => {
+    voiceLangOptions = e.target.value; localStorage.setItem('memorias_voice_lang_options', voiceLangOptions);
+    showToast('Idioma das alternativas atualizado.');
+  });
+}
+if (voiceLangNormalSelect) {
+  voiceLangNormalSelect.value = voiceLangNormal;
+  voiceLangNormalSelect.addEventListener('change', (e) => {
+    voiceLangNormal = e.target.value; localStorage.setItem('memorias_voice_lang_normal', voiceLangNormal);
+    showToast('Idioma do texto normal atualizado.');
+  });
+}
 }
 
 async function seedIfEmpty(){
