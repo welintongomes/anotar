@@ -241,7 +241,7 @@
   #photoPreview{width:100%;max-height:220px;object-fit:cover;border-radius:8px;border:1px solid var(--steel);}
 
   .btn-primary,.btn-secondary,.btn-danger{
-    border-radius:8px;padding:13px 18px;font-weight:700;font-size:15px;border:none;min-height:48px;flex:1;
+    border-radius:8px;padding:5px 15px;font-weight:700;font-size:15px;border:none;min-height:35px;flex:1;
   }
   .btn-primary{background:var(--accent);color:var(--accent-ink);}
   .btn-secondary{background:var(--panel-2);color:var(--chalk);border:2px solid var(--steel);}
@@ -472,8 +472,8 @@
       <button class="icon-btn" id="btnCloseMore" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body">
-      <p class="meta-line" id="quizDueText"></p>
-      <p class="meta-line" id="statsText"></p>
+      <p class="meta-line" id="quizDueText" style="text-align: center;"></p>
+      <p class="meta-line" id="statsText" style="text-align: center;"></p>
       <hr>
       <p class="meta-line" id="budgetSummaryText"></p>
       <button id="btnCopyGlobalBudget" class="btn-secondary">📋 Copiar orçamento global</button>
@@ -2205,12 +2205,36 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     function getQuizScore(){
       const qs = getQuizQuestions(); const answers = item.quizAnswers || {};
       let mastered = 0, dueForReview = 0, neverAnswered = 0;
+      let progressSum = 0; // NOVO: Soma do progresso de memória
+
       qs.forEach(q => {
         const record = normalizeQuizRecord(answers[q.lineIndex]);
-        if (!record){ neverAnswered++; return; }
-        if (isRecordDue(record)) dueForReview++; else mastered++;
+        if (!record){ 
+          neverAnswered++; 
+          return; // Pergunta nova tem 0% de retenção
+        }
+        
+        const isDue = isRecordDue(record);
+        if (isDue) dueForReview++; else mastered++;
+
+        // CÁLCULO DE DOMÍNIO (SM-2):
+        // Consideramos 21 dias de intervalo como 100% de domínio (memória de longo prazo)
+        let qScore = Math.min(100, (record.interval / 21) * 100);
+        
+        // Se a pessoa errou na última vez (reps == 0), a retenção cai quase a zero
+        if (record.reps === 0) qScore = 5; 
+        
+        // Se a revisão está atrasada, aplicamos uma penalidade de "esquecimento" de 25%
+        // Isso faz a barra do card "encolher" se o usuário abandonar os estudos!
+        if (isDue) qScore = qScore * 0.75;
+
+        progressSum += qScore;
       });
-      return { total: qs.length, mastered, dueForReview, neverAnswered };
+
+      // Progresso Estatístico Real (0 a 100%)
+      const realisticProgress = qs.length > 0 ? Math.round(progressSum / qs.length) : 0;
+
+      return { total: qs.length, mastered, dueForReview, neverAnswered, realisticProgress };
     }
     const quizQuestionsCount = getQuizQuestions().length; let quizScoreLabel = null;
     if (quizQuestionsCount > 0){
@@ -2229,13 +2253,27 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     }
     function refreshQuizScoreLabel(){
       if (!quizScoreLabel) return;
-      const { total, mastered, dueForReview, neverAnswered } = getQuizScore();
-      let extra = ''; if (dueForReview > 0) extra += ` · ⏰ ${dueForReview} p/ revisar`; if (neverAnswered > 0) extra += ` · ${neverAnswered} nova(s)`;
-      const percent = total > 0 ? Math.round((mastered / total) * 100) : 0;
-      let barColor = '#D64545'; if (percent >= 40) barColor = '#D6A035'; if (percent >= 80) barColor = '#4FA65B'; 
-      quizScoreLabel.style.background = `linear-gradient(90deg, ${barColor} ${percent}%, var(--smoke, #9AA0AB) ${percent}%)`;
-      quizScoreLabel.style.color = '#fff'; quizScoreLabel.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; 
-      quizScoreLabel.innerHTML = `🧠 ${mastered}/${total} (${percent}%)` + extra;
+      
+      // Agora pegamos o realisticProgress do getQuizScore
+      const { total, mastered, dueForReview, neverAnswered, realisticProgress } = getQuizScore();
+      
+      let extra = ''; 
+      if (dueForReview > 0) extra += ` · ⏰ ${dueForReview} revisar`; 
+      if (neverAnswered > 0) extra += ` · 🆕 ${neverAnswered} novas`;
+
+      // A cor da barra agora responde ao Nível de Domínio da memória
+      let barColor = '#D64545'; // Vermelho (Memória fraca, começando)
+      if (realisticProgress >= 40) barColor = '#D6A035'; // Amarelo (Ganhando força)
+      if (realisticProgress >= 80) barColor = '#4FA65B'; // Verde (Bem consolidado)
+      if (realisticProgress >= 95) barColor = '#8B6FD1'; // Roxo (Nível Mestre!)
+
+      // O gradiente visual agora é preenchido pela Força da Memória, não por quantidade de respostas
+      quizScoreLabel.style.background = `linear-gradient(90deg, ${barColor} ${realisticProgress}%, var(--smoke, #9AA0AB) ${realisticProgress}%)`;
+      quizScoreLabel.style.color = '#fff'; 
+      quizScoreLabel.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; 
+      
+      // O texto exibe o status de Domínio estatístico
+      quizScoreLabel.innerHTML = `🧠 Domínio: ${realisticProgress}% (${mastered}/${total})` + extra;
     }
     refreshQuizScoreLabel();
 
@@ -2306,62 +2344,74 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
             if (!locked) { qBlock.classList.add('quiz-unanswered'); }
             if (due){ const dueTag = document.createElement('div'); dueTag.style.fontSize = '0.8em'; dueTag.style.opacity = '0.7'; dueTag.style.marginBottom = '6px'; dueTag.textContent = '⏰ Hora de revisar — responda de novo'; qBlock.appendChild(dueTag); }
 
-            // --- Seletor de modo ---
-            const modeRow = document.createElement('div');
-            modeRow.style.display = 'flex'; modeRow.style.gap = '5px'; modeRow.style.marginBottom = '10px'; modeRow.style.flexWrap = 'nowrap';
+                        // --- Seletor de modo: só liberado quando a pergunta já está resolvida.
+            // Enquanto estiver em aberto (nova ou vencida), o modo fica fixo -- impede
+            // "espiar" um modo diferente (ex: ver as peças de Formar Palavra) pra depois
+            // usar essa pista de volta em outro modo na mesma tentativa.
+            if (locked){
+              const modeRow = document.createElement('div');
+              modeRow.style.display = 'flex'; modeRow.style.gap = '6px'; modeRow.style.marginBottom = '10px'; modeRow.style.flexWrap = 'wrap';
 
-            const setQuizMode = async (newMode) => {
-              if (!item.quizModes) item.quizModes = {};
-              if (newMode === null) { delete item.quizModes[questionLineIndex]; }
-              else { item.quizModes[questionLineIndex] = newMode; }
-              item.updatedAt = Date.now();
-              await dbPut(item);
-              const ram = allItems.find(x => x.id === item.id); if (ram) ram.quizModes = item.quizModes;
-              renderContent(isCode);
-            };
+              const setQuizMode = async (newMode) => {
+                if (!item.quizModes) item.quizModes = {};
+                if (newMode === null) { delete item.quizModes[questionLineIndex]; }
+                else { item.quizModes[questionLineIndex] = newMode; }
+                item.updatedAt = Date.now();
+                await dbPut(item);
+                const ram = allItems.find(x => x.id === item.id); if (ram) ram.quizModes = item.quizModes;
+                renderContent(isCode);
+              };
 
-            const btnModeChoice = document.createElement('button');
-            btnModeChoice.type = 'button'; btnModeChoice.className = 'tag-pill'; btnModeChoice.style.border = 'none';
-            btnModeChoice.innerHTML = '🔤 Escolha';
-            btnModeChoice.style.background = quizMode === 'choice' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
-            btnModeChoice.style.color = quizMode === 'choice' && hasManualMode ? '#fff' : 'var(--text)';
-            btnModeChoice.addEventListener('click', () => setQuizMode('choice'));
+              const btnModeChoice = document.createElement('button');
+              btnModeChoice.type = 'button'; btnModeChoice.className = 'tag-pill'; btnModeChoice.style.border = 'none';
+              btnModeChoice.innerHTML = '🔤 Escolha';
+              btnModeChoice.style.background = quizMode === 'choice' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
+              btnModeChoice.style.color = quizMode === 'choice' && hasManualMode ? '#fff' : 'var(--text)';
+              btnModeChoice.addEventListener('click', () => setQuizMode('choice'));
 
-            const btnModeBuild = document.createElement('button');
-            btnModeBuild.type = 'button'; btnModeBuild.className = 'tag-pill'; btnModeBuild.style.border = 'none';
-            btnModeBuild.innerHTML = '✏️ Formar';
-            btnModeBuild.style.background = quizMode === 'build' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
-            btnModeBuild.style.color = quizMode === 'build' && hasManualMode ? '#fff' : 'var(--text)';
-            btnModeBuild.addEventListener('click', () => setQuizMode('build'));
+              const btnModeBuild = document.createElement('button');
+              btnModeBuild.type = 'button'; btnModeBuild.className = 'tag-pill'; btnModeBuild.style.border = 'none';
+              btnModeBuild.innerHTML = '✏️ Formar';
+              btnModeBuild.style.background = quizMode === 'build' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
+              btnModeBuild.style.color = quizMode === 'build' && hasManualMode ? '#fff' : 'var(--text)';
+              btnModeBuild.addEventListener('click', () => setQuizMode('build'));
 
-            const btnModeWrite = document.createElement('button');
-            btnModeWrite.type = 'button'; btnModeWrite.className = 'tag-pill'; btnModeWrite.style.border = 'none';
-            btnModeWrite.innerHTML = '✍️ Digitar';
-            btnModeWrite.style.background = quizMode === 'write' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
-            btnModeWrite.style.color = quizMode === 'write' && hasManualMode ? '#fff' : 'var(--text)';
-            btnModeWrite.addEventListener('click', () => setQuizMode('write'));
+              const btnModeWrite = document.createElement('button');
+              btnModeWrite.type = 'button'; btnModeWrite.className = 'tag-pill'; btnModeWrite.style.border = 'none';
+              btnModeWrite.innerHTML = '✍️ Digitar';
+              btnModeWrite.style.background = quizMode === 'write' && hasManualMode ? '#4FA8D8' : 'var(--bg)';
+              btnModeWrite.style.color = quizMode === 'write' && hasManualMode ? '#fff' : 'var(--text)';
+              btnModeWrite.addEventListener('click', () => setQuizMode('write'));
 
-            modeRow.appendChild(btnModeChoice); modeRow.appendChild(btnModeBuild); modeRow.appendChild(btnModeWrite);
+              modeRow.appendChild(btnModeChoice); modeRow.appendChild(btnModeBuild); modeRow.appendChild(btnModeWrite);
 
-            if (adaptiveDifficulty){
-              const autoResolved = computeAdaptiveQuizMode(record);
-              const autoLabel = autoResolved === 'write' ? 'Digitar' : autoResolved === 'build' ? 'Formar' : 'Escolha';
-              const btnModeAuto = document.createElement('button');
-              btnModeAuto.type = 'button'; btnModeAuto.className = 'tag-pill'; btnModeAuto.style.border = 'none';
-              btnModeAuto.innerHTML = `🎓 Sugerido (${autoLabel})`;
-              btnModeAuto.style.background = !hasManualMode ? '#D6A035' : 'var(--bg)';
-              btnModeAuto.style.color = !hasManualMode ? '#000' : 'var(--text)';
-              btnModeAuto.addEventListener('click', () => setQuizMode(null));
-              modeRow.appendChild(btnModeAuto);
+              if (adaptiveDifficulty){
+                const autoResolved = computeAdaptiveQuizMode(record);
+                const autoLabel = autoResolved === 'write' ? 'Digitar' : autoResolved === 'build' ? 'Formar' : 'Escolha';
+                const btnModeAuto = document.createElement('button');
+                btnModeAuto.type = 'button'; btnModeAuto.className = 'tag-pill'; btnModeAuto.style.border = 'none';
+                btnModeAuto.innerHTML = `🎓 Sugerido (${autoLabel})`;
+                btnModeAuto.style.background = !hasManualMode ? '#D6A035' : 'var(--bg)';
+                btnModeAuto.style.color = !hasManualMode ? '#000' : 'var(--text)';
+                btnModeAuto.addEventListener('click', () => setQuizMode(null));
+                modeRow.appendChild(btnModeAuto);
+              }
+              qBlock.appendChild(modeRow);
+            } else {
+              const modeLockedCaption = document.createElement('div');
+              modeLockedCaption.style.fontSize = '0.8em'; modeLockedCaption.style.opacity = '0.6'; modeLockedCaption.style.marginBottom = '10px';
+              const modeLabel = quizMode === 'write' ? 'Escrever' : quizMode === 'build' ? 'Formar palavra' : 'Múltipla escolha';
+              modeLockedCaption.textContent = `🔒 Modo desta tentativa: ${modeLabel}` + (!hasManualMode && adaptiveDifficulty ? ' (automático)' : '');
+              qBlock.appendChild(modeLockedCaption);
             }
-            qBlock.appendChild(modeRow);
 
-            // --- MODO: FORMAR PALAVRA/FRASE ---
+                        // --- MODO: FORMAR PALAVRA/FRASE ---
             if (quizMode === 'build'){
               const correctOption = options.find(o => o.correct);
               const correctText = correctOption ? correctOption.text.trim() : '';
-              const wordUnits = correctText.split(/\s+/).filter(Boolean);
-              const units = wordUnits.length > 1 ? wordUnits : correctText.split('');
+              const correctTextLower = correctText.toLowerCase(); // some a dica da maiúscula antes de fatiar
+              const wordUnits = correctTextLower.split(/\s+/).filter(Boolean);
+              const units = wordUnits.length > 1 ? wordUnits : correctTextLower.split('');
 
               if (!units.length){
                 const warn = document.createElement('div');
@@ -2768,17 +2818,40 @@ btnRemoveAudio.addEventListener('click', () => { currentAudioBlob = null; fieldA
 async function processCartridgeItems(itemsList) {
   let count = 0;
   for (const raw of itemsList){
-    const newItem = {
-      title: raw.title || 'Sem título', category: raw.category || 'Nota geral', vehicle: raw.vehicle || '', spec: raw.spec || '',
-      content: raw.content || '', tags: raw.tags || [], favorite: !!raw.favorite, useCount: raw.useCount || 0,
-      createdAt: raw.createdAt || Date.now(), updatedAt: raw.updatedAt || Date.now(), photo: null, audio: null, quizAnswers: raw.quizAnswers || {}
-    };
+    
+    // 1. CLONA TUDO: Pega todas as propriedades exatas que vieram do JSON
+    // Isso garante que Progresso, Descontos, Speedrun, Modos de Quiz, venham intactos!
+    const newItem = Object.assign({}, raw);
+    
+    // Remove o ID antigo para o IndexedDB gerar um novo automaticamente.
+    // Isso evita conflitos se você estiver "Mesclando" com notas existentes.
+    delete newItem.id;
+
+    // 2. RECUPERA AS MÍDIAS: Transforma o texto Base64 de volta em Arquivo (Blob)
+    newItem.photo = null;
     if (raw.photoBase64){ try { newItem.photo = await dataURLToBlob(raw.photoBase64); } catch(e){} }
+    
+    newItem.audio = null;
     if (raw.audioBase64){ try { newItem.audio = await dataURLToBlob(raw.audioBase64); } catch(e){} }
+
+    // 3. LIMPEZA: Remove o texto Base64 gigante do banco de dados 
+    // já que agora eles voltaram a ser arquivos normais de foto/áudio.
+    delete newItem.photoBase64;
+    delete newItem.photoType;
+    delete newItem.audioBase64;
+    delete newItem.audioType;
+
+    // 4. GARANTIAS: Se for uma nota muito velha que não tinha quiz, garante que não quebre
+    newItem.quizAnswers = newItem.quizAnswers || {};
+    newItem.tags = newItem.tags || [];
+    newItem.createdAt = newItem.createdAt || Date.now();
+    newItem.updatedAt = newItem.updatedAt || Date.now();
+
     try { await dbAdd(newItem); count++; } catch(e){}
   }
   return count;
 }
+
 function cancelImportChoice(){
   closeSheetEl(modalImportChoice);
   pendingCartridgeItems = null;
@@ -2892,7 +2965,7 @@ function setupEventListeners(){
   async function openMoreOptionsSheet(){
     const { due: nDue, novas: nNovas } = getGlobalQuizStatus(); let partes = [];
     if (nDue > 0) partes.push(`⏰ ${nDue} vencida(s) pra revisar`);
-    if (nNovas > 0) partes.push(`🆕 ${nNovas} nova(s) esperando resposta`);
+    if (nNovas > 0) partes.push(`🆕 ${nNovas} nova(s)`);
     quizDueText.textContent = partes.length ? '🧠 ' + partes.join(' · ') : 'Nenhuma pergunta de quiz pendente agora.';
     const items = await dbGetAll();
     statsText.textContent = items.length === 1 ? '1 registro salvo neste navegador.' : `${items.length} registros salvos neste navegador.`;
