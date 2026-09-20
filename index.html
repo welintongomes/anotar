@@ -472,8 +472,8 @@
       <button class="icon-btn" id="btnCloseMore" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body">
-      <p class="meta-line" id="quizDueText" style="text-align: center;"></p>
-      <p class="meta-line" id="statsText" style="text-align: center;"></p>
+      <p class="meta-line" id="quizDueText"></p>
+      <p class="meta-line" id="statsText"></p>
       <hr>
       <p class="meta-line" id="budgetSummaryText"></p>
       <button id="btnCopyGlobalBudget" class="btn-secondary">📋 Copiar orçamento global</button>
@@ -2202,39 +2202,30 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
       }
       return qs;
     }
+        function questionMasteryWeight(record){
+      if (!record) return 0;
+      const reps = record.reps || 0;
+      const interval = record.interval || 0;
+      const repsScore = Math.min(1, reps / 4);       // 4 acertos seguidos = "maduro" pelas repetições
+      const intervalScore = Math.min(1, interval / 30); // 30 dias de intervalo = "maduro" pelo espaçamento
+      let weight = (repsScore + intervalScore) / 2;
+      if (isRecordDue(record)) weight *= 0.5; // vencida agora: ainda não confirmado que você lembra de novo
+      return weight;
+    }
+
     function getQuizScore(){
       const qs = getQuizQuestions(); const answers = item.quizAnswers || {};
-      let mastered = 0, dueForReview = 0, neverAnswered = 0;
-      let progressSum = 0; // NOVO: Soma do progresso de memória
-
+      let dueForReview = 0, neverAnswered = 0, answeredCount = 0, weightSum = 0;
       qs.forEach(q => {
         const record = normalizeQuizRecord(answers[q.lineIndex]);
-        if (!record){ 
-          neverAnswered++; 
-          return; // Pergunta nova tem 0% de retenção
-        }
-        
-        const isDue = isRecordDue(record);
-        if (isDue) dueForReview++; else mastered++;
-
-        // CÁLCULO DE DOMÍNIO (SM-2):
-        // Consideramos 21 dias de intervalo como 100% de domínio (memória de longo prazo)
-        let qScore = Math.min(100, (record.interval / 21) * 100);
-        
-        // Se a pessoa errou na última vez (reps == 0), a retenção cai quase a zero
-        if (record.reps === 0) qScore = 5; 
-        
-        // Se a revisão está atrasada, aplicamos uma penalidade de "esquecimento" de 25%
-        // Isso faz a barra do card "encolher" se o usuário abandonar os estudos!
-        if (isDue) qScore = qScore * 0.75;
-
-        progressSum += qScore;
+        if (!record){ neverAnswered++; return; }
+        answeredCount++;
+        if (isRecordDue(record)) dueForReview++;
+        weightSum += questionMasteryWeight(record);
       });
-
-      // Progresso Estatístico Real (0 a 100%)
-      const realisticProgress = qs.length > 0 ? Math.round(progressSum / qs.length) : 0;
-
-      return { total: qs.length, mastered, dueForReview, neverAnswered, realisticProgress };
+      const total = qs.length;
+      const percent = answeredCount > 0 ? Math.round((weightSum / answeredCount) * 100) : 0;
+      return { total, answeredCount, dueForReview, neverAnswered, percent };
     }
     const quizQuestionsCount = getQuizQuestions().length; let quizScoreLabel = null;
     if (quizQuestionsCount > 0){
@@ -2242,8 +2233,8 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
       const btnResetQuiz = document.createElement('button'); btnResetQuiz.type = 'button'; btnResetQuiz.className = 'tag-pill'; btnResetQuiz.style.border = 'none'; btnResetQuiz.style.background = '#9AA0AB'; btnResetQuiz.style.color = '#fff'; btnResetQuiz.innerHTML = '🔄 Refazer quiz';
       toolbar.appendChild(btnResetQuiz);
             btnResetQuiz.addEventListener('click', async () => {
-        const { mastered, dueForReview } = getQuizScore();
-        if (!mastered && !dueForReview){ showToast('Nada respondido ainda.'); return; }
+        const { answeredCount } = getQuizScore();
+        if (!answeredCount){ showToast('Nada respondido ainda.'); return; }
         if (!confirm('Reiniciar este quiz?')) return;
         item.quizAnswers = {}; await dbPut(item);
         const ram = allItems.find(x => x.id === item.id); if (ram) ram.quizAnswers = {};
@@ -2251,29 +2242,15 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
         refreshQuizScoreLabel(); renderContent(isCode); showToast('Quiz reiniciado.');
       });
     }
-    function refreshQuizScoreLabel(){
+        function refreshQuizScoreLabel(){
       if (!quizScoreLabel) return;
-      
-      // Agora pegamos o realisticProgress do getQuizScore
-      const { total, mastered, dueForReview, neverAnswered, realisticProgress } = getQuizScore();
-      
-      let extra = ''; 
-      if (dueForReview > 0) extra += ` · ⏰ ${dueForReview} revisar`; 
-      if (neverAnswered > 0) extra += ` · 🆕 ${neverAnswered} novas`;
-
-      // A cor da barra agora responde ao Nível de Domínio da memória
-      let barColor = '#D64545'; // Vermelho (Memória fraca, começando)
-      if (realisticProgress >= 40) barColor = '#D6A035'; // Amarelo (Ganhando força)
-      if (realisticProgress >= 80) barColor = '#4FA65B'; // Verde (Bem consolidado)
-      if (realisticProgress >= 95) barColor = '#8B6FD1'; // Roxo (Nível Mestre!)
-
-      // O gradiente visual agora é preenchido pela Força da Memória, não por quantidade de respostas
-      quizScoreLabel.style.background = `linear-gradient(90deg, ${barColor} ${realisticProgress}%, var(--smoke, #9AA0AB) ${realisticProgress}%)`;
-      quizScoreLabel.style.color = '#fff'; 
-      quizScoreLabel.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)'; 
-      
-      // O texto exibe o status de Domínio estatístico
-      quizScoreLabel.innerHTML = `🧠 Domínio: ${realisticProgress}% (${mastered}/${total})` + extra;
+      const { total, percent, dueForReview, neverAnswered } = getQuizScore();
+      let extra = ''; if (dueForReview > 0) extra += ` · ⏰ ${dueForReview} p/ revisar`; if (neverAnswered > 0) extra += ` · ${neverAnswered} nova(s)`;
+      let barColor = '#D64545'; if (percent >= 40) barColor = '#D6A035'; if (percent >= 80) barColor = '#4FA65B';
+      quizScoreLabel.style.background = `linear-gradient(90deg, ${barColor} ${percent}%, var(--smoke, #9AA0AB) ${percent}%)`;
+      quizScoreLabel.style.color = '#fff'; quizScoreLabel.style.textShadow = '1px 1px 2px rgba(0,0,0,0.7)';
+      quizScoreLabel.title = 'Domínio calculado pelo SM-2 sobre as perguntas já respondidas (não conta as ainda não tentadas). Vencidas contam pela metade até você revisar de novo.';
+      quizScoreLabel.innerHTML = `🧠 Domínio: ${percent}%` + extra;
     }
     refreshQuizScoreLabel();
 
@@ -2818,40 +2795,25 @@ btnRemoveAudio.addEventListener('click', () => { currentAudioBlob = null; fieldA
 async function processCartridgeItems(itemsList) {
   let count = 0;
   for (const raw of itemsList){
-    
-    // 1. CLONA TUDO: Pega todas as propriedades exatas que vieram do JSON
-    // Isso garante que Progresso, Descontos, Speedrun, Modos de Quiz, venham intactos!
-    const newItem = Object.assign({}, raw);
-    
-    // Remove o ID antigo para o IndexedDB gerar um novo automaticamente.
-    // Isso evita conflitos se você estiver "Mesclando" com notas existentes.
-    delete newItem.id;
-
-    // 2. RECUPERA AS MÍDIAS: Transforma o texto Base64 de volta em Arquivo (Blob)
-    newItem.photo = null;
+    const newItem = {
+      title: raw.title || 'Sem título', category: raw.category || 'Nota geral', vehicle: raw.vehicle || '', spec: raw.spec || '',
+      content: raw.content || '', tags: raw.tags || [], favorite: !!raw.favorite, useCount: raw.useCount || 0,
+      createdAt: raw.createdAt || Date.now(), updatedAt: raw.updatedAt || Date.now(), photo: null, audio: null,
+      quizAnswers: raw.quizAnswers || {},
+      quizModes: raw.quizModes || {},
+      speedrunLog: raw.speedrunLog || {},
+      speedrunLastSplit: raw.speedrunLastSplit || null,
+      speedrunAccumulated: raw.speedrunAccumulated || 0,
+      speedrunActive: false, // nunca importa um cronômetro "rodando" -- ver explicação abaixo
+      discountParts: raw.discountParts || 0,
+      discountLabor: raw.discountLabor || 0
+    };
     if (raw.photoBase64){ try { newItem.photo = await dataURLToBlob(raw.photoBase64); } catch(e){} }
-    
-    newItem.audio = null;
     if (raw.audioBase64){ try { newItem.audio = await dataURLToBlob(raw.audioBase64); } catch(e){} }
-
-    // 3. LIMPEZA: Remove o texto Base64 gigante do banco de dados 
-    // já que agora eles voltaram a ser arquivos normais de foto/áudio.
-    delete newItem.photoBase64;
-    delete newItem.photoType;
-    delete newItem.audioBase64;
-    delete newItem.audioType;
-
-    // 4. GARANTIAS: Se for uma nota muito velha que não tinha quiz, garante que não quebre
-    newItem.quizAnswers = newItem.quizAnswers || {};
-    newItem.tags = newItem.tags || [];
-    newItem.createdAt = newItem.createdAt || Date.now();
-    newItem.updatedAt = newItem.updatedAt || Date.now();
-
     try { await dbAdd(newItem); count++; } catch(e){}
   }
   return count;
 }
-
 function cancelImportChoice(){
   closeSheetEl(modalImportChoice);
   pendingCartridgeItems = null;
@@ -2965,7 +2927,7 @@ function setupEventListeners(){
   async function openMoreOptionsSheet(){
     const { due: nDue, novas: nNovas } = getGlobalQuizStatus(); let partes = [];
     if (nDue > 0) partes.push(`⏰ ${nDue} vencida(s) pra revisar`);
-    if (nNovas > 0) partes.push(`🆕 ${nNovas} nova(s)`);
+    if (nNovas > 0) partes.push(`🆕 ${nNovas} nova(s) esperando resposta`);
     quizDueText.textContent = partes.length ? '🧠 ' + partes.join(' · ') : 'Nenhuma pergunta de quiz pendente agora.';
     const items = await dbGetAll();
     statsText.textContent = items.length === 1 ? '1 registro salvo neste navegador.' : `${items.length} registros salvos neste navegador.`;
