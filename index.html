@@ -472,8 +472,8 @@
       <button class="icon-btn" id="btnCloseMore" aria-label="Fechar">✕</button>
     </div>
     <div class="modal-body">
-      <p class="meta-line" id="quizDueText"></p>
-      <p class="meta-line" id="statsText"></p>
+      <p class="meta-line" id="quizDueText" style="text-align: center;"></p>
+      <p class="meta-line" id="statsText" style="text-align: center;"></p>
       <hr>
       <p class="meta-line" id="budgetSummaryText"></p>
       <button id="btnCopyGlobalBudget" class="btn-secondary">📋 Copiar orçamento global</button>
@@ -2795,25 +2795,42 @@ btnRemoveAudio.addEventListener('click', () => { currentAudioBlob = null; fieldA
 async function processCartridgeItems(itemsList) {
   let count = 0;
   for (const raw of itemsList){
-    const newItem = {
-      title: raw.title || 'Sem título', category: raw.category || 'Nota geral', vehicle: raw.vehicle || '', spec: raw.spec || '',
-      content: raw.content || '', tags: raw.tags || [], favorite: !!raw.favorite, useCount: raw.useCount || 0,
-      createdAt: raw.createdAt || Date.now(), updatedAt: raw.updatedAt || Date.now(), photo: null, audio: null,
-      quizAnswers: raw.quizAnswers || {},
-      quizModes: raw.quizModes || {},
-      speedrunLog: raw.speedrunLog || {},
-      speedrunLastSplit: raw.speedrunLastSplit || null,
-      speedrunAccumulated: raw.speedrunAccumulated || 0,
-      speedrunActive: false, // nunca importa um cronômetro "rodando" -- ver explicação abaixo
-      discountParts: raw.discountParts || 0,
-      discountLabor: raw.discountLabor || 0
-    };
+    
+    // 1. CLONA TUDO: Pega todas as propriedades exatas que vieram do JSON
+    // Isso garante que Progresso, Descontos, Speedrun, Modos de Quiz, venham intactos!
+    const newItem = Object.assign({}, raw);
+    
+    // Remove o ID antigo para o IndexedDB gerar um novo automaticamente.
+    // Isso evita conflitos se você estiver "Mesclando" com notas existentes.
+    delete newItem.id;
+
+    // 2. RECUPERA AS MÍDIAS: Transforma o texto Base64 de volta em Arquivo (Blob)
+    newItem.photo = null;
     if (raw.photoBase64){ try { newItem.photo = await dataURLToBlob(raw.photoBase64); } catch(e){} }
+    
+    newItem.audio = null;
     if (raw.audioBase64){ try { newItem.audio = await dataURLToBlob(raw.audioBase64); } catch(e){} }
+
+    // 3. LIMPEZA: Remove o texto Base64 gigante do banco de dados 
+    // já que agora eles voltaram a ser arquivos normais de foto/áudio.
+    delete newItem.photoBase64;
+    delete newItem.photoType;
+    delete newItem.audioBase64;
+    delete newItem.audioType;
+
+    // 4. GARANTIAS: Se for uma nota muito velha que não tinha quiz, garante que não quebre
+    newItem.quizAnswers = newItem.quizAnswers || {};
+    newItem.tags = newItem.tags || [];
+    newItem.createdAt = newItem.createdAt || Date.now();
+    newItem.updatedAt = newItem.updatedAt || Date.now();
+    // Nunca importa um cronômetro "ativo" -- o tempo real que passou entre
+    // exportar e importar deixaria o relógio mostrando um valor absurdo.
+    newItem.speedrunActive = false;
     try { await dbAdd(newItem); count++; } catch(e){}
   }
   return count;
 }
+
 function cancelImportChoice(){
   closeSheetEl(modalImportChoice);
   pendingCartridgeItems = null;
@@ -2927,7 +2944,7 @@ function setupEventListeners(){
   async function openMoreOptionsSheet(){
     const { due: nDue, novas: nNovas } = getGlobalQuizStatus(); let partes = [];
     if (nDue > 0) partes.push(`⏰ ${nDue} vencida(s) pra revisar`);
-    if (nNovas > 0) partes.push(`🆕 ${nNovas} nova(s) esperando resposta`);
+    if (nNovas > 0) partes.push(`🆕 ${nNovas} nova(s)`);
     quizDueText.textContent = partes.length ? '🧠 ' + partes.join(' · ') : 'Nenhuma pergunta de quiz pendente agora.';
     const items = await dbGetAll();
     statsText.textContent = items.length === 1 ? '1 registro salvo neste navegador.' : `${items.length} registros salvos neste navegador.`;
