@@ -996,10 +996,6 @@ const toggleSpeedrun = document.getElementById('toggleSpeedrun'); // NOVO
 const toggleAdaptiveDifficulty = document.getElementById('toggleAdaptiveDifficulty');
 const hourlyRateInput = document.getElementById('hourlyRate'); // NOVO
 let viewTimerInterval = null; // Cronômetro ao vivo na tela
-let lastPrevClickTime = 0; // Para o controle de clique duplo no fone
-const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-silentAudio.loop = true;
-
 const toggleReadOptions = document.getElementById('toggleReadOptions');
 const voiceSpeed = document.getElementById('voiceSpeed');
 // idiomas quiz leitura normal
@@ -1681,6 +1677,15 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
   let speechSentences = []; let speechSentenceIndex = 0;
   let speechTargetElement = null; let speechOriginalHtml = ''; let speechIsQuiz = false;
 
+  function getCleanTextToRead() {
+    let text = item.title + ". ";
+    if (item.vehicle) text += item.vehicle + ". ";
+    if (item.spec) text += item.spec + ". ";
+    if (item.content) {
+      text += item.content.replace(/\[[xX ]?\]/g, '').replace(/^\?\?\s*/gm, 'Pergunta: ').replace(/^\(\s*[xX]?\s*\)/gm, 'Alternativa: ').replace(/>>/g, ' próximo passo ').replace(/[-=#*]{3,}/g, ''); 
+    }
+    return text;
+  }
 
   // Quebra o texto em frases pequenas -- é isso que permite "pausar" sem depender
   // do pause()/resume() nativo do navegador, que é instável no celular.
@@ -1694,14 +1699,12 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
 
   // Recebe pedaços { text, lang, rate } e devolve a fila final já quebrada em frases,
   // cada uma carregando o idioma/velocidade do pedaço de onde veio.
-// Recebe pedaços e devolve a fila final já quebrada em frases
   function buildSpeechQueue(parts){
     const queue = [];
     parts.forEach(part => {
       if (!part.text || !part.text.trim()) return;
       const sentences = splitIntoSentences(part.text);
-      // A MUDANÇA ESTÁ AQUI: repassando o blockId
-      sentences.forEach(s => queue.push({ text: s, lang: part.lang, rate: part.rate, blockId: part.blockId || 0 }));
+      sentences.forEach(s => queue.push({ text: s, lang: part.lang, rate: part.rate }));
     });
     return queue;
   }
@@ -1756,9 +1759,8 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     synth.speak(utterance);
   }
 
-window.stopActiveSpeech = () => {
+  window.stopActiveSpeech = () => {
     window.speechSynthesis.cancel();
-    silentAudio.pause(); // Pára o truque de manter o celular acordado
     isSpeechPaused = false; activeSpeechTarget = null;
     if (restorePreviousVisuals) restorePreviousVisuals();
     restorePreviousVisuals = null;
@@ -1767,29 +1769,6 @@ window.stopActiveSpeech = () => {
 
   // Aceita um texto simples (lê em voiceLangNormal, como antes) OU uma lista de
   // pedaços [{text, lang, rate}, ...] pra misturar idiomas/velocidades numa só leitura.
-
-  viewTitle.style.cursor = 'pointer';
-  
-// NOVA FUNÇÃO: Lê o texto infinito direto do banco, fatiando em blocos (parágrafos)
-  function getCleanTextBlocks() {
-    let blocks = [];
-    if (item.title) blocks.push({ text: item.title + ". ", lang: voiceLangNormal, rate: currentVoiceSpeed, blockId: -3 });
-    if (item.vehicle) blocks.push({ text: item.vehicle + ". ", lang: voiceLangNormal, rate: currentVoiceSpeed, blockId: -2 });
-    if (item.spec) blocks.push({ text: item.spec + ". ", lang: voiceLangNormal, rate: currentVoiceSpeed, blockId: -1 });
-    
-    if (item.content) {
-      const lines = item.content.split('\n');
-      lines.forEach((line, index) => {
-        const cleanLine = line.replace(/\[[xX ]?\]/g, '').replace(/^\?\?\s*/gm, 'Pergunta: ').replace(/^\(\s*[xX]?\s*\)/gm, 'Alternativa: ').replace(/>>/g, ' próximo passo ').replace(/[-=#*]{3,}/g, '').trim();
-        if (cleanLine) {
-          blocks.push({ text: cleanLine, lang: voiceLangNormal, rate: currentVoiceSpeed, blockId: index });
-        }
-      });
-    }
-    return blocks;
-  }
-
-  // NOVA HANDLE SPEECH COM PLAYER DE CELULAR INTEGRADO
   async function handleSpeech(input, element, originalHtml, targetId, isQuiz) {
     if (!isAudioEnabled) { showToast('Áudio desativado.'); return; }
     if (!('speechSynthesis' in window)) { showToast('Sem suporte a voz.'); return; }
@@ -1797,11 +1776,11 @@ window.stopActiveSpeech = () => {
 
     if (activeSpeechTarget === targetId) {
       if (!isSpeechPaused) {
-        synth.cancel(); silentAudio.pause();
+        synth.cancel();
         isSpeechPaused = true; element.style.opacity = '0.5'; showToast('Pausada.'); return;
       } else {
         isSpeechPaused = false; element.style.opacity = '1'; showToast('Retomada.');
-        silentAudio.play().catch(()=>{}); speakSentenceAt(speechSentenceIndex); return;
+        speakSentenceAt(speechSentenceIndex); return;
       }
     }
 
@@ -1812,56 +1791,16 @@ window.stopActiveSpeech = () => {
     restorePreviousVisuals = () => { element.innerHTML = originalHtml; element.style.opacity = '1'; };
     speechTargetElement = element; speechOriginalHtml = originalHtml; speechIsQuiz = isQuiz;
 
-    const parts = Array.isArray(input) ? input : [{ text: input, lang: voiceLangNormal, rate: currentVoiceSpeed, blockId: 0 }];
+    const parts = Array.isArray(input) ? input : [{ text: input, lang: voiceLangNormal, rate: currentVoiceSpeed }];
     speechSentences = buildSpeechQueue(parts);
     speechSentenceIndex = 0;
-
-    // --- CONTROLES DO PLAYER (TELA BLOQUEADA) ---
-    silentAudio.play().catch(()=>{}); 
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: viewingItem ? viewingItem.title : 'Lendo anotação...',
-        artist: '📝 Memórias App'
-      });
-      navigator.mediaSession.setActionHandler('play', () => {
-        isSpeechPaused = false; element.style.opacity = '1'; silentAudio.play().catch(()=>{}); speakSentenceAt(speechSentenceIndex);
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        isSpeechPaused = true; element.style.opacity = '0.5'; synth.cancel(); silentAudio.pause();
-      });
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        if (!speechSentences.length) return;
-        const currentBlock = speechSentences[speechSentenceIndex]?.blockId;
-        let targetIndex = speechSentences.findIndex((s, i) => i > speechSentenceIndex && s.blockId !== currentBlock);
-        if (targetIndex === -1) targetIndex = speechSentences.length; 
-        speechSentenceIndex = targetIndex;
-        synth.cancel(); setTimeout(() => speakSentenceAt(speechSentenceIndex), 50);
-      });
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        if (!speechSentences.length) return;
-        const now = Date.now();
-        const currentBlock = speechSentences[speechSentenceIndex]?.blockId;
-        let targetIndex = 0;
-        if (now - lastPrevClickTime < 2000) {
-          const prevBlocks = speechSentences.filter(s => s.blockId !== currentBlock && speechSentences.indexOf(s) < speechSentenceIndex);
-          if (prevBlocks.length > 0) {
-            targetIndex = speechSentences.findIndex(s => s.blockId === prevBlocks[prevBlocks.length - 1].blockId);
-          }
-        } else {
-          targetIndex = speechSentences.findIndex(s => s.blockId === currentBlock);
-        }
-        lastPrevClickTime = now; speechSentenceIndex = targetIndex;
-        synth.cancel(); setTimeout(() => speakSentenceAt(speechSentenceIndex), 50);
-      });
-    }
-
     speakSentenceAt(0);
   }
 
   viewTitle.style.cursor = 'pointer';
   const mainTitleOriginal = escapeHTML(item.title);
-  // O CLIQUE DO TÍTULO AGORA CHAMA OS BLOCOS INIFINITOS
-  viewTitle.onclick = () => { handleSpeech(getCleanTextBlocks(), viewTitle, mainTitleOriginal, 'main', false); };
+  viewTitle.onclick = () => { handleSpeech(getCleanTextToRead(), viewTitle, mainTitleOriginal, 'main', false); };
+
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
 
