@@ -1754,9 +1754,10 @@ utterance.onstart = async () => {
           
           // Envelopamos a busca para poder repeti-la se necessário
 // Envelopamos a busca para poder repeti-la se necessário
+// Envelopamos a busca para poder repeti-la se necessário
           const tentarIluminarFrase = () => {
               // MUDANÇA AQUI: Procura a partir do 'modalView' inteiro para conseguir enxergar o Título que fica no Header!
-              const paragraphs = Array.from(document.getElementById('modalView').querySelectorAll('.meta-line, .spec-big, .content-block div, .content-block label'));//se quiser pode colocar #viewTitle, ai ele tambem marca o titulo
+              const paragraphs = Array.from(document.getElementById('modalView').querySelectorAll('#viewTitle, .meta-line, .spec-big, .content-block div, .content-block label'));
               
               let searchStr = unit.text.toLowerCase().replace(/pergunta:|alternativa:|próximo passo/gi, '').replace(/[^\w\sÀ-ÿ]/g, '').trim();
                   
@@ -1781,7 +1782,6 @@ utterance.onstart = async () => {
               }
               return false; // Não achou na tela
           };
-
           const achou = tentarIluminarFrase();
 
           // SE NÃO ACHOU: A frase provavelmente está escondida além do limite de 300 linhas!
