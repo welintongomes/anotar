@@ -908,6 +908,8 @@ let voiceLangNormal = localStorage.getItem('memorias_voice_lang_normal') || 'pt-
 let optionsVoiceSpeed = parseFloat(localStorage.getItem('memorias_options_voice_speed')) || 0.95;
 
 /* ---------------- Elementos ---------------- */
+const silentAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+silentAudio.loop = true;
 const searchInput = document.getElementById('searchInput');
 const btnClearSearch = document.getElementById('btnClearSearch');
 const btnMic = document.getElementById('btnMic');
@@ -1672,23 +1674,12 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     internalSearchCount.textContent = matchNodes.length > 0 ? `${matchIndex + 1}/${matchNodes.length}` : '0/0';
   }
 
-  let readingWakeLock = null; let activeSpeechTarget = null;
+    let readingWakeLock = null; let activeSpeechTarget = null;
   let restorePreviousVisuals = null; let isSpeechPaused = false;
   let speechSentences = []; let speechSentenceIndex = 0;
   let speechTargetElement = null; let speechOriginalHtml = ''; let speechIsQuiz = false;
+  let currentlyPlayingElement = null; // sempre aponta pro trecho que está sendo lido AGORA (pode "andar" entre parágrafos)
 
-  function getCleanTextToRead() {
-    let text = item.title + ". ";
-    if (item.vehicle) text += item.vehicle + ". ";
-    if (item.spec) text += item.spec + ". ";
-    if (item.content) {
-      text += item.content.replace(/\[[xX ]?\]/g, '').replace(/^\?\?\s*/gm, 'Pergunta: ').replace(/^\(\s*[xX]?\s*\)/gm, 'Alternativa: ').replace(/>>/g, ' próximo passo ').replace(/[-=#*]{3,}/g, ''); 
-    }
-    return text;
-  }
-
-  // Quebra o texto em frases pequenas -- é isso que permite "pausar" sem depender
-  // do pause()/resume() nativo do navegador, que é instável no celular.
   function splitIntoSentences(text){
     const matches = text.match(/[^.!?]+[.!?]+/g);
     const sentences = matches ? matches.map(s => s.trim()).filter(Boolean) : [];
@@ -1697,33 +1688,70 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     return text.trim() ? [text.trim()] : [];
   }
 
-  // Recebe pedaços { text, lang, rate } e devolve a fila final já quebrada em frases,
-  // cada uma carregando o idioma/velocidade do pedaço de onde veio.
+  // parts: [{ text, lang, rate, noSplit?, element?, originalHtml? }]
+  // noSplit=true mantém o texto inteiro como um pedaço só (leitura contínua, sem "respiro" a cada frase).
+  // element/originalHtml por pedaço permitem o destaque 🔊 "andar" de parágrafo em parágrafo.
   function buildSpeechQueue(parts){
     const queue = [];
     parts.forEach(part => {
       if (!part.text || !part.text.trim()) return;
-      const sentences = splitIntoSentences(part.text);
-      sentences.forEach(s => queue.push({ text: s, lang: part.lang, rate: part.rate }));
+      if (part.noSplit) {
+        queue.push({ text: part.text.trim(), lang: part.lang, rate: part.rate, element: part.element, originalHtml: part.originalHtml });
+      } else {
+        const sentences = splitIntoSentences(part.text);
+        sentences.forEach(s => queue.push({ text: s, lang: part.lang, rate: part.rate, element: part.element, originalHtml: part.originalHtml }));
+      }
     });
     return queue;
+  }
+
+  function updateMediaSessionInfo(title, playing){
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: title || 'Lendo nota', artist: 'Memórias' });
+      navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+      navigator.mediaSession.setActionHandler('pause', () => {
+        if (activeSpeechTarget && !isSpeechPaused) {
+          window.speechSynthesis.cancel();
+          isSpeechPaused = true;
+          if (currentlyPlayingElement) currentlyPlayingElement.style.opacity = '0.5';
+          navigator.mediaSession.playbackState = 'paused';
+        }
+      });
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (activeSpeechTarget && isSpeechPaused) {
+          isSpeechPaused = false;
+          if (currentlyPlayingElement) currentlyPlayingElement.style.opacity = '1';
+          navigator.mediaSession.playbackState = 'playing';
+          speakSentenceAt(speechSentenceIndex);
+        }
+      });
+    } catch(e) {}
   }
 
   function speakSentenceAt(idx){
     const synth = window.speechSynthesis;
     if (idx >= speechSentences.length){
       if (restorePreviousVisuals) restorePreviousVisuals();
-      restorePreviousVisuals = null; activeSpeechTarget = null; isSpeechPaused = false;
+      restorePreviousVisuals = null; activeSpeechTarget = null; isSpeechPaused = false; currentlyPlayingElement = null;
+      silentAudio.pause(); silentAudio.currentTime = 0;
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
       if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
       return;
     }
     const myTarget = activeSpeechTarget;
     const unit = speechSentences[idx];
+    const unitElement = unit.element || speechTargetElement;
+    const unitOriginalHtml = unit.originalHtml !== undefined ? unit.originalHtml : speechOriginalHtml;
+
     const utterance = new SpeechSynthesisUtterance(unit.text);
     utterance.lang = unit.lang || 'pt-BR'; utterance.rate = unit.rate || currentVoiceSpeed;
     utterance.onstart = async () => {
-      if (speechIsQuiz) { speechTargetElement.innerHTML = speechOriginalHtml.replace('❓', '🔊'); }
-      else { speechTargetElement.innerHTML = '🔊 ' + speechOriginalHtml; }
+      if (restorePreviousVisuals) restorePreviousVisuals(); // apaga o destaque do trecho anterior
+      if (speechIsQuiz) { unitElement.innerHTML = unitOriginalHtml.replace('❓', '🔊'); }
+      else { unitElement.innerHTML = '🔊 ' + unitOriginalHtml; }
+      restorePreviousVisuals = () => { unitElement.innerHTML = unitOriginalHtml; };
+      currentlyPlayingElement = unitElement;
       if ('wakeLock' in navigator && !window.currentWakeLock && !readingWakeLock) {
         try { readingWakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
       }
@@ -1761,14 +1789,14 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
 
   window.stopActiveSpeech = () => {
     window.speechSynthesis.cancel();
-    isSpeechPaused = false; activeSpeechTarget = null;
+    isSpeechPaused = false; activeSpeechTarget = null; currentlyPlayingElement = null;
     if (restorePreviousVisuals) restorePreviousVisuals();
     restorePreviousVisuals = null;
+    silentAudio.pause(); silentAudio.currentTime = 0;
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
     if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
   };
 
-  // Aceita um texto simples (lê em voiceLangNormal, como antes) OU uma lista de
-  // pedaços [{text, lang, rate}, ...] pra misturar idiomas/velocidades numa só leitura.
   async function handleSpeech(input, element, originalHtml, targetId, isQuiz) {
     if (!isAudioEnabled) { showToast('Áudio desativado.'); return; }
     if (!('speechSynthesis' in window)) { showToast('Sem suporte a voz.'); return; }
@@ -1777,9 +1805,15 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     if (activeSpeechTarget === targetId) {
       if (!isSpeechPaused) {
         synth.cancel();
-        isSpeechPaused = true; element.style.opacity = '0.5'; showToast('Pausada.'); return;
+        isSpeechPaused = true;
+        if (currentlyPlayingElement) currentlyPlayingElement.style.opacity = '0.5';
+        updateMediaSessionInfo(item.title, false);
+        showToast('Pausada.'); return;
       } else {
-        isSpeechPaused = false; element.style.opacity = '1'; showToast('Retomada.');
+        isSpeechPaused = false;
+        if (currentlyPlayingElement) currentlyPlayingElement.style.opacity = '1';
+        updateMediaSessionInfo(item.title, true);
+        showToast('Retomada.');
         speakSentenceAt(speechSentenceIndex); return;
       }
     }
@@ -1791,12 +1825,14 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     restorePreviousVisuals = () => { element.innerHTML = originalHtml; element.style.opacity = '1'; };
     speechTargetElement = element; speechOriginalHtml = originalHtml; speechIsQuiz = isQuiz;
 
+    silentAudio.play().catch(() => {}); // mantém a "sessão de mídia" viva pro sistema
+    updateMediaSessionInfo(item.title, true);
+
     const parts = Array.isArray(input) ? input : [{ text: input, lang: voiceLangNormal, rate: currentVoiceSpeed }];
     speechSentences = buildSpeechQueue(parts);
     speechSentenceIndex = 0;
     speakSentenceAt(0);
   }
-
   viewTitle.style.cursor = 'pointer';
   const mainTitleOriginal = escapeHTML(item.title);
   viewTitle.onclick = () => { handleSpeech(getCleanTextToRead(), viewTitle, mainTitleOriginal, 'main', false); };
@@ -2658,7 +2694,27 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
           const currentIndex = i;
           p.style.cursor = 'pointer';
           const originalLineHtml = p.innerHTML;
-          p.addEventListener('click', () => { handleSpeech(line, p, originalLineHtml, 'text-' + currentIndex, false); });
+          p.addEventListener('click', () => {
+            // Monta a leitura contínua: pega este parágrafo E todos os seguintes,
+            // pulando checkbox/quiz/separador -- lê direto dos DADOS da nota, não da
+            // tela, então não fica preso ao limite de 300 linhas desenhadas.
+            const continuousParts = [];
+            for (let k = currentIndex; k < lines.length; k++){
+              const otherLine = lines[k];
+              if (!otherLine || !otherLine.trim()) continue;
+              if (/^\?\?\s*/.test(otherLine)) continue;
+              if (/^\(([ xX]?)\)/.test(otherLine)) continue;
+              if (/^\[[ xX]?\]/.test(otherLine)) continue;
+              const trimmedOther = otherLine.trim();
+              if (/^(.)\1{2,}$/.test(trimmedOther) && /^[-=#*]+$/.test(trimmedOther)) continue;
+              const elFor = lineEls[k] || (k === currentIndex ? p : null);
+              continuousParts.push({
+                text: otherLine, lang: voiceLangNormal, rate: currentVoiceSpeed, noSplit: true,
+                element: elFor, originalHtml: elFor ? elFor.innerHTML : otherLine
+              });
+            }
+            handleSpeech(continuousParts, p, originalLineHtml, 'text-' + currentIndex, false);
+          });
         }
         textContainer.appendChild(p); lineEls[i] = p; i++; processedSinceYield++;
 
@@ -2774,7 +2830,8 @@ function closeView(){
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
   viewingItem = null; viewHistory = []; 
-    if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); }
+  if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); }
+  silentAudio.pause(); silentAudio.currentTime = 0;
   window.stopActiveSpeech = null;
   if (window.currentWakeLock) { window.currentWakeLock.release().catch(() => {}); window.currentWakeLock = null; }
 }
