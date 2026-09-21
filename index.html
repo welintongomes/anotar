@@ -1689,14 +1689,25 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
 
   // Quebra o texto em frases pequenas -- é isso que permite "pausar" sem depender
   // do pause()/resume() nativo do navegador, que é instável no celular.
+// Quebra o texto em frases pequenas ou por linhas (Enter)
   function splitIntoSentences(text){
-    const matches = text.match(/[^.!?]+[.!?]+/g);
-    const sentences = matches ? matches.map(s => s.trim()).filter(Boolean) : [];
-    const cleaned = sentences.filter(s => /[a-zA-ZÀ-ÿ0-9]/.test(s));
-    if (cleaned.length) return cleaned;
-    return text.trim() ? [text.trim()] : [];
+    const lines = text.split(/\n+/);
+    const sentences = [];
+    lines.forEach(line => {
+      // Tenta quebrar por pontuação na linha
+      const matches = line.match(/[^.!?]+[.!?]+/g);
+      if (matches) {
+        matches.forEach(m => sentences.push(m.trim()));
+        // Pega o resto da linha sem pontuação (Ex: "Trocar óleo")
+        const leftover = line.replace(/[^.!?]+[.!?]+/g, '').trim();
+        if (leftover) sentences.push(leftover);
+      } else {
+        // Se a linha não tem ponto final, a linha inteira vira uma frase
+        if (line.trim()) sentences.push(line.trim());
+      }
+    });
+    return sentences.filter(s => /[a-zA-ZÀ-ÿ0-9]/.test(s));
   }
-
   // Recebe pedaços { text, lang, rate } e devolve a fila final já quebrada em frases,
   // cada uma carregando o idioma/velocidade do pedaço de onde veio.
   function buildSpeechQueue(parts){
@@ -1709,11 +1720,19 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     return queue;
   }
 
-  function speakSentenceAt(idx){
+function speakSentenceAt(idx){
     const synth = window.speechSynthesis;
     if (idx >= speechSentences.length){
       if (restorePreviousVisuals) restorePreviousVisuals();
       restorePreviousVisuals = null; activeSpeechTarget = null; isSpeechPaused = false;
+      
+      // Limpa os destaques ao terminar a leitura
+      Array.from(viewBody.querySelectorAll('*')).forEach(p => {
+          if(p.dataset && p.dataset.karaoke === 'true') {
+              p.style.background = ''; p.style.color = ''; p.style.boxShadow = ''; delete p.dataset.karaoke;
+          }
+      });
+
       if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
       return;
     }
@@ -1721,49 +1740,107 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     const unit = speechSentences[idx];
     const utterance = new SpeechSynthesisUtterance(unit.text);
     utterance.lang = unit.lang || 'pt-BR'; utterance.rate = unit.rate || currentVoiceSpeed;
-    utterance.onstart = async () => {
-      if (speechIsQuiz) { speechTargetElement.innerHTML = speechOriginalHtml.replace('❓', '🔊'); }
-      else { speechTargetElement.innerHTML = '🔊 ' + speechOriginalHtml; }
+    
+utterance.onstart = async () => {
+      // 1. Limpa o amarelo de quem estava lendo antes
+      Array.from(viewBody.querySelectorAll('*')).forEach(p => {
+          if(p.dataset && p.dataset.karaoke === 'true') {
+              p.style.background = ''; p.style.color = ''; p.style.boxShadow = ''; delete p.dataset.karaoke;
+          }
+      });
+
+      // 2. Leitura Global (clicou no Título)
+      if (activeSpeechTarget === 'main') {
+          
+          // Envelopamos a busca para poder repeti-la se necessário
+          const tentarIluminarFrase = () => {
+              const paragraphs = Array.from(viewBody.querySelectorAll('#viewTitle, .meta-line, .spec-big, .content-block div, .content-block label'));
+              let searchStr = unit.text.toLowerCase().replace(/pergunta:|alternativa:|próximo passo/gi, '').replace(/[^\w\sÀ-ÿ]/g, '').trim();
+                  
+              let targetP = paragraphs.find(p => {
+                  let domText = p.textContent.toLowerCase().replace(/[^\w\sÀ-ÿ]/g, '').trim();
+                  return domText && domText.includes(searchStr);
+              });
+              
+              if (!targetP && searchStr.length > 10) {
+                  let halfStr = searchStr.substring(0, Math.floor(searchStr.length / 2)).trim();
+                  targetP = paragraphs.find(p => p.textContent.toLowerCase().replace(/[^\w\sÀ-ÿ]/g, '').trim().includes(halfStr));
+              }
+
+              if (targetP) {
+                  targetP.dataset.karaoke = 'true';
+                  targetP.style.background = '#D6A035';
+                  targetP.style.color = '#000';
+                  targetP.style.boxShadow = '0 0 0 4px #D6A035';
+                  targetP.style.borderRadius = '4px';
+                  targetP.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+                  return true; // Achou e iluminou
+              }
+              return false; // Não achou na tela
+          };
+
+          const achou = tentarIluminarFrase();
+
+          // SE NÃO ACHOU: A frase provavelmente está escondida além do limite de 300 linhas!
+          if (!achou) {
+              // Procura o botão de expandir o texto
+              const btnMore = Array.from(viewBody.querySelectorAll('.btn-secondary'))
+                                   .find(b => b.textContent.includes('Mostrar mais texto'));
+              
+              if (btnMore) {
+                  btnMore.click(); // O próprio robô clica no botão para carregar mais!
+                  
+                  // Dá 400 milissegundos para o celular processar o novo texto e tenta iluminar de novo
+                  setTimeout(() => {
+                      tentarIluminarFrase();
+                  }, 400);
+              }
+          }
+
+      } else {
+          // 3. Leitura Isolada (clicou só num parágrafo)
+          speechTargetElement.dataset.karaoke = 'true';
+          speechTargetElement.style.background = '#D6A035';
+          speechTargetElement.style.color = '#000';
+          speechTargetElement.style.boxShadow = '0 0 0 4px #D6A035';
+          speechTargetElement.style.borderRadius = '4px';
+          speechTargetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
       if ('wakeLock' in navigator && !window.currentWakeLock && !readingWakeLock) {
         try { readingWakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
       }
     };
+    
     utterance.onend = () => {
       if (activeSpeechTarget !== myTarget || isSpeechPaused) return;
       speechSentenceIndex = idx + 1;
-      /*
-         * No quiz:
-         * - depois da pergunta mantém a pausa original
-         * - depois de cada alternativa cria uma pausa real de 800ms
-         */
-        if (speechIsQuiz && idx > 0) {
-
-            setTimeout(() => {
-
-                if (
-                    activeSpeechTarget !== myTarget ||
-                    isSpeechPaused
-                ) return;
-
-                speakSentenceAt(speechSentenceIndex);
-
-            }, 1000);
-
-        }else {
-
-            speakSentenceAt(speechSentenceIndex);
-
-        }
+      if (speechIsQuiz && idx > 0) {
+        setTimeout(() => {
+          if (activeSpeechTarget !== myTarget || isSpeechPaused) return;
+          speakSentenceAt(speechSentenceIndex);
+        }, 1000);
+      } else {
+        speakSentenceAt(speechSentenceIndex);
+      }
     };
-    utterance.onerror = () => { /* cancelado ou deu erro -- não continua a cadeia */ };
+    utterance.onerror = () => { /* cancelado */ };
     synth.speak(utterance);
   }
 
-  window.stopActiveSpeech = () => {
+window.stopActiveSpeech = () => {
     window.speechSynthesis.cancel();
     isSpeechPaused = false; activeSpeechTarget = null;
     if (restorePreviousVisuals) restorePreviousVisuals();
     restorePreviousVisuals = null;
+    
+    // Limpa a iluminação se você pausar ou fechar a janela
+    Array.from(viewBody.querySelectorAll('*')).forEach(p => {
+        if(p.dataset && p.dataset.karaoke === 'true') {
+            p.style.background = ''; p.style.color = ''; p.style.boxShadow = ''; delete p.dataset.karaoke;
+        }
+    });
+
     if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
   };
 
@@ -1797,9 +1874,15 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
     speakSentenceAt(0);
   }
 
-  viewTitle.style.cursor = 'pointer';
+let expandirTextoCompleto = null; // 1. Criamos a ponte aqui fora
+
+viewTitle.style.cursor = 'pointer';
   const mainTitleOriginal = escapeHTML(item.title);
-  viewTitle.onclick = () => { handleSpeech(getCleanTextToRead(), viewTitle, mainTitleOriginal, 'main', false); };
+  
+  viewTitle.onclick = () => { 
+      // Apenas inicia a leitura, sem forçar expansão!
+      handleSpeech(getCleanTextToRead(), viewTitle, mainTitleOriginal, 'main', false); 
+  };
 
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
@@ -2262,7 +2345,14 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
 
     let contentRenderLimit = 300; // Textos gigantes (tipo um livro colado na nota) só desenham um pedaço por vez
     let renderGeneration = 0; // Evita que uma renderização antiga "vaze" por cima de uma nova
-
+    // Conecta a ponte que criamos lá em cima às variáveis daqui de dentro
+    expandirTextoCompleto = () => {
+      const totalLines = item.content.split('\n').length;
+      if (contentRenderLimit < totalLines) {
+          contentRenderLimit = totalLines + 10;
+          renderContent(isCode);
+      }
+    };
     const renderContent = async (isCodeMode) => {
       const myGeneration = ++renderGeneration;
       textContainer.innerHTML = '';
