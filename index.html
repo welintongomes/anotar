@@ -1677,10 +1677,10 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
   let speechSentences = []; let speechSentenceIndex = 0;
   let speechTargetElement = null; let speechOriginalHtml = ''; let speechIsQuiz = false;
 
-  function getCleanTextToRead() {
-    let text = item.title + ". ";
-    if (item.vehicle) text += item.vehicle + ". ";
-    if (item.spec) text += item.spec + ". ";
+function getCleanTextToRead() {
+    let text = item.title + ".\n"; // Adicionado \n
+    if (item.vehicle) text += item.vehicle + ".\n"; // Adicionado \n
+    if (item.spec) text += item.spec + ".\n"; // Adicionado \n
     if (item.content) {
       text += item.content.replace(/\[[xX ]?\]/g, '').replace(/^\?\?\s*/gm, 'Pergunta: ').replace(/^\(\s*[xX]?\s*\)/gm, 'Alternativa: ').replace(/>>/g, ' próximo passo ').replace(/[-=#*]{3,}/g, ''); 
     }
@@ -1753,8 +1753,11 @@ utterance.onstart = async () => {
       if (activeSpeechTarget === 'main') {
           
           // Envelopamos a busca para poder repeti-la se necessário
+// Envelopamos a busca para poder repeti-la se necessário
           const tentarIluminarFrase = () => {
-              const paragraphs = Array.from(viewBody.querySelectorAll('#viewTitle, .meta-line, .spec-big, .content-block div, .content-block label'));
+              // MUDANÇA AQUI: Procura a partir do 'modalView' inteiro para conseguir enxergar o Título que fica no Header!
+              const paragraphs = Array.from(document.getElementById('modalView').querySelectorAll('.meta-line, .spec-big, .content-block div, .content-block label'));//se quiser pode colocar #viewTitle, ai ele tambem marca o titulo
+              
               let searchStr = unit.text.toLowerCase().replace(/pergunta:|alternativa:|próximo passo/gi, '').replace(/[^\w\sÀ-ÿ]/g, '').trim();
                   
               let targetP = paragraphs.find(p => {
@@ -1811,7 +1814,7 @@ utterance.onstart = async () => {
         try { readingWakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
       }
     };
-    
+
     utterance.onend = () => {
       if (activeSpeechTarget !== myTarget || isSpeechPaused) return;
       speechSentenceIndex = idx + 1;
