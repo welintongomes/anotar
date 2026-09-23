@@ -1692,10 +1692,10 @@ function buildGlobalSpeechParts() {
         if (trimmed.startsWith('??')) {
             const qText = trimmed.replace(/^\?\?\s*/, 'Pergunta: ') + ".";
             parts.push({ text: qText, lang: voiceLangQuestion, rate: currentVoiceSpeed });
-        } else if (trimmed.startsWith('()') || trimmed.match(/^\([xX ]?\)/)) {
+        }  else if (trimmed.startsWith('()') || trimmed.match(/^\([xX ]?\)/)) {
             if (readQuizOptions) {
                 const aText = trimmed.replace(/^\(\s*[xX]?\s*\)/, ': ') + ".";
-                parts.push({ text: aText, lang: voiceLangOptions, rate: optionsVoiceSpeed });
+                parts.push({ text: aText, lang: voiceLangOptions, rate: optionsVoiceSpeed, isOption: true });
             }
         } else {
             const isDivider = /^[-=#*]{3,}$/.test(trimmed);
@@ -1732,12 +1732,12 @@ function buildGlobalSpeechParts() {
   }
   // Recebe pedaços { text, lang, rate } e devolve a fila final já quebrada em frases,
   // cada uma carregando o idioma/velocidade do pedaço de onde veio.
-  function buildSpeechQueue(parts){
+function buildSpeechQueue(parts){
     const queue = [];
     parts.forEach(part => {
       if (!part.text || !part.text.trim()) return;
       const sentences = splitIntoSentences(part.text);
-      sentences.forEach(s => queue.push({ text: s, lang: part.lang, rate: part.rate }));
+      sentences.forEach(s => queue.push({ text: s, lang: part.lang, rate: part.rate, isOption: part.isOption }));
     });
     return queue;
   }
@@ -1748,7 +1748,7 @@ function speakSentenceAt(idx){
       if (restorePreviousVisuals) restorePreviousVisuals();
       restorePreviousVisuals = null; activeSpeechTarget = null; isSpeechPaused = false;
       
-      // MUDANÇA 2: 'modalView' no lugar de 'viewBody' para limpar também o Título que fica no topo
+      // Limpa os destaques ao terminar a leitura
       Array.from(document.getElementById('modalView').querySelectorAll('*')).forEach(p => {
           if(p.dataset && p.dataset.karaoke === 'true') {
               p.style.background = ''; p.style.color = ''; p.style.boxShadow = ''; p.style.scrollMarginTop = ''; delete p.dataset.karaoke;
@@ -1763,21 +1763,21 @@ function speakSentenceAt(idx){
     const utterance = new SpeechSynthesisUtterance(unit.text);
     utterance.lang = unit.lang || 'pt-BR'; utterance.rate = unit.rate || currentVoiceSpeed;
     
-    utterance.onstart = async () => {
-      // MUDANÇA 2: 'modalView' aqui também
+utterance.onstart = async () => {
+      // 1. Limpa o amarelo e a margem de quem estava lendo antes
       Array.from(document.getElementById('modalView').querySelectorAll('*')).forEach(p => {
           if(p.dataset && p.dataset.karaoke === 'true') {
               p.style.background = ''; p.style.color = ''; p.style.boxShadow = ''; p.style.scrollMarginTop = ''; delete p.dataset.karaoke;
           }
       });
 
+      // 2. Leitura Global (clicou no Título)
       if (activeSpeechTarget === 'main') {
+          
           const tentarIluminarFrase = () => {
               const paragraphs = Array.from(document.getElementById('modalView').querySelectorAll('#viewTitle, .meta-line, .spec-big, .content-block div, .content-block label'));
               
-              // MUDANÇA 3: Corta a string antes do "próximo passo" para o marcador não se confundir nos fluxos (>>)
-              let rawTextPart = unit.text.toLowerCase().split('próximo passo')[0];
-              let searchStr = rawTextPart.replace(/pergunta:|alternativa:/gi, '').replace(/[^\w\sÀ-ÿ]/g, '').trim();
+              let searchStr = unit.text.toLowerCase().replace(/pergunta:|alternativa:|próximo passo/gi, '').replace(/[^\w\sÀ-ÿ]/g, '').trim();
                   
               let targetP = paragraphs.find(p => {
                   let domText = p.textContent.toLowerCase().replace(/[^\w\sÀ-ÿ]/g, '').trim();
@@ -1796,13 +1796,13 @@ function speakSentenceAt(idx){
                   targetP.style.boxShadow = '0 0 0 4px #D6A035';
                   targetP.style.borderRadius = '4px';
                   
+                  // MUDANÇA: Margem superior para parar no topo (abaixo do cabeçalho)
                   targetP.style.scrollMarginTop = '10px';
                   targetP.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
                   return true; 
               }
               return false; 
           };
-
           const achou = tentarIluminarFrase();
 
           if (!achou) {
@@ -1814,12 +1814,14 @@ function speakSentenceAt(idx){
           }
 
       } else {
+          // 3. Leitura Isolada (clicou só num parágrafo)
           speechTargetElement.dataset.karaoke = 'true';
           speechTargetElement.style.background = '#D6A035';
           speechTargetElement.style.color = '#000';
           speechTargetElement.style.boxShadow = '0 0 0 4px #D6A035';
           speechTargetElement.style.borderRadius = '4px';
           
+          // MUDANÇA: Margem superior na leitura manual também
           speechTargetElement.style.scrollMarginTop = '10px';
           speechTargetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
@@ -1828,44 +1830,42 @@ function speakSentenceAt(idx){
         try { readingWakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
       }
     };
-    
-    utterance.onend = () => {
+utterance.onend = () => {
       if (activeSpeechTarget !== myTarget || isSpeechPaused) return;
       speechSentenceIndex = idx + 1;
       
-      // MUDANÇA 1: Se for quiz local OU se no global acabou de ler uma Pergunta/Alternativa
-      const isQuizComponent = speechIsQuiz || (activeSpeechTarget === 'main' && (unit.text.startsWith('Pergunta:') || unit.text.startsWith('Alternativa:')));
-
-      if (isQuizComponent) {
-        // Pausa de 1 segundo exato (1000ms)
+      // Se for quiz ou for uma alternativa, dá uma pausa de 800ms
+      const pauseDelay = (speechIsQuiz || unit.isOption) ? 800 : 0;
+      
+      if (pauseDelay > 0) {
         setTimeout(() => {
           if (activeSpeechTarget !== myTarget || isSpeechPaused) return;
           speakSentenceAt(speechSentenceIndex);
-        }, 1000);
+        }, pauseDelay);
       } else {
         speakSentenceAt(speechSentenceIndex);
       }
-    };
-    
+    };  
     utterance.onerror = () => { /* cancelado */ };
     synth.speak(utterance);
   }
 
-  window.stopActiveSpeech = () => {
+window.stopActiveSpeech = () => {
     window.speechSynthesis.cancel();
     isSpeechPaused = false; activeSpeechTarget = null;
     if (restorePreviousVisuals) restorePreviousVisuals();
     restorePreviousVisuals = null;
     
-    // MUDANÇA 2 (Limpeza de Fechamento): 'modalView' no lugar de 'viewBody'
+    // Limpa a iluminação se você pausar ou fechar a janela
     Array.from(document.getElementById('modalView').querySelectorAll('*')).forEach(p => {
-        if(p.dataset && p.dataset.karaoke === 'true') {
-            p.style.background = ''; p.style.color = ''; p.style.boxShadow = ''; p.style.scrollMarginTop = ''; delete p.dataset.karaoke;
-        }
-    });
+          if(p.dataset && p.dataset.karaoke === 'true') {
+              p.style.background = ''; p.style.color = ''; p.style.boxShadow = ''; p.style.scrollMarginTop = ''; delete p.dataset.karaoke;
+          }
+      });
 
     if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
   };
+
   // Aceita um texto simples (lê em voiceLangNormal, como antes) OU uma lista de
   // pedaços [{text, lang, rate}, ...] pra misturar idiomas/velocidades numa só leitura.
   async function handleSpeech(input, element, originalHtml, targetId, isQuiz) {
@@ -2886,8 +2886,20 @@ function closeView(){
   if (viewPhotoURL){ URL.revokeObjectURL(viewPhotoURL); viewPhotoURL = null; }
   if (viewAudioURL){ URL.revokeObjectURL(viewAudioURL); viewAudioURL = null; }
   viewingItem = null; viewHistory = []; 
-    if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); }
-  window.stopActiveSpeech = null;
+  
+  // Parar a voz e limpar as cores (se estiver lendo)
+  if (window.stopActiveSpeech) {
+    window.stopActiveSpeech();
+  } else if ('speechSynthesis' in window) { 
+    window.speechSynthesis.cancel(); 
+  }
+  
+  // Faxina extra garantida para o título
+  viewTitle.style.background = '';
+  viewTitle.style.color = '';
+  viewTitle.style.boxShadow = '';
+  delete viewTitle.dataset.karaoke;
+  
   if (window.currentWakeLock) { window.currentWakeLock.release().catch(() => {}); window.currentWakeLock = null; }
 }
 
