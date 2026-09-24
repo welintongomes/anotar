@@ -1676,9 +1676,22 @@ async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
   let restorePreviousVisuals = null; let isSpeechPaused = false;
   let speechSentences = []; let speechSentenceIndex = 0;
   let speechTargetElement = null; let speechOriginalHtml = ''; let speechIsQuiz = false;
+  let lastMatchedIndex = 0;
 
-function buildGlobalSpeechParts() {
+// Dicionário inteligente de idiomas
+  const dicionarioVoz = {
+    'pt-BR': { q: 'Pergunta', a: 'Resposta' },
+    'en-US': { q: 'Question', a: 'Answer' }, // Obs: 'Answer' soa mais natural no TTS em inglês, mas pode trocar para 'Response' se preferir!
+    'es-ES': { q: 'Pregunta', a: 'Respuesta' },
+    'fr-FR': { q: 'Question', a: 'Réponse' },
+    'de-DE': { q: 'Frage', a: 'Antwort' },
+    'it-IT': { q: 'Domanda', a: 'Risposta' }
+  };
+
+  function buildGlobalSpeechParts() {
     const parts = [];
+    const palavraQ = (dicionarioVoz[voiceLangQuestion] || dicionarioVoz['pt-BR']).q;
+    
     if (item.title) parts.push({ text: item.title + ".", lang: voiceLangNormal, rate: currentVoiceSpeed });
     if (item.vehicle) parts.push({ text: item.vehicle + ".", lang: voiceLangNormal, rate: currentVoiceSpeed });
     if (item.spec) parts.push({ text: item.spec + ".", lang: voiceLangNormal, rate: currentVoiceSpeed });
@@ -1690,9 +1703,9 @@ function buildGlobalSpeechParts() {
         if (!trimmed) return;
         
         if (trimmed.startsWith('??')) {
-            const qText = trimmed.replace(/^\?\?\s*/, 'Pergunta: ') + ".";
+            const qText = trimmed.replace(/^\?\?\s*/, `${palavraQ}: `) + ".";
             parts.push({ text: qText, lang: voiceLangQuestion, rate: currentVoiceSpeed });
-        }  else if (trimmed.startsWith('()') || trimmed.match(/^\([xX ]?\)/)) {
+        } else if (trimmed.startsWith('()') || trimmed.match(/^\([xX ]?\)/)) {
             if (readQuizOptions) {
                 const aText = trimmed.replace(/^\(\s*[xX]?\s*\)/, ': ') + ".";
                 parts.push({ text: aText, lang: voiceLangOptions, rate: optionsVoiceSpeed, isOption: true });
@@ -1705,6 +1718,38 @@ function buildGlobalSpeechParts() {
             }
         }
       });
+    }
+    return parts;
+  }
+
+  function buildTrainingSpeechParts() {
+    const parts = [];
+    const palavraQ = (dicionarioVoz[voiceLangQuestion] || dicionarioVoz['pt-BR']).q;
+    const palavraA = (dicionarioVoz[voiceLangOptions] || dicionarioVoz['pt-BR']).a;
+
+    if (item.content) {
+      const lines = item.content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        if (trimmed.startsWith('??')) {
+          const qText = trimmed.replace(/^\?\?\s*/, `${palavraQ}: `) + ".";
+          parts.push({ text: qText, lang: voiceLangQuestion, rate: currentVoiceSpeed });
+          
+          let j = i + 1;
+          while (j < lines.length) {
+            const optLine = lines[j].trim();
+            const om = optLine.match(/^\(([ xX]?)\)(.*)/);
+            if (!om) break; 
+            
+            if (om[1].toLowerCase() === 'x') {
+              const aText = `${palavraA}: ` + om[2].trim() + ".";
+              parts.push({ text: aText, lang: voiceLangOptions, rate: optionsVoiceSpeed, isOption: true });
+            }
+            j++;
+          }
+          i = j - 1;
+        }
+      }
     }
     return parts;
   }
@@ -1774,19 +1819,36 @@ utterance.onstart = async () => {
       // 2. Leitura Global (clicou no Título)
       if (activeSpeechTarget === 'main') {
           
-          const tentarIluminarFrase = () => {
+const tentarIluminarFrase = () => {
               const paragraphs = Array.from(document.getElementById('modalView').querySelectorAll('#viewTitle, .meta-line, .spec-big, .content-block div, .content-block label'));
               
-              let searchStr = unit.text.toLowerCase().replace(/pergunta:|alternativa:|próximo passo/gi, '').replace(/[^\w\sÀ-ÿ]/g, '').trim();
-                  
-              let targetP = paragraphs.find(p => {
-                  let domText = p.textContent.toLowerCase().replace(/[^\w\sÀ-ÿ]/g, '').trim();
-                  return domText && domText.includes(searchStr);
-              });
+let searchStr = unit.text.toLowerCase().split('próximo passo')[0]
+                  .replace(/pergunta:|resposta:|alternativa:|question:|answer:|pregunta:|respuesta:|réponse:|frage:|antwort:|domanda:|risposta:/gi, '')
+                  .replace(/[^\w\sÀ-ÿ]/g, '').trim();
               
+              let targetP = null;
+
+              // Procura apenas do ponto onde paramos para frente (evita voltar para palavras iguais)
+              for (let i = lastMatchedIndex; i < paragraphs.length; i++) {
+                  let domText = paragraphs[i].textContent.toLowerCase().replace(/[^\w\sÀ-ÿ]/g, '').trim();
+                  if (domText && domText.includes(searchStr)) {
+                      targetP = paragraphs[i];
+                      lastMatchedIndex = i; // Salva a posição atual para a próxima frase
+                      break;
+                  }
+              }
+              
+              // Se não achou a frase inteira, tenta pela metade (também olhando para frente)
               if (!targetP && searchStr.length > 10) {
                   let halfStr = searchStr.substring(0, Math.floor(searchStr.length / 2)).trim();
-                  targetP = paragraphs.find(p => p.textContent.toLowerCase().replace(/[^\w\sÀ-ÿ]/g, '').trim().includes(halfStr));
+                  for (let i = lastMatchedIndex; i < paragraphs.length; i++) {
+                      let domText = paragraphs[i].textContent.toLowerCase().replace(/[^\w\sÀ-ÿ]/g, '').trim();
+                      if (domText && domText.includes(halfStr)) {
+                          targetP = paragraphs[i];
+                          lastMatchedIndex = i;
+                          break;
+                      }
+                  }
               }
 
               if (targetP) {
@@ -1796,7 +1858,6 @@ utterance.onstart = async () => {
                   targetP.style.boxShadow = '0 0 0 4px #D6A035';
                   targetP.style.borderRadius = '4px';
                   
-                  // MUDANÇA: Margem superior para parar no topo (abaixo do cabeçalho)
                   targetP.style.scrollMarginTop = '10px';
                   targetP.scrollIntoView({ behavior: 'smooth', block: 'start' }); 
                   return true; 
@@ -1893,6 +1954,7 @@ window.stopActiveSpeech = () => {
     const parts = Array.isArray(input) ? input : [{ text: input, lang: voiceLangNormal, rate: currentVoiceSpeed }];
     speechSentences = buildSpeechQueue(parts);
     speechSentenceIndex = 0;
+    lastMatchedIndex = 0;
     speakSentenceAt(0);
   }
 
@@ -2336,6 +2398,27 @@ let expandirTextoCompleto = null;
     if (quizQuestionsCount > 0){
       quizScoreLabel = document.createElement('span'); quizScoreLabel.className = 'tag-pill'; quizScoreLabel.style.border = 'none'; toolbar.appendChild(quizScoreLabel);
       const btnResetQuiz = document.createElement('button'); btnResetQuiz.type = 'button'; btnResetQuiz.className = 'tag-pill'; btnResetQuiz.style.border = 'none'; btnResetQuiz.style.background = '#9AA0AB'; btnResetQuiz.style.color = '#fff'; btnResetQuiz.innerHTML = '🔄 Refazer quiz';
+      // --- NOVO: BOTÃO MODO TREINO ---
+      const btnTrainQuiz = document.createElement('button');
+      btnTrainQuiz.type = 'button';
+      btnTrainQuiz.className = 'tag-pill';
+      btnTrainQuiz.style.border = 'none';
+      btnTrainQuiz.style.background = '#8B6FD1'; // Roxo elegante para destacar
+      btnTrainQuiz.style.color = '#fff';
+      btnTrainQuiz.innerHTML = '🎧 Treinar';
+      btnTrainQuiz.title = 'Modo Treino: Ler apenas as perguntas e as respostas corretas';
+      toolbar.appendChild(btnTrainQuiz);
+      
+      btnTrainQuiz.addEventListener('click', () => {
+          const parts = buildTrainingSpeechParts();
+          if (parts.length > 0) {
+              // Iniciamos a leitura. Passar "true" no final garante o respiro entre as falas.
+              handleSpeech(parts, viewTitle, mainTitleOriginal, 'main', true);
+          } else {
+              showToast('Nenhum quiz encontrado para treino.');
+          }
+      });
+      // -------------------------------
       toolbar.appendChild(btnResetQuiz);
             btnResetQuiz.addEventListener('click', async () => {
         const { answeredCount } = getQuizScore();
@@ -2422,7 +2505,8 @@ let expandirTextoCompleto = null;
             const qTitle = document.createElement('div'); qTitle.className = 'quiz-title-clicker'; qTitle.style.fontWeight = 'bold'; qTitle.style.marginBottom = '8px'; qTitle.style.cursor = 'pointer'; 
             const originalQuizHtml = '❓ ' + renderText(qMatch[1].trim()); qTitle.innerHTML = originalQuizHtml;
                         qTitle.addEventListener('click', () => {
-              const speechParts = [{ text: "Pergunta: " + qMatch[1].trim() + ".", lang: voiceLangQuestion, rate: currentVoiceSpeed }];
+              const palavraQ = (dicionarioVoz[voiceLangQuestion] || dicionarioVoz['pt-BR']).q;
+              const speechParts = [{ text: `${palavraQ}: ` + qMatch[1].trim() + ".", lang: voiceLangQuestion, rate: currentVoiceSpeed }];
               if (readQuizOptions && quizMode === 'choice') {
                 shuffledOptions.forEach(opt => { speechParts.push({ text: "." + opt.text + ".", lang: voiceLangOptions, rate: optionsVoiceSpeed }); });
               }
