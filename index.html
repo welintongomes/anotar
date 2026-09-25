@@ -1514,8 +1514,8 @@ function getGlobalBudgetData(){
   allItems.forEach(item => {
     if (!item.content) return;
     item.content.split('\n').forEach(line => {
-      const m = line.match(/^\[[xX]\](.*)/); if (!m) return;
-      const textPart = stripFlowSuffix(m[1]).trim();
+      const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return;
+      const textPart = stripFlowSuffix(m[2]).trim();
       const nums = textPart.match(/\d+(?:[.,]\d+)?/g); if (!nums || !nums.length) return;
       const price = parseFloat(nums[nums.length - 1].replace(',', '.'));
       if (price > 0){ list.push({ itemId: item.id, itemTitle: item.title, text: textPart, price }); total += price; }
@@ -1523,6 +1523,7 @@ function getGlobalBudgetData(){
   });
   return { list, total };
 }
+
 function refreshBudgetSummary(){
   const { list, total } = getGlobalBudgetData();
   if (!list.length){
@@ -1540,11 +1541,11 @@ async function clearAllBudgetCheckboxes(){
     const full = await dbGet(id);
     if (!full || !full.content) continue;
     const lines = full.content.split('\n').map(line => {
-      const m = line.match(/^\[[xX]\](.*)/); if (!m) return line;
-      const visible = stripFlowSuffix(m[1]);
+      const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return line;
+      const visible = stripFlowSuffix(m[2]);
       const nums = visible.match(/\d+(?:[.,]\d+)?/g);
       const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
-      return hasPrice ? ('[ ]' + m[1]) : line;
+      return hasPrice ? (m[1] + '[ ]' + m[2]) : line;
     });
     full.content = lines.join('\n'); full.updatedAt = Date.now();
     await dbPut(full);
@@ -1553,7 +1554,6 @@ async function clearAllBudgetCheckboxes(){
   }
   return affectedIds;
 }
-
 /* ---------------- Formulário ---------------- */
 function populateCategorySelect(selected){
   const categoriesSet = new Set(PRESET_CATEGORIES);
@@ -2176,8 +2176,8 @@ let expandirTextoCompleto = null;
     /* COMEÇO DA MUDANÇA: Gaveta de Fechamento de Orçamento com Descontos */
     function hasPricedBudgetNow(){
       return item.content.split('\n').some((line, idx) => {
-        const m = line.match(/^\[[xX]\](.*)/); if (!m) return false;
-        const visible = stripFlowSuffix(m[1]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
+        const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return false;
+        const visible = stripFlowSuffix(m[2]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
         const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
         const hasTime = item.speedrunLog && item.speedrunLog[idx];
         return hasPrice || hasTime;
@@ -2223,10 +2223,10 @@ let expandirTextoCompleto = null;
       const lines = item.content.split('\n');
       
       lines.forEach((line, idx) => {
-        const checkMatch = line.match(/^\[[xX]\](.*)/);
+        const checkMatch = line.match(/^(\s*)\[[xX]\](.*)/);
         if (checkMatch) {
-          const textPart = stripFlowSuffix(checkMatch[1]).trim(); 
-          const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g); 
+          const textPart = stripFlowSuffix(checkMatch[2]).trim(); 
+          const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g);
           let price = 0;
           if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
           
@@ -2332,8 +2332,8 @@ let expandirTextoCompleto = null;
 
     function hasPlainChecklistNow(){
       return item.content.split('\n').some(line => {
-        const m = line.match(/^\[[xX]\](.*)/); if (!m) return false;
-        const visible = stripFlowSuffix(m[1]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
+        const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return false;
+        const visible = stripFlowSuffix(m[2]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
         const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
         return !hasPrice;
       });
@@ -2343,10 +2343,10 @@ let expandirTextoCompleto = null;
     btnResetPlain.addEventListener('click', async () => {
       if (!confirm('Desmarcar os itens sem valor nesta nota?')) return;
       const lines = item.content.split('\n').map(line => {
-        const m = line.match(/^\[[xX]\](.*)/); if (!m) return line;
-        const visible = stripFlowSuffix(m[1]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
+        const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return line;
+        const visible = stripFlowSuffix(m[2]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
         const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
-        return hasPrice ? line : ('[ ]' + m[1]);
+        return hasPrice ? line : (m[1] + '[ ]' + m[2]);
       });
       item.content = lines.join('\n'); item.updatedAt = Date.now(); await dbPut(item);
       const ram = allItems.find(i => i.id === item.id); if (ram){ ram.content = item.content; ram.updatedAt = item.updatedAt; }
@@ -2470,7 +2470,78 @@ let expandirTextoCompleto = null;
         const m = l.match(/^\[[ xX]?\](.*)/); const raw = m ? m[1] : l; return normalize(stripFlowSuffix(raw));
       });
       const lineEls = [];
+      // MUDANÇA: Função central para engatilhar o próximo passo
+      const triggerNextStep = (nextStepRaw, currentIndex) => {
+          if (nextStepRaw.includes('✅Fim') || nextStepRaw.includes('✅ Fim')) {
+              const finalInstruction = nextStepRaw.replace(/✅\s*Fim/g, '').trim();
+              const toastMsg = finalInstruction ? `🏁 Fim: ${finalInstruction}` : '🏁 Fluxo Finalizado!';
+              showToast(toastMsg, true);
+              if (isAudioEnabled && 'speechSynthesis' in window) {
+                  if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
+                  const utterance = new SpeechSynthesisUtterance("Finalizado! ... " + finalInstruction);
+                  utterance.lang = voiceLangNormal;
+                  utterance.rate = currentVoiceSpeed;
+                  window.speechSynthesis.speak(utterance);
+              }
+              return; 
+          }
 
+
+          const targetNorm = normalize(nextStepRaw).trim();
+          
+          // Novo Sistema de Busca Inteligente (Pontuação)
+          let bestIdx = -1;
+          let highestScore = 0;
+
+          lineSearchNorm.forEach((t, idx) => {
+              if (idx === currentIndex || !t) return;
+              
+              const textLine = t.trim();
+              let score = 0;
+              
+              if (textLine === targetNorm) {
+                  score = 100; // Prioridade máxima: O texto é exatamente igual!
+              } else if (textLine.startsWith(targetNorm + ' ') || textLine.endsWith(' ' + targetNorm) || textLine.includes(' ' + targetNorm + ' ')) {
+                  // Prioridade alta: A frase inteira existe solta no meio da linha
+                  // Desempate: Linhas mais curtas ganham! "Escape ou admissão" vence de "Hoje vamos testar a admissão"
+                  score = 80 - (textLine.length * 0.1);
+              } else if (textLine.includes(targetNorm)) {
+                  // Prioridade básica: Contém a palavra (mesmo que grudada em outra coisa)
+                  score = 50 - (textLine.length * 0.1);
+              }
+              
+              if (score > highestScore) {
+                  highestScore = score;
+                  bestIdx = idx;
+              }
+          });
+
+          const foundIdx = bestIdx;
+          
+          if (foundIdx !== -1 && lineEls[foundIdx]){
+              const el = lineEls[foundIdx]; el.scrollIntoView({ behavior:'smooth', block:'center' });
+              const oldBg = el.style.background, oldRadius = el.style.borderRadius;
+              el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px'; el.style.padding = '6px';
+              setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
+              showToast('➡️ Próximo passo: ' + nextStepRaw);
+              if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
+                  if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
+                  const utterance = new SpeechSynthesisUtterance("Próximo passo. " + nextStepRaw);
+                  utterance.lang = voiceLangNormal;
+                  utterance.rate = currentVoiceSpeed;
+                  window.speechSynthesis.speak(utterance);
+              }
+          } else { 
+              showToast('➡️ Próximo passo sugerido: "' + nextStepRaw + '" (não encontrei esse texto na lista)'); 
+              if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
+                  if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
+                  const utterance = new SpeechSynthesisUtterance("Sugerido. " + nextStepRaw);
+                  utterance.lang = voiceLangNormal;
+                  utterance.rate = currentVoiceSpeed;
+                  window.speechSynthesis.speak(utterance);
+              }
+          }
+      };
       // Com busca interna ativa, desenha tudo (senão a busca não acha o resto do texto).
       // Sem busca, desenha só um pedaço -- essencial pra textos gigantes.
       const renderThisPass = internalQuery ? lines.length : Math.min(contentRenderLimit, lines.length);
@@ -2746,101 +2817,71 @@ let expandirTextoCompleto = null;
           }
         }
                 
-        const checkMatch = line.match(/^\[([ xX]?)\](.*)/);
+// --- CHECKBOXES NORMAIS (SOLTOS E AGORA ACEITAM ESPAÇO) ---
+        const checkMatch = line.match(/^([ \t]*)\[([ xX]?)\](.*)/);
         if (checkMatch) {
-          const isChecked = checkMatch[1].toLowerCase() === 'x'; const rawText = checkMatch[2];
-          const arrowIdx = rawText.indexOf('>>');
-          const visibleText = (arrowIdx === -1 ? rawText : rawText.slice(0, arrowIdx)).trim();
-          const nextStepRaw = arrowIdx === -1 ? null : rawText.slice(arrowIdx + 2).trim();
+            const isChecked = checkMatch[2].toLowerCase() === 'x'; const rawText = checkMatch[3];
+            const arrowIdx = rawText.indexOf('>>');
+            const visibleText = (arrowIdx === -1 ? rawText : rawText.slice(0, arrowIdx)).trim();
+            const nextStepRaw = arrowIdx === -1 ? null : rawText.slice(arrowIdx + 2).trim();
 
-          const label = document.createElement('label'); label.className = 'checkbox-row'; label.style.display = 'flex'; label.style.alignItems = 'center'; label.style.marginTop = '6px'; label.style.marginBottom = '6px';
-          const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = isChecked; cb.style.width = '20px'; cb.style.height = '20px'; cb.style.marginRight = '8px';
-          const span = document.createElement('span'); span.innerHTML = renderText(visibleText);
-          if (isChecked) { span.style.textDecoration = 'line-through'; span.style.opacity = '0.6'; }
-          label.appendChild(cb); label.appendChild(span);
-          if (nextStepRaw){
-            const hint = document.createElement('span'); hint.textContent = ' ➡️'; hint.title = 'Se marcar: sugere "' + nextStepRaw + '"'; hint.style.opacity = '0.55'; hint.style.fontSize = '0.85em'; label.appendChild(hint);
-          }
-          textContainer.appendChild(label); const currentIndex = i; lineEls[currentIndex] = label;
-
-          cb.addEventListener('change', async () => {
-            span.style.textDecoration = cb.checked ? 'line-through' : 'none'; span.style.opacity = cb.checked ? '0.6' : '1';
-            const marker = cb.checked ? '[x]' : '[ ]'; const freshLines = item.content.split('\n');
-            freshLines[currentIndex] = freshLines[currentIndex].replace(/^\[[ xX]?\]/, marker);
-            item.content = freshLines.join('\n'); 
+            const label = document.createElement('label'); label.className = 'checkbox-row'; 
+            label.style.display = 'flex'; label.style.alignItems = 'center'; label.style.marginTop = '6px'; label.style.marginBottom = '6px';
             
-            if (cb.checked && item.speedrunActive) {
-              if (!item.speedrunLog) item.speedrunLog = {};
-              const elapsed = (Date.now() - item.speedrunLastSplit) + (item.speedrunAccumulated || 0);
-              item.speedrunLog[currentIndex] = elapsed;
-              item.speedrunLastSplit = Date.now();
-              item.speedrunAccumulated = 0;
-              showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
-            } else if (!cb.checked && item.speedrunLog && item.speedrunLog[currentIndex] !== undefined) {
-              const returnedTime = item.speedrunLog[currentIndex];
-              item.speedrunAccumulated = (item.speedrunAccumulated || 0) + returnedTime;
-              delete item.speedrunLog[currentIndex];
-              showToast(`⏱️ Tempo devolvido ao relógio: ${formatTimeMs(returnedTime)}`, false);
-            }
+            // Mantém visualmente o recuo
+            if (checkMatch[1]) label.style.marginLeft = (checkMatch[1].length * 8) + 'px';
 
-            item.updatedAt = Date.now(); await dbPut(item);
-            const ramItem = allItems.find(x => x.id === item.id); 
-            if (ramItem) { 
-              ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; 
-              ramItem.speedrunLog = item.speedrunLog;
-              ramItem.speedrunLastSplit = item.speedrunLastSplit;
-              ramItem.speedrunAccumulated = item.speedrunAccumulated;
+            const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = isChecked; 
+            cb.style.width = '20px'; cb.style.height = '20px'; cb.style.marginRight = '8px';
+            const span = document.createElement('span'); span.innerHTML = renderText(visibleText);
+            if (isChecked) { span.style.textDecoration = 'line-through'; span.style.opacity = '0.6'; }
+            label.appendChild(cb); label.appendChild(span);
+            if (nextStepRaw){
+                const hint = document.createElement('span'); hint.textContent = ' ➡️'; hint.title = 'Se marcar: sugere "' + nextStepRaw + '"'; hint.style.opacity = '0.55'; hint.style.fontSize = '0.85em'; label.appendChild(hint);
             }
-                        
-            btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
-            btnToggleBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
-            renderCards();
-            if (budgetPanel.style.display === 'flex') { updateBudgetPanel(); }
+            textContainer.appendChild(label); const currentIndex = i; lineEls[currentIndex] = label;
 
-            if (cb.checked && nextStepRaw){
-              if (nextStepRaw.includes('✅Fim') || nextStepRaw.includes('✅ Fim')) {
-                const finalInstruction = nextStepRaw.replace(/✅\s*Fim/g, '').trim();
-                const toastMsg = finalInstruction ? `🏁 Fim: ${finalInstruction}` : '🏁 Fluxo Finalizado!';
-                showToast(toastMsg, true);
-                if (isAudioEnabled && 'speechSynthesis' in window) {
-                  if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
-                  const utterance = new SpeechSynthesisUtterance("Finalizado! ... " + finalInstruction);
-                  utterance.lang = voiceLangNormal;
-                  utterance.rate = currentVoiceSpeed;
-                  window.speechSynthesis.speak(utterance);
+            cb.addEventListener('change', async () => {
+                span.style.textDecoration = cb.checked ? 'line-through' : 'none'; span.style.opacity = cb.checked ? '0.6' : '1';
+                const marker = cb.checked ? '[x]' : '[ ]'; const freshLines = item.content.split('\n');
+                
+                // Mantém os espaços originais aqui também
+                freshLines[currentIndex] = freshLines[currentIndex].replace(/^([ \t]*)\[[ xX]?\]/, '$1' + marker);
+                item.content = freshLines.join('\n'); 
+                
+                if (cb.checked && item.speedrunActive) {
+                    if (!item.speedrunLog) item.speedrunLog = {};
+                    const elapsed = (Date.now() - item.speedrunLastSplit) + (item.speedrunAccumulated || 0);
+                    item.speedrunLog[currentIndex] = elapsed;
+                    item.speedrunLastSplit = Date.now();
+                    item.speedrunAccumulated = 0;
+                    showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
+                } else if (!cb.checked && item.speedrunLog && item.speedrunLog[currentIndex] !== undefined) {
+                    const returnedTime = item.speedrunLog[currentIndex];
+                    item.speedrunAccumulated = (item.speedrunAccumulated || 0) + returnedTime;
+                    delete item.speedrunLog[currentIndex];
+                    showToast(`⏱️ Tempo devolvido ao relógio: ${formatTimeMs(returnedTime)}`, false);
                 }
-                return; 
-              }
 
-              const targetNorm = normalize(nextStepRaw);
-              const foundIdx = lineSearchNorm.findIndex((t, idx) => idx !== currentIndex && t && t.includes(targetNorm));
-              
-              if (foundIdx !== -1 && lineEls[foundIdx]){
-                const el = lineEls[foundIdx]; el.scrollIntoView({ behavior:'smooth', block:'center' });
-                const oldBg = el.style.background, oldRadius = el.style.borderRadius;
-                el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px'; el.style.padding = '6px';
-                setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
-                showToast('➡️ Próximo passo: ' + nextStepRaw);
-                if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
-                  if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
-                  const utterance = new SpeechSynthesisUtterance("Próximo passo. " + nextStepRaw);
-                  utterance.lang = voiceLangNormal;
-                  utterance.rate = currentVoiceSpeed;
-                  window.speechSynthesis.speak(utterance);
+                item.updatedAt = Date.now(); await dbPut(item);
+                const ramItem = allItems.find(x => x.id === item.id); 
+                if (ramItem) { 
+                    ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; 
+                    ramItem.speedrunLog = item.speedrunLog;
                 }
-              } else { 
-                showToast('➡️ Próximo passo sugerido: "' + nextStepRaw + '" (não encontrei esse texto na lista)'); 
-                if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
-                  if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
-                  const utterance = new SpeechSynthesisUtterance("Sugerido. " + nextStepRaw);
-                  utterance.lang = voiceLangNormal;
-                  utterance.rate = currentVoiceSpeed;
-                  window.speechSynthesis.speak(utterance);
+                                
+                if (typeof btnResetPlain !== 'undefined') btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
+                if (typeof btnToggleBudget !== 'undefined') btnToggleBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
+                renderCards();
+                
+                if (typeof updateBudgetPanel === 'function') {
+                   const budgetPanel = document.getElementById('modalView').querySelector('div[style*="flex-direction: column"]');
+                   if (budgetPanel && budgetPanel.style.display === 'flex') updateBudgetPanel();
                 }
-              }
-            }
-          });
-          i++; processedSinceYield++; continue;
+
+                if (cb.checked && nextStepRaw){ triggerNextStep(nextStepRaw, currentIndex); }
+            });
+            i++; processedSinceYield++; continue;
         }
 
         const trimmed = line.trim(); const isDivider = /^(.)\1{2,}$/.test(trimmed) && /^[-=#*]+$/.test(trimmed);
@@ -2848,7 +2889,198 @@ let expandirTextoCompleto = null;
           const hr = document.createElement('hr'); hr.style.border = 'none'; hr.style.borderTop = '2px dashed var(--smoke, #9AA0AB)'; hr.style.margin = '14px 0';
           textContainer.appendChild(hr); lineEls[i] = hr; i++; processedSinceYield++; continue;
         }
+        // --- MUDANÇA: FLUXO INDEPENDENTE (SEM CHECKBOX) ---
+        const arrowIdx = line.indexOf('>>');
+        if (arrowIdx !== -1 && !line.match(/^\[[ xX]?\]/)) {
+            const leftPart = line.slice(0, arrowIdx);
+            const visibleText = leftPart.trim();
+            const nextStepRaw = line.slice(arrowIdx + 2).trim();
 
+            const pFlow = document.createElement('div');
+            pFlow.style.display = 'flex'; pFlow.style.alignItems = 'center'; pFlow.style.justifyContent = 'space-between';
+            pFlow.style.marginTop = '8px'; pFlow.style.marginBottom = '8px';
+            
+            // Mantém o recuo se você der espaço antes da frase
+            const leadingMatch = leftPart.match(/^([ \t]+)/);
+            if (leadingMatch) pFlow.style.marginLeft = (leadingMatch[1].length * 8) + 'px';
+
+            const spanText = document.createElement('span'); 
+            spanText.innerHTML = renderText(visibleText);
+            spanText.style.cursor = 'pointer';
+            spanText.style.flex = '1';
+
+            const originalHtml = spanText.innerHTML;
+            const cIndex = i;
+            // Clicar no texto faz a leitura normal!
+            spanText.addEventListener('click', () => { handleSpeech(visibleText, spanText, originalHtml, 'text-' + cIndex, false); });
+
+            // Clicar no botão Pula pro próximo passo!
+            const btnNext = document.createElement('button');
+            btnNext.className = 'tag-pill';
+            btnNext.style.border = 'none';
+            btnNext.style.background = 'var(--panel-2)';
+            btnNext.style.color = 'var(--text)';
+            btnNext.style.fontWeight = 'bold';
+            btnNext.innerHTML = '➡️ ' + (nextStepRaw.includes('✅') ? 'Fim' : 'Avançar');
+            btnNext.title = 'Ir para: ' + nextStepRaw;
+            btnNext.style.marginLeft = '12px';
+
+            btnNext.addEventListener('click', () => { triggerNextStep(nextStepRaw, cIndex); });
+
+            pFlow.appendChild(spanText); pFlow.appendChild(btnNext);
+            textContainer.appendChild(pFlow); lineEls[i] = pFlow;
+            i++; processedSinceYield++; continue;
+        }
+
+        // --- MUDANÇA: BLOCOS DE LEITURA (MESMO ESPAÇAMENTO FORMAM UM BLOCO) ---
+// --- BLOCOS DE LEITURA (AGORA ACEITAM CHECKBOXES E FLUXOS) ---
+        const matchIndent = line.match(/^([ \t]+)(.*)/);
+        if (matchIndent && matchIndent[2].trim() !== '') {
+            const indent = matchIndent[1];
+            let j = i;
+            const blockLines = [];
+            while (j < renderThisPass) {
+                const nextLine = lines[j];
+                const nextIndentMatch = nextLine.match(/^([ \t]+)(.*)/);
+                
+                if (nextIndentMatch && nextIndentMatch[1] === indent && nextIndentMatch[2].trim() !== '') {
+                    // Agrupa tudo que não for quiz e divisória (permite checkboxes e fluxos)
+                    if (!nextLine.match(/^\?\?/) && !nextLine.match(/^\(/) && !/^(.)\1{2,}$/.test(nextLine.trim())) {
+                        blockLines.push({ text: nextLine, originalIndex: j });
+                        j++;
+                    } else { break; }
+                } else { break; }
+            }
+
+            if (blockLines.length > 1) {
+                const blockDiv = document.createElement('div');
+                blockDiv.style.marginLeft = (indent.length * 4) + 'px';
+                blockDiv.style.padding = '10px 12px';
+                blockDiv.style.borderLeft = '3px solid #D6A035'; 
+                blockDiv.style.marginTop = '8px';
+                blockDiv.style.marginBottom = '8px';
+                blockDiv.style.background = 'var(--panel-2)';
+                blockDiv.style.borderRadius = '0 8px 8px 0';
+                blockDiv.style.display = 'flex';
+                blockDiv.style.flexDirection = 'column';
+                blockDiv.style.gap = '6px';
+                
+                const textToReadParts = [];
+
+                blockLines.forEach(lineObj => {
+                    const blockLine = lineObj.text.trim();
+                    const bIndex = lineObj.originalIndex;
+                    
+                    const checkMatch = blockLine.match(/^\[([ xX]?)\](.*)/);
+                    const flowMatch = !checkMatch && blockLine.indexOf('>>') !== -1;
+                    
+                    if (checkMatch) {
+                        const isChecked = checkMatch[1].toLowerCase() === 'x'; 
+                        const rawText = checkMatch[2];
+                        const arrowIdx = rawText.indexOf('>>');
+                        const visibleText = (arrowIdx === -1 ? rawText : rawText.slice(0, arrowIdx)).trim();
+                        const nextStepRaw = arrowIdx === -1 ? null : rawText.slice(arrowIdx + 2).trim();
+
+                        const label = document.createElement('label'); label.className = 'checkbox-row'; 
+                        label.style.display = 'flex'; label.style.alignItems = 'center'; 
+                        
+                        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = isChecked; 
+                        cb.style.width = '20px'; cb.style.height = '20px'; cb.style.marginRight = '8px';
+                        
+                        const span = document.createElement('span'); span.innerHTML = renderText(visibleText);
+                        span.style.flex = '1';
+                        if (isChecked) { span.style.textDecoration = 'line-through'; span.style.opacity = '0.6'; }
+                        
+                        label.appendChild(cb); label.appendChild(span);
+                        
+                        if (nextStepRaw){
+                            const hint = document.createElement('span'); hint.textContent = ' ➡️'; hint.title = 'Se marcar: sugere "' + nextStepRaw + '"'; hint.style.opacity = '0.55'; hint.style.fontSize = '0.85em'; label.appendChild(hint);
+                        }
+                        
+                        cb.addEventListener('change', async () => {
+                            span.style.textDecoration = cb.checked ? 'line-through' : 'none'; span.style.opacity = cb.checked ? '0.6' : '1';
+                            const marker = cb.checked ? '[x]' : '[ ]'; const freshLines = item.content.split('\n');
+                            
+                            freshLines[bIndex] = freshLines[bIndex].replace(/^([ \t]*)\[[ xX]?\]/, '$1' + marker);
+                            item.content = freshLines.join('\n'); 
+                            
+                            if (cb.checked && item.speedrunActive) {
+                                if (!item.speedrunLog) item.speedrunLog = {};
+                                const elapsed = (Date.now() - item.speedrunLastSplit) + (item.speedrunAccumulated || 0);
+                                item.speedrunLog[bIndex] = elapsed;
+                                item.speedrunLastSplit = Date.now();
+                                item.speedrunAccumulated = 0;
+                                showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
+                            } else if (!cb.checked && item.speedrunLog && item.speedrunLog[bIndex] !== undefined) {
+                                const returnedTime = item.speedrunLog[bIndex];
+                                item.speedrunAccumulated = (item.speedrunAccumulated || 0) + returnedTime;
+                                delete item.speedrunLog[bIndex];
+                                showToast(`⏱️ Tempo devolvido ao relógio: ${formatTimeMs(returnedTime)}`, false);
+                            }
+
+                            item.updatedAt = Date.now(); await dbPut(item);
+                            const ramItem = allItems.find(x => x.id === item.id); 
+                            if (ramItem) { 
+                                ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; 
+                                ramItem.speedrunLog = item.speedrunLog;
+                            }
+                                            
+                            if (typeof btnResetPlain !== 'undefined') btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
+                            if (typeof btnToggleBudget !== 'undefined') btnToggleBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
+                            
+                            renderCards();
+                            
+                            if (typeof updateBudgetPanel === 'function') {
+                               const budgetPanel = document.getElementById('modalView').querySelector('div[style*="flex-direction: column"]');
+                               if (budgetPanel && budgetPanel.style.display === 'flex') updateBudgetPanel();
+                            }
+
+                            if (cb.checked && nextStepRaw){ triggerNextStep(nextStepRaw, bIndex); }
+                        });
+
+                        blockDiv.appendChild(label); lineEls[bIndex] = label; textToReadParts.push(visibleText);
+                        
+                    } else if (flowMatch) {
+                        const arrowIdx = blockLine.indexOf('>>');
+                        const visibleText = blockLine.slice(0, arrowIdx).trim();
+                        const nextStepRaw = blockLine.slice(arrowIdx + 2).trim();
+
+                        const pFlow = document.createElement('div');
+                        pFlow.style.display = 'flex'; pFlow.style.alignItems = 'center'; pFlow.style.justifyContent = 'space-between';
+                        
+                        const spanText = document.createElement('span'); 
+                        spanText.innerHTML = renderText(visibleText); spanText.style.flex = '1';
+
+                        const btnNext = document.createElement('button');
+                        btnNext.className = 'tag-pill'; btnNext.style.border = 'none';
+                        btnNext.style.background = 'var(--bg)'; btnNext.style.color = 'var(--text)';
+                        btnNext.style.fontWeight = 'bold'; btnNext.innerHTML = '➡️ ' + (nextStepRaw.includes('✅') ? 'Fim' : 'Avançar');
+                        btnNext.style.marginLeft = '12px';
+
+                        btnNext.addEventListener('click', (e) => { e.stopPropagation(); triggerNextStep(nextStepRaw, bIndex); });
+
+                        pFlow.appendChild(spanText); pFlow.appendChild(btnNext);
+                        blockDiv.appendChild(pFlow); lineEls[bIndex] = pFlow; textToReadParts.push(visibleText);
+                        
+                    } else {
+                        const pNorm = document.createElement('div');
+                        pNorm.innerHTML = renderText(blockLine);
+                        blockDiv.appendChild(pNorm); lineEls[bIndex] = pNorm; textToReadParts.push(blockLine);
+                    }
+                });
+
+                // Clicar no bloco para ler (ignora se o clique for num checkbox)
+                blockDiv.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+                    const parts = textToReadParts.map(t => ({ text: t + ".", lang: voiceLangNormal, rate: currentVoiceSpeed }));
+                    // Truque mágico: usamos viewTitle como alvo para ele não destruir os botões do bloco enquanto ilumina
+                    handleSpeech(parts, viewTitle, viewTitle.innerHTML, 'main', false);
+                });
+
+                textContainer.appendChild(blockDiv);
+                i = j; processedSinceYield += blockLines.length; continue;
+            }
+        }       
         const p = document.createElement('div'); p.style.minHeight = '1.4em'; p.innerHTML = renderText(line);
         if (line.trim()){
           const currentIndex = i;
