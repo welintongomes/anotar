@@ -374,19 +374,12 @@
         </label>
 
         <label>O que você quer lembrar
-  <div style="display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
-  <button type="button" id="btnInsertCheckbox" class="tag-pill" style="border:none; cursor:pointer;">☑️ check [ ]</button>
-  <button type="button" id="btnInsertArrow" class="tag-pill" style="border:none; cursor:pointer;">➡️ fluxo >></button>
-  <button type="button" id="btnInsertDivider" class="tag-pill" style="border:none; cursor:pointer;">➖ separador</button>
-  <button type="button" id="btnInsertQuiz" class="tag-pill" style="border:none; cursor:pointer;">🧠 quiz</button>
-  <button type="button" id="btnInsertLink" class="tag-pill" style="border:none; cursor:pointer; background:#4FA8D8; color:#fff;">🔗 link</button>
-  <button type="button" id="btnInsertEnd" class="tag-pill" style="border:none; cursor:pointer; background:#D64545; color:#fff;">✅ Fim</button>
-</div>
-  <div class="textarea-wrap">
-    <textarea id="fieldContent" rows="5" placeholder="Explique com suas palavras: qual era o problema, o que resolveu, o passo a passo, onde fica a peça..."></textarea>
-    <button type="button" id="btnMicContent" class="icon-btn mic-btn" aria-label="Ditar em voz alta" title="Ditar em voz alta">🎤</button>
-  </div>
-</label>
+          <button type="button" id="btnOpenFormTools" class="btn-secondary" style="width: 100%; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; padding: 12px; font-weight: bold;"><span>🛠️ Inserir Elementos Especiais</span><span>🔽</span></button>
+          <div class="textarea-wrap">
+            <textarea id="fieldContent" rows="5" placeholder="Explique com suas palavras: qual era o problema, o que resolveu, o passo a passo, onde fica a peça..."></textarea>
+            <button type="button" id="btnMicContent" class="icon-btn mic-btn" aria-label="Ditar em voz alta" title="Ditar em voz alta">🎤</button>
+          </div>
+        </label>
         
         
         <label>Áudio (opcional)
@@ -640,104 +633,183 @@
     <!-- CONTEÚDO DO MANUAL -->
     <div class="modal-body" id="helpContentBody" style="overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: var(--bg);">
       
-      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="titulo categoria tag tags etiqueta favorito estrela subtitulo veiculo referencia especificacao valor organizar nova nota criar">
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="titulo categoria tag tags etiqueta favorito estrela subtitulo veiculo referencia especificacao valor organizar nova nota criar registro">
         <h3 style="color: #4FA65B; margin-bottom: 8px;">📝 Criando e Organizando Notas</h3>
         <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Toque no botão <b>+</b> para criar um registro novo.</p>
         <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
-          <li><b>Título Inteligente:</b> Se não preencher, o app cria um automático baseado no texto, foto ou áudio.</li>
-          <li><b>Subtítulo/Referência (📌):</b> Ideal para "Cliente X", "Projeto Y" ou Placa do veículo.</li>
-          <li><b>Palavras-chave (tags):</b> Use vírgulas para separar. Elas viram botões azuis na nota — toque em uma tag para filtrar todas as notas com ela.</li>
-          <li><b>⭐ Favoritos:</b> Notas marcadas com estrela sempre aparecem no topo da lista.</li>
-          <li><b>Visualização de Código:</b> Se salvar blocos de código de programação, clique em "💻 Código" para ler com formatação especial.</li>
+          <li><b>Título:</b> opcional! Se não preencher, o app cria um automático usando o começo do texto (ou "Foto rápida" / "Áudio rápido" quando não há texto).</li>
+          <li><b>Subtítulo/Referência:</b> ótimo para "Cliente X", "Projeto Site", nome do carro etc. Aparece com 📌 na hora de visualizar.</li>
+          <li><b>Valor/Especificação:</b> um campo de destaque para números importantes (torque, preço, medida).</li>
+          <li><b>Categoria:</b> escolha uma pronta ou crie a sua digitando um nome novo. A gaveta de Categorias (🏷️ na barra de baixo) mostra quantas notas tem em cada uma.</li>
+          <li><b>Palavras-chave (tags):</b> separadas por vírgula. Elas ficam clicáveis dentro da nota e na busca — tocar numa tag já filtra tudo que tem ela.</li>
+          <li><b>⭐ Favoritar:</b> fixa a nota sempre no topo da lista, na frente de todas as outras (também acessível pelo atalho ⭐ Favoritos na barra de baixo).</li>
+          <li><b>Editar / Duplicar / Excluir:</b> dentro da nota, embaixo, ao lado do botão Editar. Duplicar cria uma cópia nova (sem o progresso de quiz/orçamento/tempo da original).</li>
+          <li><b>Ordenar a lista:</b> em "Mais opções" (⋮) dá pra escolher Mais recentes, Mais consultados ou Ordem alfabética.</li>
         </ul>
       </div>
 
-      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="dinheiro valor cobrar orçamento financeiro peças zap mao de obra desconto porcentagem fechar enviar limpar">
-        <h3 style="color: #4FA65B; margin-bottom: 8px;">💸 Orçamentos e Checklists</h3>
-        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Crie listas marcando <code>[ ]</code> no início da linha.</p>
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="foto imagem camera zoom ampliar audio gravar microfone gravacao computador celular tocar reproduzir anexar arquivo">
+        <h3 style="color: #4FA8D8; margin-bottom: 8px;">📷 Fotos e 🎙️ Áudios</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Uma nota pode ter só foto, só áudio, só texto, ou os três juntos.</p>
         <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
-          <li><b>Com Valor:</b> Coloque o preço no fim da linha. Ex: <code>[ ] Trocar óleo 150</code>.</li>
-          <li><b>Painel de Orçamento (💰):</b> Um botão verde aparece sozinho no topo se houver valores. Ele abre a gaveta de fechamento.</li>
-          <li><b>Descontos:</b> Na gaveta, aplique descontos em <b>%</b> separados para Peças e Mão de Obra. O app lembra esse desconto se você sair e voltar.</li>
-          <li><b>WhatsApp / Copiar:</b> Gere uma mensagem profissional pronta com o resumo financeiro, peças e horas trabalhadas.</li>
+          <li><b>Foto:</b> anexe uma imagem — ela é comprimida automaticamente para não pesar. Toque na foto dentro da nota para ver em tela cheia (com zoom).</li>
+          <li><b>Gravar áudio:</b> o botão 🎙️ grava direto pelo microfone, funciona tanto no computador quanto no celular — toque de novo para parar. Ou, se preferir, anexe um arquivo de áudio já pronto pelo campo "Áudio (opcional)".</li>
+          <li><b>Prévia e remoção:</b> antes de salvar, dá pra ouvir/ver a prévia e remover a foto ou o áudio com um botão, se mudar de ideia.</li>
+          <li><b>📷 e 🎵:</b> esses ícones aparecem no card da lista sempre que a nota tiver foto ou áudio, mesmo sem abrir ela.</li>
         </ul>
       </div>
 
-      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="proximo passo seta fluxo finalizar final encerramento avançar guia">
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="dinheiro valor cobrar orçamento financeiro peças zap desconto mao de obra whatsapp copiar checklist tarefa">
+        <h3 style="color: #4FA65B; margin-bottom: 8px;">✅ Checklists e 💰 Orçamentos</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Crie listas marcando <code>[ ]</code> no início da linha (pode ter recuo/espaços antes, para organizar em níveis).</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Sem valor:</b> fica como um checklist simples de tarefas. O botão <b>🔄 Limpar</b> aparece na nota para desmarcar de uma vez só os itens sem preço.</li>
+          <li><b>Com valor:</b> coloque o número no fim da linha. Ex: <code>[ ] Trocar óleo 150</code>. Ao marcar, esse valor entra automaticamente no orçamento.</li>
+          <li><b>💰 Orçamento da nota:</b> quando a nota tem itens marcados com valor (ou tempo registrado pelo Speedrun), aparece o botão <b>💰 Orçamento</b> — ele abre um painel com o total de Peças, o total de Horas (se o Speedrun estiver medindo tempo e você tiver definido um valor/hora), campos de <b>desconto em %</b> separados para peças e para mão de obra, e o total final. Os descontos ficam salvos na própria nota.</li>
+          <li><b>Enviar esse orçamento:</b> dentro do painel, os botões <b>💸 WhatsApp</b> e <b>📋 Copiar</b> montam a mensagem pronta com os serviços, o tempo total e os valores (já com desconto aplicado).</li>
+          <li><b>Orçamento global:</b> em "Mais opções" (⋮) tem um resumo somando os itens com valor marcados em <i>todas</i> as notas, com botões para copiar, enviar por WhatsApp ou limpar (desmarcar) tudo de uma vez.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="proximo passo seta fluxo finalizar final encerramento fala avancar sem checkbox">
         <h3 style="color: #4FA8D8; margin-bottom: 8px;">➡️ Fluxos de Trabalho</h3>
-        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Transforme notas soltas em roteiros passo-a-passo.</p>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Crie guias passo-a-passo inteligentes, com ou sem checklist.</p>
         <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
-          <li><b>Próximo passo:</b> Use <code>>></code>. Ex: <code>[ ] Soltar capa >> Medir Tensão</code>. Ao marcar, o app acha "Medir Tensão" na nota, rola a tela e destaca em azul. (Pode usar também fora de checklists).</li>
-          <li><b>Fim do Fluxo:</b> Use <code>✅Fim</code> no lugar do próximo passo. O app avisa na tela que o serviço terminou e lê em voz alta!</li>
+          <li><b>Com checkbox:</b> use <code>>></code> depois do texto. Ex: <code>[ ] Soltar capa >> Medir Tensão</code>. Ao marcar, ele acha o texto "Medir Tensão" em outra linha, rola a tela até ele e brilha em azul.</li>
+          <li><b>Sem checkbox:</b> uma linha com <code>texto >> próximo passo</code> (sem <code>[ ]</code> na frente) vira uma linha com um botão <b>➡️ Avançar</b> ao lado — útil quando o passo não é algo pra "marcar", só pra seguir em frente.</li>
+          <li><b>Fim do Fluxo:</b> termine com <code>✅Fim</code>. Ex: <code>[ ] Testar ignição >> Trocar vela ✅Fim</code>. Mostra um aviso fixo na tela e lê em voz alta a instrução final, se a leitura estiver ligada.</li>
+          <li>Se o texto do próximo passo não bater 100% com nenhuma linha, o app tenta achar por aproximação; se mesmo assim não encontrar, avisa que sugeriu aquele passo mas não achou o texto.</li>
         </ul>
       </div>
 
-      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="tempo relógio speed run cronometro hora valor trabalhada pausa zerar recomeçar longo segurar dedao">
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="tempo relogio speed run cronometro hora valor trabalhada pausa zerar recomecar longo segurar cobrar por hora">
         <h3 style="color: #D6A035; margin-bottom: 8px;">⏱️ Modo Speedrun</h3>
-        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Meça o tempo de trabalho e cobre por hora automaticamente.</p>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Ative "⏱️ Modo Speedrun" nas configurações (⋮ → Mais opções) para medir o tempo gasto e, se quiser, cobrar por hora.</p>
         <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
-          <li><b>Ativação:</b> Ligue o "Modo Speedrun" em <b>Mais opções (⋮)</b> e defina seu Valor por Hora.</li>
-          <li><b>Como usar:</b> Toque no relógio no topo da nota para iniciar/pausar. Ao marcar um checklist <code>[x]</code>, o tempo exato daquela etapa é salvo, e o cronômetro reinicia limpo para o próximo passo.</li>
-          <li><b>Zerar Tudo:</b> Segure o dedo sobre o relógio por 1 segundo para limpar todo o tempo gravado no serviço.</li>
-          <li><b>Desmarcar:</b> Se errar e desmarcar um checklist, o tempo salvo nele é devolvido ao relógio principal na hora.</li>
+          <li><b>Iniciar/Pausar:</b> com o modo ativado, aparece um botão de relógio no topo da nota. Toque para começar a contar, toque de novo para pausar.</li>
+          <li><b>Zerar:</b> pressione e segure o botão do relógio por cerca de 1 segundo — ele pede confirmação antes de apagar o tempo (e os tempos já salvos nas etapas).</li>
+          <li><b>Registro por etapa:</b> toda vez que você marca um checkbox, o tempo corrido até ali é guardado para aquela etapa e o relógio reinicia para a próxima. Se desmarcar de novo, o tempo volta para o relógio geral.</li>
+          <li><b>💰 Valor por Hora:</b> defina nas configurações. O painel de 💰 Orçamento da nota usa o tempo total registrado × esse valor para calcular o custo de Mão de Obra (com desconto, se você configurar um).</li>
+          <li>O <code>✅Fim</code> de um fluxo pausa o relógio sozinho.</li>
         </ul>
       </div>
 
-      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="estudar aprender decorar perguntas respostas sm2 repetição inteligente quiz treino formar palavra múltipla escolha digitar nivel">
-        <h3 style="color: #D64545; margin-bottom: 8px;">🧠 Quiz e Treino Inteligente</h3>
-        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Estude idiomas ou crie memorandos técnicos (Sistema SM-2).</p>
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="estudar aprender decorar perguntas respostas sm2 repeticao espacada inteligente escolha formar digitar dificuldade automatica treinar mestria dominio">
+        <h3 style="color: #D64545; margin-bottom: 8px;">🧠 Quiz e Repetição Espaçada</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Ótimo para estudar idiomas, termos técnicos ou qualquer coisa que você precise decorar.</p>
         <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
-          <li><b>Montar Pergunta:</b> Comece com <code>?? Pergunta</code>, alternativas com <code>() Errada</code> e <code>(x) Certa</code>.</li>
-          <li><b>Modos de Jogo (🔤 ✏️ ✍️):</b> Depois de acertar a 1ª vez, escolha como quer ser testado: Múltipla Escolha, Formar Palavra (bloquinhos) ou Digitar a resposta limpa.</li>
-          <li><b>Dificuldade Automática:</b> O app escolhe o modo mais difícil conforme você prova que memorizou.</li>
-          <li><b>🎧 Treinar:</b> Um botão que varre a nota lendo apenas as perguntas e as respostas corretas em voz alta, ótimo para ouvir no fone.</li>
-        </ul>
-      </div>
-      
-      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="voz ler auto fala alto tela viva travar nao apagar iluminar ditar falar velocidade idioma">
-        <h3 style="color: #9AA0AB; margin-bottom: 8px;">🗣️ Voz, Leitura e Tela</h3>
-        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">O app fala com você e não deixa o celular apagar.</p>
-        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
-          <li><b>💡 Tela Viva:</b> Clique no botão no topo da nota para impedir que o celular hiberne durante o trabalho pesado com graxa nas mãos.</li>
-          <li><b>Leitura Dinâmica:</b> Clique no Título para ler a nota inteira, ou clique em parágrafos soltos para ler só aquele pedaço. O texto fica iluminado (Karaokê) acompanhando a voz.</li>
-          <li><b>Configurações (⋮):</b> Ajuste as velocidades da voz independentes, escolha sotaques (Inglês, Português, Espanhol) e ative a leitura automática do "Próximo passo".</li>
-          <li><b>🎤 Ditado por Voz:</b> Na lupa de busca ou criando uma nota, use o microfone para falar e o app digitar.</li>
+          <li><b>Criar a pergunta:</b> comece a linha com <code>??</code>. Nas linhas seguintes, use <code>()</code> para cada alternativa errada e <code>(x)</code> para a correta.</li>
+          <li><b>Três modos de responder:</b> 🔤 <b>Escolha</b> (múltipla escolha, o padrão), ✏️ <b>Formar</b> (monta a resposta juntando pedacinhos embaralhados) e ✍️ <b>Digitar</b> (escreve a resposta inteira, sem nenhuma dica). Depois de responder uma vez, aparecem botões para escolher qual modo usar na <i>próxima</i> tentativa daquela pergunta.</li>
+          <li><b>🎓 Dificuldade automática:</b> ligue em "Mais opções" para o app subir sozinho de Escolha → Formar → Digitar conforme você acerta e o intervalo de revisão cresce.</li>
+          <li><b>🎧 Treinar:</b> botão que lê em voz alta só as perguntas e as respostas certas da nota, sem precisar responder — bom para revisar ouvindo.</li>
+          <li><b>🔄 Refazer quiz:</b> apaga o progresso do quiz <i>dessa nota</i> e começa do zero.</li>
+          <li><b>🧠 Domínio (%):</b> barra que mostra o quanto você já sabe, calculada pelo sistema SM-2 sobre as perguntas já respondidas. Também mostra quantas estão vencidas (⏰, hora de revisar) e quantas nunca foram respondidas.</li>
+          <li><b>Visão geral:</b> em "Mais opções" (⋮) o app mostra quantas perguntas de quiz estão vencidas ou são novas, somando todas as notas.</li>
         </ul>
       </div>
 
-      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="links urls internet paginas sites nota notas internas externo colchetes ocultar nome abrir web">
-        <h3 style="color: #8B6FD1; margin-bottom: 8px;">🌐 Links entre Notas e Sites</h3>
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="voz ler auto fala alto pausar retomar destacar clicar titulo paragrafo bloco karaoke">
+        <h3 style="color: #9AA0AB; margin-bottom: 8px;">🗣️ Leitura em Voz Alta</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">O celular/computador lê a nota para você, destacando em amarelo/dourado o trecho que está sendo lido.</p>
         <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
-          <li><b>Link Interno (🔗):</b> Envolva o título exato de outra nota com dois colchetes <code>[[Motor AP]]</code>. Clicar te leva para lá, e você pode usar a seta de "Voltar" (⬅️) no topo para regressar.</li>
-          <li><b>Link Externo Personalizado (🌐):</b> Colchetes pro nome, parênteses pro link. Ex: <code>[Guia G1](www.g1.com.br)</code>.</li>
-          <li><b>Links Soltos:</b> Só colar `www.google.com` que ele vira botão.</li>
+          <li><b>Ler tudo:</b> toque no <b>título</b> da nota. Ele lê título, subtítulo, valor/especificação e o conteúdo inteiro, pulando separadores e lendo perguntas/respostas de quiz de forma organizada.</li>
+          <li><b>Ler só um trecho:</b> toque em qualquer parágrafo, linha de checklist ou linha de fluxo para ouvir só aquele pedaço. Um bloco de texto recuado (várias linhas com o mesmo espaçamento) é lido de uma vez, como um parágrafo só.</li>
+          <li><b>Pausar/retomar:</b> toque de novo no mesmo título/trecho que está sendo lido para pausar; toque outra vez para continuar de onde parou.</li>
+          <li>Precisa que "🔊 Permitir Leitura de Voz" esteja ligado nas configurações.</li>
         </ul>
       </div>
 
-      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="buscar procurar pesquisar acento sem acentos ortografia tags clique dentro da nota anterior proximo resultado">
-        <h3 style="color: #D6A035; margin-bottom: 8px;">🔍 Busca Dupla</h3>
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="configuracoes velocidade idioma ingles espanhol frances alemao italiano portugues alternativas pergunta normal aviso toast duracao">
+        <h3 style="color: #4FA8D8; margin-bottom: 8px;">⚙️ Configurações de Voz e Idioma</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Tudo isso fica em "Mais opções" (⋮), e vale para qualquer leitura em voz alta do app.</p>
         <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
-          <li><b>Busca Principal (Lupa inferior):</b> É tolerante a erros e falta de acento ("oleo" acha "óleo"). Ignora palavras vazias ("de", "para") e foca no importante. Notas com <b>🎯 %</b> mostram a força da combinação.</li>
-          <li><b>Busca Interna (Dentro da nota):</b> Na barra fixa inferior (perto de Editar/Excluir). Destaca tudo em amarelo e pula com as setinhas 🔼 🔽.</li>
+          <li><b>Velocidades separadas:</b> um controle para a velocidade da leitura normal/pergunta, e outro só para as alternativas do quiz.</li>
+          <li><b>Idiomas separados:</b> dá pra escolher (entre Português, Inglês, Espanhol, Francês, Alemão e Italiano) o idioma da <b>pergunta</b> do quiz, o das <b>alternativas</b> e o do <b>texto normal</b> — útil se você está aprendendo outro idioma e quer, por exemplo, ouvir a pergunta em português e a resposta em inglês.</li>
+          <li><b>🗣️ Ler também as alternativas:</b> liga/desliga se as opções de múltipla escolha são lidas junto com a pergunta.</li>
+          <li><b>🔁 Ler a próxima pergunta automaticamente:</b> depois de responder um quiz, ele já lê a próxima pergunta pendente sozinho.</li>
+          <li><b>➡️ Ler em voz alta o próximo passo do fluxo:</b> quando você marca um passo com <code>>></code>, ele fala qual é o próximo passo, sem precisar olhar a tela.</li>
+          <li><b>⏱️ Tempo do Aviso na tela:</b> controla por quantos segundos os avisos (toasts) ficam visíveis antes de sumirem sozinhos.</li>
         </ul>
       </div>
 
-      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="foto imagem camera zoom ampliar audio gravar microfone gravacao computador celular tocar reproduzir anexo arquivo">
-        <h3 style="color: #4FA8D8; margin-bottom: 8px;">📷 Mídias e ➖ Separadores</h3>
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="tela viva travar nao apagar celular ligado wake lock">
+        <h3 style="color: #D6A035; margin-bottom: 8px;">💡 Tela Sempre Ligada</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Para quando você está com as mãos ocupadas e não quer que o celular apague a tela sozinho.</p>
         <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
-          <li><b>Fotos:</b> São compactadas antes de salvar para não explodir a memória. Toque para ver tela cheia com zoom. Notas com foto ganham ícone 📷 na lista.</li>
-          <li><b>Áudios (🎙️):</b> Grave pelo botão nativo do microfone ou anexe um MP3. Ganham ícone 🎵 na lista.</li>
-          <li><b>Separadores:</b> Numa linha em branco, digite <code>----</code>, <code>====</code> ou <code>####</code>. O app troca por uma linha visual cortando a tela.</li>
+          <li>Dentro de uma nota, toque no botão <b>💡 Tela Viva</b> no topo. Ele muda para <b>☀️ Tela Travada</b> enquanto estiver ativo.</li>
+          <li>Toque de novo para liberar a tela a apagar normalmente. Fechar a nota também libera automaticamente.</li>
+          <li>Disponível apenas em navegadores compatíveis com essa função.</li>
         </ul>
       </div>
 
-      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="backup exportar importar cartucho salvar perder dados navegador celular trocar formatar mesclar substituir nuvem pendrive arquivo json">
-        <h3 style="color: #9AA0AB; margin-bottom: 8px;">💾 Cartuchos (Backup e Importação)</h3>
-        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">O app roda offline! Se formatar o aparelho sem exportar, tudo será perdido.</p>
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="links urls internet paginas sites nota notas internas externo colchetes nome voltar historico">
+        <h3 style="color: #8B6FD1; margin-bottom: 8px;">🌐 Links e Referências</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Como conectar suas anotações entre si e a sites externos.</p>
         <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
-          <li><b>Criar Cartucho:</b> Em <b>Mais opções (⋮)</b>, toque em Exportar. Escolha quais categorias quer colocar no pacote (.json) e dê um nome. Guarde na nuvem ou e-mail.</li>
-          <li><b>Importar - Mesclar (➕):</b> Soma as notas do arquivo junto com as que você já tem salvas.</li>
-          <li><b>Importar - Substituir Tudo (⚠️):</b> Formata o seu app inteiro, limpa o banco de dados e coloca estritamente o que está no arquivo.</li>
+          <li><b>Link Interno (🔗):</b> envolva com dois colchetes <code>[[Nome da Nota]]</code>. Ao clicar, abre a outra anotação na hora — e um botão ⬅️ aparece para voltar de onde você veio.</li>
+          <li><b>Link Externo Personalizado (🌐):</b> colchete no nome, parênteses no link. Ex: <code>[Manual Honda](www.honda.com/manual)</code>.</li>
+          <li><b>Link Externo Simples:</b> só digitar o link (com ou sem "www.") que ele já vira um botão clicável automático.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="buscar procurar pesquisar acento sem acentos ortografia tags clique dentro da nota anterior proximo resultado relevancia porcentagem">
+        <h3 style="color: #D6A035; margin-bottom: 8px;">🔍 Busca Inteligente</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">A busca principal (🔍 na barra de baixo) olha título, categoria, tags, subtítulo, valor e o texto inteiro ao mesmo tempo.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Não precisa acentuar certo:</b> buscar "oleo" acha "óleo" e vice-versa.</li>
+          <li><b>Frase exata primeiro:</b> se você digitar várias palavras juntas, notas que têm essa frase inteira aparecem no topo.</li>
+          <li><b>🎯 Relevância:</b> cada resultado mostra uma porcentagem comparando com o melhor resultado daquela busca.</li>
+          <li><b>Buscar por tag:</b> toque em qualquer <code>#tag</code> dentro de uma nota ou card para já filtrar todas as outras notas com aquela tag.</li>
+          <li><b>Buscar dentro da nota aberta:</b> a lupa que aparece embaixo, colada nos botões Editar/Duplicar/Excluir, procura só ali dentro, com contador e botões 🔼🔽 para pular entre um resultado e o próximo.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="ditar falar digitar sem teclado voz para texto transcrever transcricao microfone busca anotacao">
+        <h3 style="color: #8B6FD1; margin-bottom: 8px;">🎤 Ditado por Voz</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Não confunda com a leitura em voz — esse aqui é o contrário: fala vira texto.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li>O botão 🎤 aparece tanto na busca quanto no campo de anotação.</li>
+          <li>Na busca, ele substitui o texto pelo que você falou. No campo de anotação, ele vai <b>acrescentando</b> ao que já está escrito — pode ditar em várias partes.</li>
+          <li>O reconhecimento usa o idioma configurado em "Idioma do Texto Normal", nas configurações de voz.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="separar linha dividir organizar visual traco risco bloco secao horizontal">
+        <h3 style="color: #D64545; margin-bottom: 8px;">➖ Separadores Visuais</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Para notas longas com vários diagnósticos ou etapas diferentes.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li>Digite uma linha só com <code>----</code>, <code>====</code>, <code>####</code> ou <code>****</code> (não importa qual dos quatro, nem quantos repetidos, desde que não misture símbolos diferentes na mesma linha) e ela vira uma linha divisória de verdade na tela — sempre do mesmo tamanho, celular ou computador.</li>
+          <li>É opcional: use só onde fizer sentido separar um bloco de outro.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="categorias favoritos ordenar recentes consultados alfabetica todos filtro">
+        <h3 style="color: #4FA65B; margin-bottom: 8px;">🏷️ Categorias, ⭐ Favoritos e Ordenação</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Formas de organizar e filtrar a lista de notas, pela barra de baixo.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>🏷️ Categorias:</b> mostra "Todos" mais as categorias que você já usou (prontas e criadas por você), cada uma com a contagem de notas.</li>
+          <li><b>⭐ Favoritos:</b> mostra só as notas marcadas como favoritas, além de fixá-las sempre no topo da lista normal.</li>
+          <li><b>Ordenar:</b> em "Mais opções" (⋮), escolha Mais recentes, Mais consultados (quantas vezes você abriu) ou Ordem alfabética.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="backup exportar importar cartucho salvar perder dados navegador celular trocar formatar mesclar substituir categorias nome">
+        <h3 style="color: #9AA0AB; margin-bottom: 8px;">💾 Backup e Cartuchos</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Seus dados ficam só neste navegador/aparelho — se formatar ou trocar de celular, perde tudo sem backup.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>Criar Cartucho:</b> em "Mais opções" (⋮) → ⬇️ Exportar backup. Dê um nome (opcional) e escolha quais categorias exportar — pode ser tudo, ou só um pedaço (ex: só "Procedimento"). Gera um arquivo <code>.json</code> com fotos e áudios incluídos.</li>
+          <li><b>Plugar Cartucho:</b> ao importar um arquivo, escolha <b>➕ Apenas Mesclar</b> (adiciona ao que já existe) ou <b>⚠️ Substituir Tudo</b> (apaga tudo e usa só o cartucho — cuidado, isso não tem volta).</li>
+          <li>O progresso de quiz, os tempos de Speedrun e os descontos de orçamento salvos em cada nota também são preservados no cartucho.</li>
+          <li>Guarde o arquivo em algum lugar seguro: e-mail, nuvem, pendrive.</li>
+        </ul>
+      </div>
+
+      <div class="help-section" style="background: var(--panel-2); padding: 14px; border-radius: 8px;" data-keywords="atalhos botoes flutuantes engrenagem lampada rapido manual">
+        <h3 style="color: #D6A035; margin-bottom: 8px;">⚙️ Atalhos Rápidos</h3>
+        <p style="font-size: 14px; opacity: 0.9; margin-bottom: 6px;">Dois botões flutuantes no topo da tela, sempre à mão.</p>
+        <ul style="font-size: 14px; padding-left: 20px; opacity: 0.9;">
+          <li><b>⚙️ Configurações Rápidas:</b> atalho direto para a gaveta "Mais opções" (o mesmo botão ⋮ da barra de baixo).</li>
+          <li><b>💡 Manual de Uso:</b> abre este guia. Use a busca no rodapé dele para filtrar rapidinho pelo que você quer aprender.</li>
         </ul>
       </div>
     </div>
@@ -752,6 +824,36 @@
 <!-- ========================================== -->
 <!-- FIM DA MUDANÇA: GUIA DE USO -->
 <!-- ========================================== -->
+ <!-- Gaveta: Ferramentas de Inserção (Formulário) -->
+<div id="sheetFormTools" class="modal-overlay" style="z-index: 100010;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>🛠️ Inserir no Texto</h2>
+      <button class="icon-btn" id="btnCloseFormTools" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <button type="button" id="btnInsertCheckbox" class="btn-secondary" style="padding:14px; font-size:15px; border: 1px solid var(--smoke);">☑️ Check [ ]</button>
+      <button type="button" id="btnInsertArrow" class="btn-secondary" style="padding:14px; font-size:15px; border: 1px solid var(--smoke);">➡️ Fluxo >></button>
+      <button type="button" id="btnInsertDivider" class="btn-secondary" style="padding:14px; font-size:15px; border: 1px solid var(--smoke);">➖ Separador</button>
+      <button type="button" id="btnInsertQuiz" class="btn-secondary" style="padding:14px; font-size:15px; border: 1px solid var(--smoke);">🧠 Quiz</button>
+      <button type="button" id="btnInsertLink" class="btn-primary" style="background:#4FA8D8; border:none; padding:14px; font-size:15px;">🔗 Link</button>
+      <button type="button" id="btnInsertEnd" class="btn-primary" style="background:#D64545; border:none; padding:14px; font-size:15px;">✅ Fim</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gaveta: Ferramentas da Nota (Visualização) -->
+<div id="sheetViewTools" class="modal-overlay" style="z-index: 100010;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>⚡ Ações e Ferramentas</h2>
+      <button class="icon-btn" id="btnCloseViewTools" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body" id="viewToolsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+      <!-- O JS vai injetar o Speedrun, Orçamento, Código e Copiar aqui dentro! -->
+    </div>
+  </div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -941,6 +1043,15 @@ const btnInsertDivider = document.getElementById('btnInsertDivider');
 const btnInsertQuiz = document.getElementById('btnInsertQuiz');
 const btnInsertLink = document.getElementById('btnInsertLink');
 const btnInsertEnd = document.getElementById('btnInsertEnd');
+
+// balões para nao poluir a tela
+const btnOpenFormTools = document.getElementById('btnOpenFormTools');
+const sheetFormTools = document.getElementById('sheetFormTools');
+const btnCloseFormTools = document.getElementById('btnCloseFormTools');
+
+const sheetViewTools = document.getElementById('sheetViewTools');
+const btnCloseViewTools = document.getElementById('btnCloseViewTools');
+
 const btnBackView = document.getElementById('btnBackView');
 let viewHistory = []; 
 const quizDueText = document.getElementById('quizDueText');
@@ -1549,29 +1660,17 @@ async function clearAllBudgetCheckboxes(){
   for (const id of affectedIds){
     const full = await dbGet(id);
     if (!full || !full.content) continue;
-    let modifiedLog = false;
-    const lines = full.content.split('\n').map((line, idx) => {
+    const lines = full.content.split('\n').map(line => {
       const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return line;
       const visible = stripFlowSuffix(m[2]);
       const nums = visible.match(/\d+(?:[.,]\d+)?/g);
       const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
-      if (hasPrice) {
-        if (full.speedrunLog && full.speedrunLog[idx] !== undefined) {
-          delete full.speedrunLog[idx];
-          modifiedLog = true;
-        }
-        return m[1] + '[ ]' + m[2];
-      }
-      return line;
+      return hasPrice ? (m[1] + '[ ]' + m[2]) : line;
     });
     full.content = lines.join('\n'); full.updatedAt = Date.now();
     await dbPut(full);
     const ram = allItems.find(i => i.id === id);
-    if (ram){ 
-      ram.content = full.content; 
-      ram.updatedAt = full.updatedAt; 
-      if (modifiedLog) ram.speedrunLog = full.speedrunLog; 
-    }
+    if (ram){ ram.content = full.content; ram.updatedAt = full.updatedAt; }
   }
   return affectedIds;
 }
@@ -2372,16 +2471,12 @@ let expandirTextoCompleto = null;
     }
     const btnResetPlain = document.createElement('button'); btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none'; btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff'; btnResetPlain.innerHTML = '🔄 Limpar'; btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
     toolbar.appendChild(btnResetPlain);
-btnResetPlain.addEventListener('click', async () => {
+    btnResetPlain.addEventListener('click', async () => {
       if (!confirm('Desmarcar os itens sem valor nesta nota?')) return;
-      const lines = item.content.split('\n').map((line, idx) => {
+      const lines = item.content.split('\n').map(line => {
         const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return line;
         const visible = stripFlowSuffix(m[2]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
         const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
-        if (!hasPrice) {
-           if(item.speedrunLog && item.speedrunLog[idx] !== undefined) delete item.speedrunLog[idx];
-           return m[1] + '[ ]' + m[2];
-        }
         return hasPrice ? line : (m[1] + '[ ]' + m[2]);
       });
       item.content = lines.join('\n'); item.updatedAt = Date.now(); await dbPut(item);
@@ -2506,6 +2601,115 @@ btnResetPlain.addEventListener('click', async () => {
         const m = l.match(/^\[[ xX]?\](.*)/); const raw = m ? m[1] : l; return normalize(stripFlowSuffix(raw));
       });
       const lineEls = [];
+    // ===== CÉREBRO DO DIAGNÓSTICO (SILENCIOSO) =====
+    const targetMap = new Array(lines.length).fill(-1);
+    const hasOutgoing = new Array(lines.length).fill(false);
+    const isTargeted = new Array(lines.length).fill(false);
+    const isFlowConnected = new Array(lines.length).fill(false);
+
+    // 1. Lê o futuro: quem aponta pra quem?
+    lines.forEach((line, idx) => {
+      const arrowIdx = line.indexOf('>>');
+      
+      if (line.includes('✅Fim') || line.includes('✅ Fim')) {
+          isFlowConnected[idx] = true;
+      }
+
+      if (arrowIdx !== -1 && !line.match(/^\?\?/)) {
+        const nextStepRaw = line.slice(arrowIdx + 2).trim();
+        hasOutgoing[idx] = true;
+        isFlowConnected[idx] = true;
+
+        if (!nextStepRaw.includes('✅Fim') && !nextStepRaw.includes('✅ Fim')) {
+          const targetNorm = normalize(nextStepRaw).trim();
+          let bestIdx = -1; let highestScore = 0;
+          lineSearchNorm.forEach((t, tidx) => {
+            if (tidx === idx || !t) return;
+            const textLine = t.trim(); let score = 0;
+            if (textLine === targetNorm) score = 100;
+            else if (textLine.startsWith(targetNorm + ' ') || textLine.endsWith(' ' + targetNorm) || textLine.includes(' ' + targetNorm + ' ')) score = 80 - (textLine.length * 0.1);
+            else if (textLine.includes(targetNorm)) score = 50 - (textLine.length * 0.1);
+            if (score > highestScore) { highestScore = score; bestIdx = tidx; }
+          });
+          if (bestIdx !== -1) {
+              targetMap[idx] = bestIdx;
+              isTargeted[bestIdx] = true;
+              isFlowConnected[bestIdx] = true;
+          }
+        }
+      }
+    });
+
+    const dist = new Array(lines.length).fill(Infinity);
+    
+    // 2. Apenas itens do clube do fluxo podem ser marcados como o "Fim"
+    lines.forEach((line, idx) => { 
+        if (isFlowConnected[idx]) {
+            if (line.includes('✅Fim') || line.includes('✅ Fim') || !hasOutgoing[idx] || (hasOutgoing[idx] && targetMap[idx] === -1)) {
+                dist[idx] = 0; 
+            }
+        }
+    });
+
+    // 3. Calcula a distância matemática exata!
+    for (let iter = 0; iter < lines.length; iter++) {
+      let changed = false;
+      for (let i = 0; i < lines.length; i++) {
+        let target = targetMap[i];
+        if (target !== -1 && dist[target] !== Infinity) {
+          if (dist[target] + 1 < dist[i]) { dist[i] = dist[target] + 1; changed = true; }
+        }
+      }
+      if (!changed) break;
+    }
+
+    let validDistances = dist.filter(d => d !== Infinity);
+    let maxDist = validDistances.length > 0 ? Math.max(...validDistances) : 1;
+    if (maxDist === 0) maxDist = 1; 
+
+    // 4. As funções de Pintar/Apagar (Blindadas)
+    const revealDiagnosticProgress = (el, lineIndex) => {
+      // REGRA DE OURO: Se a linha não faz parte do esquema investigativo, NÃO PINTA NADA.
+      if (!isFlowConnected[lineIndex]) return;
+
+      let d = dist[lineIndex];
+      let pct = 15; // Padrão para itens presos em loops sem saída real
+
+      if (d !== Infinity) {
+          pct = Math.round(100 - ((d / maxDist) * 100));
+          if (pct <= 0) pct = 15;
+          if (d === 0) pct = 100;
+      }
+
+      let color = 'rgba(214, 69, 69, 0.15)'; 
+      if (pct >= 40) color = 'rgba(214, 160, 53, 0.2)'; 
+      if (pct >= 80) color = 'rgba(79, 166, 91, 0.25)'; 
+
+      el.style.transition = 'background 0.5s ease-out';
+      el.style.background = `linear-gradient(90deg, ${color} ${pct}%, transparent ${pct}%)`;
+      el.style.borderRadius = '6px';
+      el.style.padding = '6px 8px';
+      
+      let badge = el.querySelector('.diag-pct');
+      if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'diag-pct tag-pill';
+          badge.style.border = 'none'; badge.style.background = 'var(--panel-2)';
+          badge.style.fontSize = '0.8em'; badge.style.marginLeft = '8px';
+          
+          // Insere antes do botão de "Avançar" se ele existir
+          const btn = el.querySelector('button');
+          if (btn) el.insertBefore(badge, btn); else el.appendChild(badge);
+      }
+      badge.textContent = `🎯 ${pct}%`;
+    };
+
+    const hideDiagnosticProgress = (el) => {
+        el.style.background = ''; el.style.padding = '';
+        const badge = el.querySelector('.diag-pct'); if (badge) badge.remove();
+    };
+    // ===============================================
+    // ===== FIM DO RADAR =====
       // MUDANÇA: Função central para engatilhar o próximo passo
       const triggerNextStep = (nextStepRaw, currentIndex) => {
           if (nextStepRaw.includes('✅Fim') || nextStepRaw.includes('✅ Fim')) {
@@ -2555,10 +2759,12 @@ btnResetPlain.addEventListener('click', async () => {
           const foundIdx = bestIdx;
           
           if (foundIdx !== -1 && lineEls[foundIdx]){
-              const el = lineEls[foundIdx]; el.scrollIntoView({ behavior:'smooth', block:'center' });
-              const oldBg = el.style.background, oldRadius = el.style.borderRadius;
-              el.style.transition = 'background 0.3s'; el.style.background = '#4FA8D8'; el.style.borderRadius = '6px'; el.style.padding = '6px';
-              setTimeout(() => { el.style.background = oldBg; el.style.borderRadius = oldRadius; }, 2200);
+              const el = lineEls[foundIdx]; 
+              el.scrollIntoView({ behavior:'smooth', block:'center' });
+              
+              // REVELA O DIAGNÓSTICO NA LINHA DE DESTINO
+              revealDiagnosticProgress(el, foundIdx);
+              
               showToast('➡️ Próximo passo: ' + nextStepRaw);
               if (isAudioEnabled && readNextStep && 'speechSynthesis' in window) {
                   if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
@@ -2880,38 +3086,50 @@ btnResetPlain.addEventListener('click', async () => {
             if (nextStepRaw){
                 const hint = document.createElement('span'); hint.textContent = ' ➡️'; hint.title = 'Se marcar: sugere "' + nextStepRaw + '"'; hint.style.opacity = '0.55'; hint.style.fontSize = '0.85em'; label.appendChild(hint);
             }
-            textContainer.appendChild(label); const currentIndex = i; lineEls[currentIndex] = label;
+            
+            // PRIMEIRO cria a variável, DEPOIS usa ela
+            const currentIndex = i; 
+            
+
+            textContainer.appendChild(label); 
+            lineEls[currentIndex] = label;
 
             cb.addEventListener('change', async () => {
                 span.style.textDecoration = cb.checked ? 'line-through' : 'none'; span.style.opacity = cb.checked ? '0.6' : '1';
                 const marker = cb.checked ? '[x]' : '[ ]'; const freshLines = item.content.split('\n');
                 
-                // Mantém os espaços originais aqui também
                 freshLines[currentIndex] = freshLines[currentIndex].replace(/^([ \t]*)\[[ xX]?\]/, '$1' + marker);
                 item.content = freshLines.join('\n'); 
                 
+                // MUDANÇA AQUI: Pintar ou apagar o fundo do diagnóstico
                 if (cb.checked) {
+                    revealDiagnosticProgress(label, currentIndex); // Pinta a linha
+                    
+                    // Lógica do Speedrun
                     if (item.speedrunActive || item.speedrunAccumulated > 0) {
                         if (!item.speedrunLog) item.speedrunLog = {};
-                        // Calcula o tempo caso esteja rodando ou pausado
                         const elapsed = item.speedrunActive 
                             ? (Date.now() - item.speedrunLastSplit) + (item.speedrunAccumulated || 0)
                             : (item.speedrunAccumulated || 0);
                         
                         item.speedrunLog[currentIndex] = elapsed;
                         
-                        // Só atualiza o split se o relógio não estiver pausado
                         if (item.speedrunActive) {
                             item.speedrunLastSplit = Date.now();
                         }
                         item.speedrunAccumulated = 0;
                         showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
                     }
-                } else if (!cb.checked && item.speedrunLog && item.speedrunLog[currentIndex] !== undefined) {
-                    const returnedTime = item.speedrunLog[currentIndex];
-                    item.speedrunAccumulated = (item.speedrunAccumulated || 0) + returnedTime;
-                    delete item.speedrunLog[currentIndex];
-                    showToast(`⏱️ Tempo devolvido ao relógio: ${formatTimeMs(returnedTime)}`, false);
+                } else if (!cb.checked) {
+                    hideDiagnosticProgress(label); // Apaga a tinta da linha
+
+                    // Lógica de devolução do Speedrun
+                    if (item.speedrunLog && item.speedrunLog[currentIndex] !== undefined) {
+                        const returnedTime = item.speedrunLog[currentIndex];
+                        item.speedrunAccumulated = (item.speedrunAccumulated || 0) + returnedTime;
+                        delete item.speedrunLog[currentIndex];
+                        showToast(`⏱️ Tempo devolvido ao relógio: ${formatTimeMs(returnedTime)}`, false);
+                    }
                 }
 
                 item.updatedAt = Date.now(); await dbPut(item);
@@ -2920,9 +3138,10 @@ btnResetPlain.addEventListener('click', async () => {
                     ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; 
                     ramItem.speedrunLog = item.speedrunLog;
                 }
-                                
-                if (typeof btnResetPlain !== 'undefined') btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
-                if (typeof btnToggleBudget !== 'undefined') btnToggleBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
+                                                
+                if (typeof btnResetPlain !== 'undefined') btnResetPlain.style.display = hasPlainChecklistNow() ? 'block' : 'none';
+                if (typeof btnToggleBudget !== 'undefined') btnToggleBudget.style.display = hasPricedBudgetNow() ? 'block' : 'none';
+                
                 renderCards();
                 
                 if (typeof updateBudgetPanel === 'function') {
@@ -2935,7 +3154,7 @@ btnResetPlain.addEventListener('click', async () => {
             i++; processedSinceYield++; continue;
         }
 
-        const trimmed = line.trim(); const isDivider = /^(.)\1{2,}$/.test(trimmed) && /^[-=#*]+$/.test(trimmed);
+        const trimmed = line.trim(); const isDivider = isDividerLine(trimmed);
         if (isDivider){
           const hr = document.createElement('hr'); hr.style.border = 'none'; hr.style.borderTop = '2px dashed var(--smoke, #9AA0AB)'; hr.style.margin = '14px 0';
           textContainer.appendChild(hr); lineEls[i] = hr; i++; processedSinceYield++; continue;
@@ -2979,6 +3198,8 @@ btnResetPlain.addEventListener('click', async () => {
             btnNext.addEventListener('click', () => { triggerNextStep(nextStepRaw, cIndex); });
 
             pFlow.appendChild(spanText); pFlow.appendChild(btnNext);
+            //AQUI: Pinta o fluxo solto
+            
             textContainer.appendChild(pFlow); lineEls[i] = pFlow;
             i++; processedSinceYield++; continue;
         }
@@ -2996,7 +3217,7 @@ btnResetPlain.addEventListener('click', async () => {
                 
                 if (nextIndentMatch && nextIndentMatch[1] === indent && nextIndentMatch[2].trim() !== '') {
                     // Agrupa tudo que não for quiz e divisória (permite checkboxes e fluxos)
-                    if (!nextLine.match(/^\?\?/) && !nextLine.match(/^\(/) && !/^(.)\1{2,}$/.test(nextLine.trim())) {
+                    if (!nextLine.match(/^\?\?/) && !nextLine.match(/^\(/) && !isDividerLine(nextLine.trim())) {
                         blockLines.push({ text: nextLine, originalIndex: j });
                         j++;
                     } else { break; }
@@ -3047,6 +3268,7 @@ btnResetPlain.addEventListener('click', async () => {
                         if (nextStepRaw){
                             const hint = document.createElement('span'); hint.textContent = ' ➡️'; hint.title = 'Se marcar: sugere "' + nextStepRaw + '"'; hint.style.opacity = '0.55'; hint.style.fontSize = '0.85em'; label.appendChild(hint);
                         }
+                        //AQUI: Pinta o bloco a primeira vez
                         
                         cb.addEventListener('change', async () => {
                             span.style.textDecoration = cb.checked ? 'line-through' : 'none'; span.style.opacity = cb.checked ? '0.6' : '1';
@@ -3055,7 +3277,10 @@ btnResetPlain.addEventListener('click', async () => {
                             freshLines[bIndex] = freshLines[bIndex].replace(/^([ \t]*)\[[ xX]?\]/, '$1' + marker);
                             item.content = freshLines.join('\n'); 
                             
+                            // MUDANÇA AQUI: Pintar ou apagar o fundo do diagnóstico
                             if (cb.checked) {
+                                revealDiagnosticProgress(label, bIndex); // Pinta a linha
+
                                 if (item.speedrunActive || item.speedrunAccumulated > 0) {
                                     if (!item.speedrunLog) item.speedrunLog = {};
                                     const elapsed = item.speedrunActive 
@@ -3070,11 +3295,15 @@ btnResetPlain.addEventListener('click', async () => {
                                     item.speedrunAccumulated = 0;
                                     showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
                                 }
-                            } else if (!cb.checked && item.speedrunLog && item.speedrunLog[bIndex] !== undefined) {
-                                const returnedTime = item.speedrunLog[bIndex];
-                                item.speedrunAccumulated = (item.speedrunAccumulated || 0) + returnedTime;
-                                delete item.speedrunLog[bIndex];
-                                showToast(`⏱️ Tempo devolvido ao relógio: ${formatTimeMs(returnedTime)}`, false);
+                            } else if (!cb.checked) {
+                                hideDiagnosticProgress(label); // Apaga a tinta da linha
+
+                                if (item.speedrunLog && item.speedrunLog[bIndex] !== undefined) {
+                                    const returnedTime = item.speedrunLog[bIndex];
+                                    item.speedrunAccumulated = (item.speedrunAccumulated || 0) + returnedTime;
+                                    delete item.speedrunLog[bIndex];
+                                    showToast(`⏱️ Tempo devolvido ao relógio: ${formatTimeMs(returnedTime)}`, false);
+                                }
                             }
 
                             item.updatedAt = Date.now(); await dbPut(item);
@@ -3083,9 +3312,9 @@ btnResetPlain.addEventListener('click', async () => {
                                 ramItem.content = item.content; ramItem.updatedAt = item.updatedAt; 
                                 ramItem.speedrunLog = item.speedrunLog;
                             }
-                                            
-                            if (typeof btnResetPlain !== 'undefined') btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
-                            if (typeof btnToggleBudget !== 'undefined') btnToggleBudget.style.display = hasPricedBudgetNow() ? 'inline-flex' : 'none';
+                                                            
+                            if (typeof btnResetPlain !== 'undefined') btnResetPlain.style.display = hasPlainChecklistNow() ? 'block' : 'none';
+                            if (typeof btnToggleBudget !== 'undefined') btnToggleBudget.style.display = hasPricedBudgetNow() ? 'block' : 'none';
                             
                             renderCards();
                             
@@ -3119,6 +3348,8 @@ btnResetPlain.addEventListener('click', async () => {
                         btnNext.addEventListener('click', (e) => { e.stopPropagation(); triggerNextStep(nextStepRaw, bIndex); });
 
                         pFlow.appendChild(spanText); pFlow.appendChild(btnNext);
+                        //AQUI: Pinta o fluxo de bloco
+                        
                         blockDiv.appendChild(pFlow); lineEls[bIndex] = pFlow; textToReadParts.push(visibleText);
                         
                     } else {
@@ -3346,21 +3577,31 @@ function setupEventListeners(){
   btnMic.addEventListener('click', () => startVoiceInput(searchInput, btnMic, false));
   btnMicContent.addEventListener('click', () => startVoiceInput(fieldContent, btnMicContent, true));
   
+  // botões para abrir o balão de opçoes no lugar dos tagpills
+  btnOpenFormTools.addEventListener('click', () => openSheet(sheetFormTools));
+  btnCloseFormTools.addEventListener('click', () => closeSheetEl(sheetFormTools));
+  sheetFormTools.addEventListener('click', (e) => { if (e.target === sheetFormTools) closeSheetEl(sheetFormTools); });
+
+  btnCloseViewTools.addEventListener('click', () => closeSheetEl(sheetViewTools));
+  sheetViewTools.addEventListener('click', (e) => { if (e.target === sheetViewTools) closeSheetEl(sheetViewTools); });
+  
   btnInsertCheckbox.addEventListener('mousedown', (e) => e.preventDefault());
   btnInsertCheckbox.addEventListener('click', () => {
     const start = fieldContent.selectionStart ?? fieldContent.value.length; const value = fieldContent.value;
     const atLineStart = start === 0 || value[start - 1] === '\n';
     insertAtCursor(fieldContent, (atLineStart ? '' : '\n') + '[] ');
+    closeSheetEl(sheetFormTools);
   });
   
   btnInsertArrow.addEventListener('mousedown', (e) => e.preventDefault());
-  btnInsertArrow.addEventListener('click', () => { insertAtCursor(fieldContent, ' >> '); });
+  btnInsertArrow.addEventListener('click', () => { insertAtCursor(fieldContent, ' >> ');closeSheetEl(sheetFormTools); });
   
   btnInsertDivider.addEventListener('mousedown', (e) => e.preventDefault());
   btnInsertDivider.addEventListener('click', () => {
     const start = fieldContent.selectionStart ?? fieldContent.value.length; const value = fieldContent.value;
     const atLineStart = start === 0 || value[start - 1] === '\n';
     insertAtCursor(fieldContent, (atLineStart ? '' : '\n') + '----\n');
+    closeSheetEl(sheetFormTools);
   });
   
   btnInsertQuiz.addEventListener('mousedown', (e) => e.preventDefault());
@@ -3371,6 +3612,7 @@ function setupEventListeners(){
     const rest = placeholder + '\n() Opção1\n() Opção2\n(x) OpçãoCorreta\n';
     fieldContent.value = value.slice(0, start) + prefix + rest + value.slice(end);
     const selStart = start + prefix.length; fieldContent.focus(); fieldContent.setSelectionRange(selStart, selStart + placeholder.length); fieldContent.dispatchEvent(new Event('input'));
+    closeSheetEl(sheetFormTools);
   });
 
   btnInsertLink.addEventListener('mousedown', (e) => { e.preventDefault(); });
@@ -3380,12 +3622,13 @@ function setupEventListeners(){
     const linkStr = `[[${textToWrap}]]`;
     fieldContent.value = value.slice(0, start) + linkStr + value.slice(end);
     const newCursorPos = start + 2; fieldContent.focus(); fieldContent.setSelectionRange(newCursorPos, newCursorPos + textToWrap.length); fieldContent.dispatchEvent(new Event('input'));
+    closeSheetEl(sheetFormTools);
   });
 
   // NOVO: Clique no Botão de Fim de Fluxo
   if (btnInsertEnd) {
     btnInsertEnd.addEventListener('mousedown', (e) => e.preventDefault());
-    btnInsertEnd.addEventListener('click', () => { insertAtCursor(fieldContent, ' >> ✅Fim'); });
+    btnInsertEnd.addEventListener('click', () => { insertAtCursor(fieldContent, ' >> ✅Fim');closeSheetEl(sheetFormTools); });
   }
 
   // NOVO: Clicar fora para fechar o toast (se ele estiver preso na tela)
@@ -3796,26 +4039,6 @@ async function seedIfEmpty(){
 /* ========================================== */
 /* FIM DA MUDANÇA: LÓGICA DO MANUAL */
 /* ========================================== */
-/* ========================================== */
-/* PROTEGE O MODO TELA VIVA AO MUDAR DE APP NO CELULAR */
-/* ========================================== */
-document.addEventListener('visibilitychange', async () => {
-  if (document.visibilityState === 'visible' && modalView.classList.contains('open')) {
-    const btnWake = viewBody.querySelector('button.tag-pill');
-    // Se o botão visualmente diz que está travado, mas perdemos o lock nativo, tenta reconectar
-    if (btnWake && btnWake.innerHTML.includes('Tela Travada') && window.currentWakeLock === null) {
-      try {
-        window.currentWakeLock = await navigator.wakeLock.request('screen');
-        window.currentWakeLock.addEventListener('release', () => {
-          window.currentWakeLock = null; 
-          btnWake.innerHTML = '💡 Tela Viva'; btnWake.style.background = 'var(--panel-2)';
-        });
-      } catch (err) {
-        btnWake.innerHTML = '💡 Tela Viva'; btnWake.style.background = 'var(--panel-2)';
-      }
-    }
-  }
-});
 /* ---------------- Início ---------------- */
 (async function init(){
   setupEventListeners();
