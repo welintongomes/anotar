@@ -1549,17 +1549,29 @@ async function clearAllBudgetCheckboxes(){
   for (const id of affectedIds){
     const full = await dbGet(id);
     if (!full || !full.content) continue;
-    const lines = full.content.split('\n').map(line => {
+    let modifiedLog = false;
+    const lines = full.content.split('\n').map((line, idx) => {
       const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return line;
       const visible = stripFlowSuffix(m[2]);
       const nums = visible.match(/\d+(?:[.,]\d+)?/g);
       const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
-      return hasPrice ? (m[1] + '[ ]' + m[2]) : line;
+      if (hasPrice) {
+        if (full.speedrunLog && full.speedrunLog[idx] !== undefined) {
+          delete full.speedrunLog[idx];
+          modifiedLog = true;
+        }
+        return m[1] + '[ ]' + m[2];
+      }
+      return line;
     });
     full.content = lines.join('\n'); full.updatedAt = Date.now();
     await dbPut(full);
     const ram = allItems.find(i => i.id === id);
-    if (ram){ ram.content = full.content; ram.updatedAt = full.updatedAt; }
+    if (ram){ 
+      ram.content = full.content; 
+      ram.updatedAt = full.updatedAt; 
+      if (modifiedLog) ram.speedrunLog = full.speedrunLog; 
+    }
   }
   return affectedIds;
 }
@@ -2360,12 +2372,16 @@ let expandirTextoCompleto = null;
     }
     const btnResetPlain = document.createElement('button'); btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none'; btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff'; btnResetPlain.innerHTML = '🔄 Limpar'; btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
     toolbar.appendChild(btnResetPlain);
-    btnResetPlain.addEventListener('click', async () => {
+btnResetPlain.addEventListener('click', async () => {
       if (!confirm('Desmarcar os itens sem valor nesta nota?')) return;
-      const lines = item.content.split('\n').map(line => {
+      const lines = item.content.split('\n').map((line, idx) => {
         const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return line;
         const visible = stripFlowSuffix(m[2]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
         const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
+        if (!hasPrice) {
+           if(item.speedrunLog && item.speedrunLog[idx] !== undefined) delete item.speedrunLog[idx];
+           return m[1] + '[ ]' + m[2];
+        }
         return hasPrice ? line : (m[1] + '[ ]' + m[2]);
       });
       item.content = lines.join('\n'); item.updatedAt = Date.now(); await dbPut(item);
@@ -2874,13 +2890,23 @@ let expandirTextoCompleto = null;
                 freshLines[currentIndex] = freshLines[currentIndex].replace(/^([ \t]*)\[[ xX]?\]/, '$1' + marker);
                 item.content = freshLines.join('\n'); 
                 
-                if (cb.checked && item.speedrunActive) {
-                    if (!item.speedrunLog) item.speedrunLog = {};
-                    const elapsed = (Date.now() - item.speedrunLastSplit) + (item.speedrunAccumulated || 0);
-                    item.speedrunLog[currentIndex] = elapsed;
-                    item.speedrunLastSplit = Date.now();
-                    item.speedrunAccumulated = 0;
-                    showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
+                if (cb.checked) {
+                    if (item.speedrunActive || item.speedrunAccumulated > 0) {
+                        if (!item.speedrunLog) item.speedrunLog = {};
+                        // Calcula o tempo caso esteja rodando ou pausado
+                        const elapsed = item.speedrunActive 
+                            ? (Date.now() - item.speedrunLastSplit) + (item.speedrunAccumulated || 0)
+                            : (item.speedrunAccumulated || 0);
+                        
+                        item.speedrunLog[currentIndex] = elapsed;
+                        
+                        // Só atualiza o split se o relógio não estiver pausado
+                        if (item.speedrunActive) {
+                            item.speedrunLastSplit = Date.now();
+                        }
+                        item.speedrunAccumulated = 0;
+                        showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
+                    }
                 } else if (!cb.checked && item.speedrunLog && item.speedrunLog[currentIndex] !== undefined) {
                     const returnedTime = item.speedrunLog[currentIndex];
                     item.speedrunAccumulated = (item.speedrunAccumulated || 0) + returnedTime;
@@ -3029,13 +3055,21 @@ let expandirTextoCompleto = null;
                             freshLines[bIndex] = freshLines[bIndex].replace(/^([ \t]*)\[[ xX]?\]/, '$1' + marker);
                             item.content = freshLines.join('\n'); 
                             
-                            if (cb.checked && item.speedrunActive) {
-                                if (!item.speedrunLog) item.speedrunLog = {};
-                                const elapsed = (Date.now() - item.speedrunLastSplit) + (item.speedrunAccumulated || 0);
-                                item.speedrunLog[bIndex] = elapsed;
-                                item.speedrunLastSplit = Date.now();
-                                item.speedrunAccumulated = 0;
-                                showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
+                            if (cb.checked) {
+                                if (item.speedrunActive || item.speedrunAccumulated > 0) {
+                                    if (!item.speedrunLog) item.speedrunLog = {};
+                                    const elapsed = item.speedrunActive 
+                                        ? (Date.now() - item.speedrunLastSplit) + (item.speedrunAccumulated || 0)
+                                        : (item.speedrunAccumulated || 0);
+                                    
+                                    item.speedrunLog[bIndex] = elapsed;
+                                    
+                                    if (item.speedrunActive) {
+                                        item.speedrunLastSplit = Date.now();
+                                    }
+                                    item.speedrunAccumulated = 0;
+                                    showToast(`⏱️ Tempo salvo: ${formatTimeMs(elapsed)}`, false);
+                                }
                             } else if (!cb.checked && item.speedrunLog && item.speedrunLog[bIndex] !== undefined) {
                                 const returnedTime = item.speedrunLog[bIndex];
                                 item.speedrunAccumulated = (item.speedrunAccumulated || 0) + returnedTime;
