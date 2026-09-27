@@ -1233,6 +1233,23 @@ function showToast(msg, keepOpen = false){
     showToast._t = setTimeout(() => toast.classList.remove('show'), currentToastDuration);
   }
 }
+// Feedback visual direto no botão clicado — funciona mesmo se o toast ficar
+// escondido atrás de alguma gaveta/modal aberta (ex: "Mais opções").
+function flashButtonFeedback(button, successLabel){
+  if (button.dataset.flashing === 'true') return;
+  const original = button.innerHTML;
+  button.dataset.flashing = 'true';
+  button.disabled = true;
+  button.innerHTML = successLabel;
+  setTimeout(() => { button.innerHTML = original; button.disabled = false; delete button.dataset.flashing; }, 1500);
+}
+// O WhatsApp Desktop (principalmente no Windows) às vezes corrompe emojis quando
+// o texto chega pronto pelo link "wa.me" — o ✅ vira um quadradinho "�". Copiar e
+// colar não sofre disso, pois não passa pela decodificação de URL do sistema.
+// Por isso, só para o link do WhatsApp trocamos o ✅ por um marcador em texto puro.
+function whatsappSafeText(msg){
+  return msg.replace(/✅\s?/g, '- ');
+}
 function timeAgo(ts){
   if (!ts) return 'agora';
   const diff = Date.now() - ts;
@@ -1317,6 +1334,17 @@ function escapeHTML(str) {
 function stripFlowSuffix(text){
   const idx = (text||'').indexOf('>>');
   return idx === -1 ? text : text.slice(0, idx);
+}
+// Extrai o valor em R$ de um item marcado como concluído.
+// Prioriza o número logo após "R$" ou "$"; se não achar, cai pro
+// comportamento antigo (último número da linha), pra não quebrar notas já existentes.
+function extractBudgetPrice(text){
+  if (!text) return 0;
+  const currencyMatch = text.match(/(?:R\$|\$)\s*(\d+(?:[.,]\d+)?)/i);
+  if (currencyMatch) return parseFloat(currencyMatch[1].replace(',', '.'));
+  const nums = text.match(/\d+(?:[.,]\d+)?/g);
+  if (!nums || !nums.length) return 0;
+  return parseFloat(nums[nums.length - 1].replace(',', '.'));
 }
 // Uma linha só com o mesmo caractere repetido (3+ vezes), sendo esse caractere um dos
 // símbolos aceitos como separador visual (----, ====, ####, ****).
@@ -1623,23 +1651,45 @@ function renderCards(){
   }
 }
 async function toggleFavorite(itemLight){
+  const previous = itemLight.favorite;
   itemLight.favorite = !itemLight.favorite;
-  const fullItem = await dbGet(itemLight.id);
-  fullItem.favorite = itemLight.favorite;
-  await dbPut(fullItem);
+  try {
+    const fullItem = await dbGet(itemLight.id);
+    fullItem.favorite = itemLight.favorite;
+    await dbPut(fullItem);
+  } catch (err) {
+    console.error('Erro ao favoritar:', err);
+    itemLight.favorite = previous;
+    showToast('⚠️ Não foi possível atualizar o favorito.');
+  }
   renderCategoryList(); renderCards();
 }
 function getGlobalBudgetData(){
   const list = []; let total = 0;
   allItems.forEach(item => {
     if (!item.content) return;
-    item.content.split('\n').forEach(line => {
+    let rawPartsTotal = 0;
+    let timeMs = 0;
+    item.content.split('\n').forEach((line, idx) => {
       const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return;
       const textPart = stripFlowSuffix(m[2]).trim();
-      const nums = textPart.match(/\d+(?:[.,]\d+)?/g); if (!nums || !nums.length) return;
-      const price = parseFloat(nums[nums.length - 1].replace(',', '.'));
-      if (price > 0){ list.push({ itemId: item.id, itemTitle: item.title, text: textPart, price }); total += price; }
+      const price = extractBudgetPrice(textPart);
+      if (price > 0){ list.push({ itemId: item.id, itemTitle: item.title, text: textPart, price }); rawPartsTotal += price; }
+      if (item.speedrunLog && item.speedrunLog[idx]){ timeMs += item.speedrunLog[idx]; }
     });
+
+    const descParts = item.discountParts || 0;
+    total += rawPartsTotal * (1 - descParts / 100);
+
+    if (timeMs > 0 && hourlyRate > 0){
+      const rawLabor = (timeMs / 3600000) * hourlyRate;
+      const descLabor = item.discountLabor || 0;
+      const finalLabor = rawLabor * (1 - descLabor / 100);
+      if (finalLabor > 0){
+        list.push({ itemId: item.id, itemTitle: item.title, text: `Mão de obra (${formatTimeMs(timeMs)})`, price: finalLabor });
+        total += finalLabor;
+      }
+    }
   });
   return { list, total };
 }
@@ -1660,17 +1710,18 @@ async function clearAllBudgetCheckboxes(){
   for (const id of affectedIds){
     const full = await dbGet(id);
     if (!full || !full.content) continue;
-    const lines = full.content.split('\n').map(line => {
+    const lines = full.content.split('\n').map((line, idx) => {
       const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return line;
-      const visible = stripFlowSuffix(m[2]);
-      const nums = visible.match(/\d+(?:[.,]\d+)?/g);
-      const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
-      return hasPrice ? (m[1] + '[ ]' + m[2]) : line;
+      const hasPrice = extractBudgetPrice(stripFlowSuffix(m[2])) > 0;
+      const hasTime = full.speedrunLog && full.speedrunLog[idx];
+      if (!hasPrice && !hasTime) return line;
+      if (hasTime) delete full.speedrunLog[idx];
+      return m[1] + '[ ]' + m[2];
     });
     full.content = lines.join('\n'); full.updatedAt = Date.now();
     await dbPut(full);
     const ram = allItems.find(i => i.id === id);
-    if (ram){ ram.content = full.content; ram.updatedAt = full.updatedAt; }
+    if (ram){ ram.content = full.content; ram.updatedAt = full.updatedAt; ram.speedrunLog = full.speedrunLog; }
   }
   return affectedIds;
 }
@@ -1727,7 +1778,7 @@ function openForm(item, mode){
 function handleSave(){
   if (mediaRecorder && mediaRecorder.state === 'recording'){ showToast('Pare a gravação antes de salvar.'); return; }
   let title = fieldTitle.value.trim();
-  const content = fieldContent.value.trim(); 
+  const content = fieldContent.value.replace(/\r\n/g, '\n').trim();
 
   if (!title && !currentPhotoBlob && !currentAudioBlob && !content) { 
     showToast('Dê um título, foto, áudio ou digite uma anotação.'); fieldContent.focus(); return; 
@@ -1772,8 +1823,10 @@ function handleSave(){
       await dbAdd(item);
     }
   })();
-  savePromise.then(() => { closeForm(); showToast('Salvo com sucesso!'); loadAndRender(); });
-}
+  savePromise
+    .then(() => { closeForm(); showToast('Salvo com sucesso!'); loadAndRender(); })
+    .catch((err) => { console.error('Erro ao salvar registro:', err); showToast('⚠️ Não foi possível salvar. Verifique o espaço de armazenamento do navegador.'); });
+  }
 
 /* ---------------- Visualizar detalhes ---------------- */
 async function openView(itemLight, navType = 'new', restoreLinkIndex = null){
@@ -2068,7 +2121,9 @@ window.stopActiveSpeech = () => {
     if (activeSpeechTarget === targetId) {
       if (!isSpeechPaused) {
         synth.cancel();
-        isSpeechPaused = true; element.style.opacity = '0.5'; showToast('Pausada.'); return;
+        isSpeechPaused = true; element.style.opacity = '0.5'; showToast('Pausada.');
+        if (readingWakeLock) { readingWakeLock.release().catch(()=>{}); readingWakeLock = null; }
+        return;
       } else {
         isSpeechPaused = false; element.style.opacity = '1'; showToast('Retomada.');
         speakSentenceAt(speechSentenceIndex); return;
@@ -2109,10 +2164,13 @@ let expandirTextoCompleto = null;
   badge.textContent = item.category; badge.style.color = categoryColor(item.category);
   topRow.appendChild(badge);
 
-  if ('wakeLock' in navigator) {
+    if ('wakeLock' in navigator) {
     const btnWake = document.createElement('button');
     btnWake.className = 'tag-pill'; btnWake.style.border = 'none';
-    btnWake.style.background = 'var(--panel-2)'; btnWake.style.color = '#fff'; btnWake.innerHTML = '💡 Tela Viva';
+    const isWakeActiveNow = !!window.currentWakeLock;
+    btnWake.style.background = isWakeActiveNow ? '#D6A035' : 'var(--panel-2)';
+    btnWake.style.color = isWakeActiveNow ? '#000' : '#fff';
+    btnWake.innerHTML = isWakeActiveNow ? '☀️ Tela Travada' : '💡 Tela Viva';
     btnWake.addEventListener('click', async () => {
       try {
         if (window.currentWakeLock) {
@@ -2279,9 +2337,8 @@ let expandirTextoCompleto = null;
             updateTimerUI(); // Atualiza o botão
             
             // Se a gaveta de orçamento estiver aberta, já atualiza ela zerada
-            if (typeof updateBudgetPanel === 'function') {
-               const budgetPanel = toolbar.parentElement.querySelector('div[style*="flex-direction: column"]');
-               if (budgetPanel && budgetPanel.style.display === 'flex') updateBudgetPanel();
+            if (typeof updateBudgetPanel === 'function' && budgetPanel.style.display === 'flex') {
+              updateBudgetPanel();
             }
             
             showToast('⏱️ Tempo zerado!');
@@ -2305,11 +2362,10 @@ let expandirTextoCompleto = null;
     // --- FIM: RELÓGIO SPEEDRUN ---
 
     /* COMEÇO DA MUDANÇA: Gaveta de Fechamento de Orçamento com Descontos */
-    function hasPricedBudgetNow(){
+        function hasPricedBudgetNow(){
       return item.content.split('\n').some((line, idx) => {
         const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return false;
-        const visible = stripFlowSuffix(m[2]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
-        const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
+        const hasPrice = extractBudgetPrice(stripFlowSuffix(m[2])) > 0;
         const hasTime = item.speedrunLog && item.speedrunLog[idx];
         return hasPrice || hasTime;
       });
@@ -2355,11 +2411,9 @@ let expandirTextoCompleto = null;
       
       lines.forEach((line, idx) => {
         const checkMatch = line.match(/^(\s*)\[[xX]\](.*)/);
-        if (checkMatch) {
+                if (checkMatch) {
           const textPart = stripFlowSuffix(checkMatch[2]).trim(); 
-          const numMatches = textPart.match(/\d+(?:[.,]\d+)?/g);
-          let price = 0;
-          if (numMatches && numMatches.length > 0) price = parseFloat(numMatches[numMatches.length - 1].replace(',', '.'));
+          const price = extractBudgetPrice(textPart);
           
           let stepText = `✅ ${textPart}`;
           if (item.speedrunLog && item.speedrunLog[idx]) {
@@ -2414,6 +2468,8 @@ let expandirTextoCompleto = null;
         item.discountParts = parseFloat(inputParts.value) || 0;
         item.discountLabor = parseFloat(inputLabor.value) || 0;
         await dbPut(item); // Salvo perfeitamente! Pode fechar e voltar depois.
+        const ramItem = allItems.find(x => x.id === item.id);
+        if (ramItem) { ramItem.discountParts = item.discountParts; ramItem.discountLabor = item.discountLabor; }
         updateBudgetPanel(); // Atualiza a conta
       };
       
@@ -2448,10 +2504,12 @@ let expandirTextoCompleto = null;
       };
 
       const btnZap = document.createElement('button'); btnZap.className = 'btn-primary'; btnZap.style.flex = '1'; btnZap.style.padding = '12px'; btnZap.innerHTML = '💸 WhatsApp';
-      btnZap.onclick = () => window.open(`https://wa.me/?text=${encodeURIComponent(generateText())}`, '_blank');
+      btnZap.onclick = () => window.open(`https://wa.me/?text=${encodeURIComponent(whatsappSafeText(generateText()))}`, '_blank');
       
       const btnCopy = document.createElement('button'); btnCopy.className = 'btn-secondary'; btnCopy.style.flex = '1'; btnCopy.style.padding = '12px'; btnCopy.innerHTML = '📋 Copiar';
-      btnCopy.onclick = () => navigator.clipboard.writeText(generateText()).then(() => showToast('Orçamento Copiado!'));
+      btnCopy.onclick = () => navigator.clipboard.writeText(generateText())
+        .then(() => { showToast('Orçamento Copiado!'); flashButtonFeedback(btnCopy, '✅ Copiado!'); })
+        .catch((err) => { console.error('Erro ao copiar:', err); showToast('⚠️ Não foi possível copiar.'); });      
 
       actionRow.appendChild(btnZap); actionRow.appendChild(btnCopy);
       budgetPanel.appendChild(actionRow);
@@ -2461,22 +2519,19 @@ let expandirTextoCompleto = null;
     contentWrap.appendChild(budgetPanel);
 /* FIM DA MUDANÇA */
 
-    function hasPlainChecklistNow(){
+        function hasPlainChecklistNow(){
       return item.content.split('\n').some(line => {
         const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return false;
-        const visible = stripFlowSuffix(m[2]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
-        const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
-        return !hasPrice;
+        return extractBudgetPrice(stripFlowSuffix(m[2])) <= 0;
       });
     }
     const btnResetPlain = document.createElement('button'); btnResetPlain.className = 'tag-pill'; btnResetPlain.style.border = 'none'; btnResetPlain.style.background = '#9AA0AB'; btnResetPlain.style.color = '#fff'; btnResetPlain.innerHTML = '🔄 Limpar'; btnResetPlain.style.display = hasPlainChecklistNow() ? 'inline-flex' : 'none';
     toolbar.appendChild(btnResetPlain);
-    btnResetPlain.addEventListener('click', async () => {
+        btnResetPlain.addEventListener('click', async () => {
       if (!confirm('Desmarcar os itens sem valor nesta nota?')) return;
       const lines = item.content.split('\n').map(line => {
         const m = line.match(/^(\s*)\[[xX]\](.*)/); if (!m) return line;
-        const visible = stripFlowSuffix(m[2]); const nums = visible.match(/\d+(?:[.,]\d+)?/g);
-        const hasPrice = nums && nums.length && parseFloat(nums[nums.length-1].replace(',','.')) > 0;
+        const hasPrice = extractBudgetPrice(stripFlowSuffix(m[2])) > 0;
         return hasPrice ? line : (m[1] + '[ ]' + m[2]);
       });
       item.content = lines.join('\n'); item.updatedAt = Date.now(); await dbPut(item);
@@ -2581,6 +2636,7 @@ let expandirTextoCompleto = null;
 
     let contentRenderLimit = 300; // Textos gigantes (tipo um livro colado na nota) só desenham um pedaço por vez
     let renderGeneration = 0; // Evita que uma renderização antiga "vaze" por cima de uma nova
+    let flowDiagnosisCache = null; // Guarda o cálculo pesado do diagnóstico de fluxo (setas >>) entre re-renders
     // Conecta a ponte que criamos lá em cima às variáveis daqui de dentro
     expandirTextoCompleto = () => {
       const totalLines = item.content.split('\n').length;
@@ -2602,70 +2658,84 @@ let expandirTextoCompleto = null;
       });
       const lineEls = [];
     // ===== CÉREBRO DO DIAGNÓSTICO (SILENCIOSO) =====
-    const targetMap = new Array(lines.length).fill(-1);
-    const hasOutgoing = new Array(lines.length).fill(false);
-    const isTargeted = new Array(lines.length).fill(false);
-    const isFlowConnected = new Array(lines.length).fill(false);
+    // Esta conta é O(n²) — pesada em notas longas com muitas setas ">>".
+    // Como o resultado só muda quando o TEXTO das setas muda (não quando você
+    // só marca um checkbox), guardamos em cache e recalculamos só se necessário.
+    const flowSignature = lines.map(l => l.replace(/^(\s*)\[[ xX]?\]/, '$1[?]')).join('\n');
+    let isFlowConnected, dist, maxDist;
 
-    // 1. Lê o futuro: quem aponta pra quem?
-    lines.forEach((line, idx) => {
-      const arrowIdx = line.indexOf('>>');
-      
-      if (line.includes('✅Fim') || line.includes('✅ Fim')) {
+    if (flowDiagnosisCache && flowDiagnosisCache.signature === flowSignature) {
+      isFlowConnected = flowDiagnosisCache.isFlowConnected;
+      dist = flowDiagnosisCache.dist;
+      maxDist = flowDiagnosisCache.maxDist;
+    } else {
+      const targetMap = new Array(lines.length).fill(-1);
+      const hasOutgoing = new Array(lines.length).fill(false);
+      const isTargeted = new Array(lines.length).fill(false);
+      isFlowConnected = new Array(lines.length).fill(false);
+
+      // 1. Lê o futuro: quem aponta pra quem?
+      lines.forEach((line, idx) => {
+        const arrowIdx = line.indexOf('>>');
+
+        if (line.includes('✅Fim') || line.includes('✅ Fim')) {
+            isFlowConnected[idx] = true;
+        }
+
+        if (arrowIdx !== -1 && !line.match(/^\?\?/)) {
+          const nextStepRaw = line.slice(arrowIdx + 2).trim();
+          hasOutgoing[idx] = true;
           isFlowConnected[idx] = true;
-      }
 
-      if (arrowIdx !== -1 && !line.match(/^\?\?/)) {
-        const nextStepRaw = line.slice(arrowIdx + 2).trim();
-        hasOutgoing[idx] = true;
-        isFlowConnected[idx] = true;
-
-        if (!nextStepRaw.includes('✅Fim') && !nextStepRaw.includes('✅ Fim')) {
-          const targetNorm = normalize(nextStepRaw).trim();
-          let bestIdx = -1; let highestScore = 0;
-          lineSearchNorm.forEach((t, tidx) => {
-            if (tidx === idx || !t) return;
-            const textLine = t.trim(); let score = 0;
-            if (textLine === targetNorm) score = 100;
-            else if (textLine.startsWith(targetNorm + ' ') || textLine.endsWith(' ' + targetNorm) || textLine.includes(' ' + targetNorm + ' ')) score = 80 - (textLine.length * 0.1);
-            else if (textLine.includes(targetNorm)) score = 50 - (textLine.length * 0.1);
-            if (score > highestScore) { highestScore = score; bestIdx = tidx; }
-          });
-          if (bestIdx !== -1) {
-              targetMap[idx] = bestIdx;
-              isTargeted[bestIdx] = true;
-              isFlowConnected[bestIdx] = true;
+          if (!nextStepRaw.includes('✅Fim') && !nextStepRaw.includes('✅ Fim')) {
+            const targetNorm = normalize(nextStepRaw).trim();
+            let bestIdx = -1; let highestScore = 0;
+            lineSearchNorm.forEach((t, tidx) => {
+              if (tidx === idx || !t) return;
+              const textLine = t.trim(); let score = 0;
+              if (textLine === targetNorm) score = 100;
+              else if (textLine.startsWith(targetNorm + ' ') || textLine.endsWith(' ' + targetNorm) || textLine.includes(' ' + targetNorm + ' ')) score = 80 - (textLine.length * 0.1);
+              else if (textLine.includes(targetNorm)) score = 50 - (textLine.length * 0.1);
+              if (score > highestScore) { highestScore = score; bestIdx = tidx; }
+            });
+            if (bestIdx !== -1) {
+                targetMap[idx] = bestIdx;
+                isTargeted[bestIdx] = true;
+                isFlowConnected[bestIdx] = true;
+            }
           }
         }
-      }
-    });
+      });
 
-    const dist = new Array(lines.length).fill(Infinity);
-    
-    // 2. Apenas itens do clube do fluxo podem ser marcados como o "Fim"
-    lines.forEach((line, idx) => { 
-        if (isFlowConnected[idx]) {
-            if (line.includes('✅Fim') || line.includes('✅ Fim') || !hasOutgoing[idx] || (hasOutgoing[idx] && targetMap[idx] === -1)) {
-                dist[idx] = 0; 
-            }
-        }
-    });
+      dist = new Array(lines.length).fill(Infinity);
 
-    // 3. Calcula a distância matemática exata!
-    for (let iter = 0; iter < lines.length; iter++) {
-      let changed = false;
-      for (let i = 0; i < lines.length; i++) {
-        let target = targetMap[i];
-        if (target !== -1 && dist[target] !== Infinity) {
-          if (dist[target] + 1 < dist[i]) { dist[i] = dist[target] + 1; changed = true; }
+      // 2. Apenas itens do clube do fluxo podem ser marcados como o "Fim"
+      lines.forEach((line, idx) => {
+          if (isFlowConnected[idx]) {
+              if (line.includes('✅Fim') || line.includes('✅ Fim') || !hasOutgoing[idx] || (hasOutgoing[idx] && targetMap[idx] === -1)) {
+                  dist[idx] = 0;
+              }
+          }
+      });
+
+      // 3. Calcula a distância matemática exata!
+      for (let iter = 0; iter < lines.length; iter++) {
+        let changed = false;
+        for (let i = 0; i < lines.length; i++) {
+          let target = targetMap[i];
+          if (target !== -1 && dist[target] !== Infinity) {
+            if (dist[target] + 1 < dist[i]) { dist[i] = dist[target] + 1; changed = true; }
+          }
         }
+        if (!changed) break;
       }
-      if (!changed) break;
+
+      let validDistances = dist.filter(d => d !== Infinity);
+      maxDist = validDistances.length > 0 ? Math.max(...validDistances) : 1;
+      if (maxDist === 0) maxDist = 1;
+
+      flowDiagnosisCache = { signature: flowSignature, isFlowConnected, dist, maxDist };
     }
-
-    let validDistances = dist.filter(d => d !== Infinity);
-    let maxDist = validDistances.length > 0 ? Math.max(...validDistances) : 1;
-    if (maxDist === 0) maxDist = 1; 
 
     // 4. As funções de Pintar/Apagar (Blindadas)
     const revealDiagnosticProgress = (el, lineIndex) => {
@@ -3144,9 +3214,8 @@ let expandirTextoCompleto = null;
                 
                 renderCards();
                 
-                if (typeof updateBudgetPanel === 'function') {
-                   const budgetPanel = document.getElementById('modalView').querySelector('div[style*="flex-direction: column"]');
-                   if (budgetPanel && budgetPanel.style.display === 'flex') updateBudgetPanel();
+                if (typeof updateBudgetPanel === 'function' && budgetPanel.style.display === 'flex') {
+                  updateBudgetPanel();
                 }
 
                 if (cb.checked && nextStepRaw){ triggerNextStep(nextStepRaw, currentIndex); }
@@ -3318,9 +3387,8 @@ let expandirTextoCompleto = null;
                             
                             renderCards();
                             
-                            if (typeof updateBudgetPanel === 'function') {
-                               const budgetPanel = document.getElementById('modalView').querySelector('div[style*="flex-direction: column"]');
-                               if (budgetPanel && budgetPanel.style.display === 'flex') updateBudgetPanel();
+                            if (typeof updateBudgetPanel === 'function' && budgetPanel.style.display === 'flex') {
+                              updateBudgetPanel();
                             }
 
                             if (cb.checked && nextStepRaw){ triggerNextStep(nextStepRaw, bIndex); }
@@ -3677,10 +3745,12 @@ function setupEventListeners(){
 
   btnEdit.addEventListener('click', () => { const item = viewingItem; closeView(); openForm(item, 'edit'); });
   btnDuplicate.addEventListener('click', () => { const item = viewingItem; closeView(); openForm(item, 'duplicate'); });
-  btnDelete.addEventListener('click', () => {
+    btnDelete.addEventListener('click', () => {
     const item = viewingItem; if (!item) return;
     if (!confirm(`Excluir "${item.title}"?`)) return;
-    dbDelete(item.id).then(() => { closeView(); showToast('Excluído.'); loadAndRender(); });
+    dbDelete(item.id)
+      .then(() => { closeView(); showToast('Excluído.'); loadAndRender(); })
+      .catch((err) => { console.error('Erro ao excluir:', err); showToast('⚠️ Não foi possível excluir este registro.'); });
   });
 
   async function openMoreOptionsSheet(){
@@ -3702,22 +3772,30 @@ btnQuickSettings.addEventListener('click', openMoreOptionsSheet);
     const { list, total } = getGlobalBudgetData(); if (!list.length) return;
     const desc = list.map(i => `✅ ${i.text} (${i.itemTitle})`);
     const msg = `*Orçamento*\n\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/?text=${encodeURIComponent(whatsappSafeText(msg))}`, '_blank');
   });
   
   btnCopyGlobalBudget.addEventListener('click', () => {
-    const { list, total } = getGlobalBudgetData(); if (!list.length) return;
+    const { list, total } = getGlobalBudgetData();
+    if (!list.length){ showToast('Nenhum item de orçamento marcado no momento.'); return; }
     const desc = list.map(i => `✅ ${i.text} (${i.itemTitle})`);
     const msg = `*Orçamento*\n\n${desc.join('\n')}\n\n*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
-    navigator.clipboard.writeText(msg).then(() => { showToast('Orçamento global copiado!'); });
+    navigator.clipboard.writeText(msg)
+      .then(() => { showToast('Orçamento global copiado!'); flashButtonFeedback(btnCopyGlobalBudget, '✅ Copiado!'); })
+      .catch((err) => { console.error('Erro ao copiar:', err); showToast('⚠️ Não foi possível copiar. Tente novamente.'); });
   });
   
-  btnClearBudget.addEventListener('click', async () => {
+    btnClearBudget.addEventListener('click', async () => {
     const { list } = getGlobalBudgetData(); if (!list.length) return;
     if (!confirm(`Isso vai desmarcar ${list.length} item(ns) de orçamento. Continuar?`)) return;
-    const affectedIds = await clearAllBudgetCheckboxes();
-    if (viewingItem && affectedIds.includes(viewingItem.id)) closeView();
-    showToast('Orçamento limpo.'); refreshBudgetSummary(); renderCards();
+    try {
+      const affectedIds = await clearAllBudgetCheckboxes();
+      if (viewingItem && affectedIds.includes(viewingItem.id)) closeView();
+      showToast('Orçamento limpo.'); refreshBudgetSummary(); renderCards();
+    } catch (err) {
+      console.error('Erro ao limpar orçamento:', err);
+      showToast('⚠️ Erro ao limpar orçamento. Alguns itens podem não ter sido atualizados.');
+    }
   });
 
   // ==========================================
