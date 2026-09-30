@@ -468,106 +468,121 @@
       <p class="meta-line" id="quizDueText" style="text-align: center;"></p>
       <p class="meta-line" id="statsText" style="text-align: center;"></p>
       <hr>
-      <p class="meta-line" id="budgetSummaryText"></p>
-      <button id="btnCopyGlobalBudget" class="btn-secondary">📋 Copiar orçamento global</button>
-      <button id="btnSendBudget" class="btn-primary">📲 Enviar orçamento por WhatsApp</button>
-      <button id="btnClearBudget" class="btn-danger">🗑️ Limpar todos os itens de orçamento</button>
-      <p class="meta-line">faça backup regularmente para guardar o arquivo.</p>
-      <hr>
-      <p class="meta-line"></p>
-      <label style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-        <span>🏃‍♂️ Velocidade da Voz: <strong id="speedLabel">Normal (0.95x)</strong></span>
-        <input type="range" id="voiceSpeed" min="0.5" max="2.0" step="0.05" value="0.95">
-      </label>
-      <label style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-  <span>🏃‍♂️ Velocidade das Alternativas: <strong id="optionsSpeedLabel">Normal (0.95x)</strong></span>
-  <input type="range" id="optionsVoiceSpeed" min="0.5" max="2.0" step="0.05" value="0.95">
-</label>
-<label style="display:flex; flex-direction:column; gap:6px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-  <span>🌐 Idioma da Pergunta (quiz)</span>
-  <select id="voiceLangQuestion" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
-    <option value="pt-BR">Português</option>
-    <option value="en-US">Inglês</option>
-    <option value="es-ES">Espanhol</option>
-    <option value="fr-FR">Francês</option>
-    <option value="de-DE">Alemão</option>
-    <option value="it-IT">Italiano</option>
-  </select>
-</label>
-<label style="display:flex; flex-direction:column; gap:6px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-  <span>🌐 Idioma das Alternativas (quiz)</span>
-  <select id="voiceLangOptions" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
-    <option value="pt-BR">Português</option>
-    <option value="en-US">Inglês</option>
-    <option value="es-ES">Espanhol</option>
-    <option value="fr-FR">Francês</option>
-    <option value="de-DE">Alemão</option>
-    <option value="it-IT">Italiano</option>
-  </select>
-</label>
-<label style="display:flex; flex-direction:column; gap:6px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-  <span>🌐 Idioma do Texto Normal (fora do quiz)</span>
-  <select id="voiceLangNormal" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
-    <option value="pt-BR">Português</option>
-    <option value="en-US">Inglês</option>
-    <option value="es-ES">Espanhol</option>
-    <option value="fr-FR">Francês</option>
-    <option value="de-DE">Alemão</option>
-    <option value="it-IT">Italiano</option>
-  </select>
-</label>
-      <label style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-        <span>⏱️ Tempo do Aviso na tela: <strong id="toastSpeedLabel">2.2s</strong></span>
-        <input type="range" id="toastSpeed" min="1.0" max="10.0" step="0.5" value="2.2">
-      </label>
-      <label class="checkbox-row" style="margin-bottom: 6px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-        <input type="checkbox" id="toggleGlobalAudio">
-        🔊 Permitir Leitura de Voz (Tocar nos títulos)
-      </label>
-      <label class="checkbox-row" style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-        <input type="checkbox" id="toggleReadOptions">
-        🗣️ Ler também as alternativas do quiz
-      </label>
-      <label class="checkbox-row" style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-        <input type="checkbox" id="toggleAutoReadNext">
-        🔁 Ler a próxima pergunta automaticamente
-      </label>
-      <!-- COMEÇO DA MUDANÇA 1: Configurações de Speedrun -->
-      <label class="checkbox-row" style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-        <input type="checkbox" id="toggleReadNextStep">
-        ➡️ Ler em voz alta o próximo passo do fluxo
-      </label>
-      <hr>
-      <!-- NOVO: MODO SPEEDRUN -->
-      <label class="checkbox-row" style="margin-bottom: 6px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-        <input type="checkbox" id="toggleSpeedrun">
-        ⏱️ Modo Speedrun (Gravar tempo de cada passo)
-      </label>
-      <label style="display:flex; flex-direction:column; gap:8px; margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-        <span>💰 Valor cobrado por Hora (R$):</span>
-        <input type="number" id="hourlyRate" placeholder="Ex: 50.00" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
-      </label>
-      <hr>
-<!-- FIM DA MUDANÇA 1 -->
-      <hr>
-      <!-- CARTUCHOS: Botões continuam iguais na gaveta -->
-      <button id="btnExport" class="btn-primary">⬇️ Exportar backup (.json)</button>
-      <label class="btn-secondary" style="display:block;text-align:center;cursor:pointer;">
-        ⬆️ Importar backup
-        <input type="file" accept="application/json" id="fieldImport" style="display:none">
-      </label>
-      <label class="checkbox-row" style="margin-bottom: 12px; padding: 10px; background: var(--panel-2); border-radius: 8px;">
-        <input type="checkbox" id="toggleAdaptiveDifficulty">
-        🎓 Dificuldade automática no quiz (aumenta sozinha conforme você domina)
-      </label>
-      <label style="flex-direction:row;align-items:center;justify-content:space-between;">
-        Ordenar
-        <select id="sortSelect">
-          <option value="recentes">Mais recentes</option>
-          <option value="usados">Mais consultados</option>
-          <option value="az">Ordem alfabética</option>
-        </select>
-      </label>
+
+      <!-- ACORDEON 1: ORÇAMENTO E TEMPO -->
+      <details style="background: var(--panel-2); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+        <summary style="font-weight: bold; cursor: pointer; font-size: 15px;">💰 Orçamento e Tempo</summary>
+        <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <p class="meta-line" id="budgetSummaryText"></p>
+          <button id="btnCopyGlobalBudget" class="btn-secondary">📋 Copiar orçamento global</button>
+          <button id="btnSendBudget" class="btn-primary">📲 Enviar orçamento por WhatsApp</button>
+          <button id="btnClearBudget" class="btn-danger">🗑️ Limpar todos os itens de orçamento</button>
+          <hr style="margin: 10px 0; border: none; border-top: 1px dashed var(--smoke);">
+          <label class="checkbox-row" style="padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <input type="checkbox" id="toggleSpeedrun">
+            ⏱️ Modo Speedrun (Gravar tempo)
+          </label>
+          <label style="display:flex; flex-direction:column; gap:8px; padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <span>💰 Valor cobrado por Hora (R$):</span>
+            <input type="number" id="hourlyRate" placeholder="Ex: 50.00" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
+          </label>
+        </div>
+      </details>
+
+      <!-- ACORDEON 2: VOZ E LEITURA -->
+      <details style="background: var(--panel-2); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+        <summary style="font-weight: bold; cursor: pointer; font-size: 15px;">🗣️ Configurações de Voz</summary>
+        <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <label class="checkbox-row" style="padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <input type="checkbox" id="toggleGlobalAudio">
+            🔊 Permitir Leitura de Voz (Tocar nos títulos)
+          </label>
+          <label style="display:flex; flex-direction:column; gap:8px; padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <span>🏃‍♂️ Velocidade da Voz: <strong id="speedLabel">Normal (0.95x)</strong></span>
+            <input type="range" id="voiceSpeed" min="0.5" max="2.0" step="0.05" value="0.95">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:8px; padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <span>🏃‍♂️ Velocidade das Alternativas: <strong id="optionsSpeedLabel">Normal (0.95x)</strong></span>
+            <input type="range" id="optionsVoiceSpeed" min="0.5" max="2.0" step="0.05" value="0.95">
+          </label>
+          <label style="display:flex; flex-direction:column; gap:6px; padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <span>🌐 Idioma da Pergunta (quiz)</span>
+            <select id="voiceLangQuestion" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
+              <option value="pt-BR">Português</option><option value="en-US">Inglês</option><option value="es-ES">Espanhol</option><option value="fr-FR">Francês</option><option value="de-DE">Alemão</option><option value="it-IT">Italiano</option>
+            </select>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:6px; padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <span>🌐 Idioma das Alternativas (quiz)</span>
+            <select id="voiceLangOptions" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
+              <option value="pt-BR">Português</option><option value="en-US">Inglês</option><option value="es-ES">Espanhol</option><option value="fr-FR">Francês</option><option value="de-DE">Alemão</option><option value="it-IT">Italiano</option>
+            </select>
+          </label>
+          <label style="display:flex; flex-direction:column; gap:6px; padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <span>🌐 Idioma do Texto Normal</span>
+            <select id="voiceLangNormal" style="padding:8px; border-radius:6px; border:1px solid var(--smoke); background:var(--bg); color:var(--text); font-size:15px; outline:none;">
+              <option value="pt-BR">Português</option><option value="en-US">Inglês</option><option value="es-ES">Espanhol</option><option value="fr-FR">Francês</option><option value="de-DE">Alemão</option><option value="it-IT">Italiano</option>
+            </select>
+          </label>
+        </div>
+      </details>
+
+      <!-- ACORDEON 3: FLUXOS, QUIZ E EXTRAS -->
+      <details style="background: var(--panel-2); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+        <summary style="font-weight: bold; cursor: pointer; font-size: 15px;">➡️ Fluxos, Quiz e Extras</summary>
+        <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <!-- NOVA OPÇÃO AQUI: PROGRESSO DO FLUXO -->
+          <label class="checkbox-row" style="padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <input type="checkbox" id="toggleProgressoCores">
+            🎯 Mostrar % e colorir fundo do Fluxo
+          </label>
+          <label class="checkbox-row" style="padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <input type="checkbox" id="toggleReadNextStep">
+            ➡️ Ler em voz alta o próximo passo
+          </label>
+          <label class="checkbox-row" style="padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <input type="checkbox" id="toggleReadCheckboxes">
+            ☑️ Ler ao marcar checkboxes normais
+          </label>
+          <label class="checkbox-row" style="padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <input type="checkbox" id="toggleReadOptions">
+            🗣️️ Ler também as alternativas do quiz
+          </label>
+          <label class="checkbox-row" style="padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <input type="checkbox" id="toggleAutoReadNext">
+            🔁 Ler a próxima pergunta automaticamente
+          </label>
+          <label class="checkbox-row" style="padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <input type="checkbox" id="toggleAdaptiveDifficulty">
+            🎓 Dificuldade automática no quiz
+          </label>
+          <label style="display:flex; flex-direction:column; gap:8px; padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <span>⏱️ Tempo do Aviso na tela: <strong id="toastSpeedLabel">2.2s</strong></span>
+            <input type="range" id="toastSpeed" min="1.0" max="10.0" step="0.5" value="2.2">
+          </label>
+        </div>
+      </details>
+
+      <!-- ACORDEON 4: BACKUP E ORDENAÇÃO -->
+      <details style="background: var(--panel-2); padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+        <summary style="font-weight: bold; cursor: pointer; font-size: 15px;">💾 Backup e Ordenação</summary>
+        <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <p class="meta-line">Faça backup regularmente.</p>
+          <button id="btnExport" class="btn-primary">⬇️ Exportar backup (.json)</button>
+          <label class="btn-secondary" style="display:block;text-align:center;cursor:pointer;">
+            ⬆️ Importar backup
+            <input type="file" accept="application/json" id="fieldImport" style="display:none">
+          </label>
+          <label style="display:flex; flex-direction:row;align-items:center;justify-content:space-between; margin-top: 10px;">
+            Ordenar
+            <select id="sortSelect" style="padding: 6px; border-radius: 6px; background: var(--bg); color: var(--text); border: 1px solid var(--smoke);">
+              <option value="recentes">Mais recentes</option>
+              <option value="usados">Mais consultados</option>
+              <option value="az">Ordem alfabética</option>
+            </select>
+          </label>
+        </div>
+      </details>
+
     </div>
   </div>
 </div>
@@ -980,7 +995,9 @@ let isAudioEnabled = localStorage.getItem('memorias_audio_global') !== 'false';
 let readQuizOptions = localStorage.getItem('memorias_read_options') !== 'false';
 let autoReadNextQuiz = localStorage.getItem('memorias_auto_read_next') !== 'false';
 let readNextStep = localStorage.getItem('memorias_read_next_step') === 'true';
+let readCheckboxes = localStorage.getItem('memorias_read_checkboxes') !== 'false';
 let speedrunMode = localStorage.getItem('memorias_speedrun_mode') === 'true';
+let mostrarProgressoCores = localStorage.getItem('memorias_progresso_cores') !== 'false';
 let adaptiveDifficulty = localStorage.getItem('memorias_adaptive_difficulty') === 'true';
 let hourlyRate = parseFloat(localStorage.getItem('memorias_hourly_rate')) || 0;
 let currentVoiceSpeed = parseFloat(localStorage.getItem('memorias_voice_speed')) || 0.95;
@@ -1085,7 +1102,9 @@ const statsText = document.getElementById('statsText');
 const toggleGlobalAudio = document.getElementById('toggleGlobalAudio');
 const toggleAutoReadNext = document.getElementById('toggleAutoReadNext');
 const toggleReadNextStep = document.getElementById('toggleReadNextStep');
+const toggleReadCheckboxes = document.getElementById('toggleReadCheckboxes');
 const toggleSpeedrun = document.getElementById('toggleSpeedrun'); // NOVO
+const toggleProgressoCores = document.getElementById('toggleProgressoCores');
 const toggleAdaptiveDifficulty = document.getElementById('toggleAdaptiveDifficulty');
 const hourlyRateInput = document.getElementById('hourlyRate'); // NOVO
 let viewTimerInterval = null; // Cronômetro ao vivo na tela
@@ -2739,6 +2758,12 @@ let expandirTextoCompleto = null;
 
     // 4. As funções de Pintar/Apagar (Blindadas)
     const revealDiagnosticProgress = (el, lineIndex) => {
+      // SE A CONFIGURAÇÃO ESTIVER DESLIGADA, NÃO PINTA!
+      if (!mostrarProgressoCores) {
+          hideDiagnosticProgress(el);
+          return;
+      }
+      
       // REGRA DE OURO: Se a linha não faz parte do esquema investigativo, NÃO PINTA NADA.
       if (!isFlowConnected[lineIndex]) return;
 
@@ -3218,7 +3243,16 @@ let expandirTextoCompleto = null;
                   updateBudgetPanel();
                 }
 
-                if (cb.checked && nextStepRaw){ triggerNextStep(nextStepRaw, currentIndex); }
+                if (cb.checked) {
+                    if (nextStepRaw) {
+                        triggerNextStep(nextStepRaw, currentIndex);
+                    } else if (isAudioEnabled && readCheckboxes && 'speechSynthesis' in window) {
+                        if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
+                        const utterance = new SpeechSynthesisUtterance(visibleText);
+                        utterance.lang = voiceLangNormal; utterance.rate = currentVoiceSpeed;
+                        window.speechSynthesis.speak(utterance);
+                    }
+                }
             });
             i++; processedSinceYield++; continue;
         }
@@ -3391,7 +3425,16 @@ let expandirTextoCompleto = null;
                               updateBudgetPanel();
                             }
 
-                            if (cb.checked && nextStepRaw){ triggerNextStep(nextStepRaw, bIndex); }
+                            if (cb.checked) {
+                                if (nextStepRaw) {
+                                    triggerNextStep(nextStepRaw, bIndex);
+                                } else if (isAudioEnabled && readCheckboxes && 'speechSynthesis' in window) {
+                                    if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
+                                    const utterance = new SpeechSynthesisUtterance(visibleText);
+                                    utterance.lang = voiceLangNormal; utterance.rate = currentVoiceSpeed;
+                                    window.speechSynthesis.speak(utterance);
+                                }
+                            }
                         });
 
                         blockDiv.appendChild(label); lineEls[bIndex] = label; textToReadParts.push(visibleText);
@@ -3962,12 +4005,28 @@ modalImportChoice.addEventListener('click', (e) => {
       showToast(readNextStep ? 'Leitura de fluxo ligada.' : 'Leitura de fluxo desligada.');
     });
   }
+  if (toggleReadCheckboxes) {
+    toggleReadCheckboxes.checked = readCheckboxes;
+    toggleReadCheckboxes.addEventListener('change', (e) => {
+      readCheckboxes = e.target.checked;
+      localStorage.setItem('memorias_read_checkboxes', readCheckboxes);
+      showToast(readCheckboxes ? '☑️ Lendo ao marcar checkbox.' : '☑️ Silêncio ao marcar checkbox.');
+    });
+  }
   if (toggleSpeedrun) {
     toggleSpeedrun.checked = speedrunMode;
     toggleSpeedrun.addEventListener('change', (e) => {
       speedrunMode = e.target.checked;
       localStorage.setItem('memorias_speedrun_mode', speedrunMode);
       showToast(speedrunMode ? '⏱️ Modo Speedrun Ativado' : 'Modo Speedrun Desativado');
+    });
+  }
+  if (toggleProgressoCores) {
+    toggleProgressoCores.checked = mostrarProgressoCores;
+    toggleProgressoCores.addEventListener('change', (e) => {
+      mostrarProgressoCores = e.target.checked;
+      localStorage.setItem('memorias_progresso_cores', mostrarProgressoCores);
+      showToast(mostrarProgressoCores ? '🎯 Visual do fluxo ativado.' : 'Visual do fluxo oculto.');
     });
   }
   if (toggleAdaptiveDifficulty) {
