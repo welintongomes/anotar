@@ -540,6 +540,10 @@
             ➡️ Ler em voz alta o próximo passo
           </label>
           <label class="checkbox-row" style="padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
+            <input type="checkbox" id="toggleModoContador">
+            🔢 Modo Contador nos Checkboxes (Exames/Placar)
+          </label>
+          <label class="checkbox-row" style="padding: 10px; background: var(--bg); border-radius: 8px; border: 1px solid var(--smoke);">
             <input type="checkbox" id="toggleReadCheckboxes">
             ☑️ Ler ao marcar checkboxes normais
           </label>
@@ -996,6 +1000,7 @@ let readQuizOptions = localStorage.getItem('memorias_read_options') !== 'false';
 let autoReadNextQuiz = localStorage.getItem('memorias_auto_read_next') !== 'false';
 let readNextStep = localStorage.getItem('memorias_read_next_step') === 'true';
 let readCheckboxes = localStorage.getItem('memorias_read_checkboxes') !== 'false';
+let modoContador = localStorage.getItem('memorias_modo_contador') === 'true';
 let speedrunMode = localStorage.getItem('memorias_speedrun_mode') === 'true';
 let mostrarProgressoCores = localStorage.getItem('memorias_progresso_cores') !== 'false';
 let adaptiveDifficulty = localStorage.getItem('memorias_adaptive_difficulty') === 'true';
@@ -1103,6 +1108,7 @@ const toggleGlobalAudio = document.getElementById('toggleGlobalAudio');
 const toggleAutoReadNext = document.getElementById('toggleAutoReadNext');
 const toggleReadNextStep = document.getElementById('toggleReadNextStep');
 const toggleReadCheckboxes = document.getElementById('toggleReadCheckboxes');
+const toggleModoContador = document.getElementById('toggleModoContador');
 const toggleSpeedrun = document.getElementById('toggleSpeedrun'); // NOVO
 const toggleProgressoCores = document.getElementById('toggleProgressoCores');
 const toggleAdaptiveDifficulty = document.getElementById('toggleAdaptiveDifficulty');
@@ -1834,6 +1840,7 @@ function handleSave(){
       item.speedrunAccumulated = existing ? (existing.speedrunAccumulated || 0) : 0;
       item.speedrunLastSplit = existing ? (existing.speedrunLastSplit || null) : null;
       item.speedrunLog = existing ? (existing.speedrunLog || {}) : {};
+      item.checkboxCounters = existing ? (existing.checkboxCounters || {}) : {};
       item.discountParts = existing ? (existing.discountParts || 0) : 0;
       item.discountLabor = existing ? (existing.discountLabor || 0) : 0;
       await dbPut(item);
@@ -2558,6 +2565,33 @@ let expandirTextoCompleto = null;
       renderContent(isCode); btnResetPlain.style.display = 'none'; showToast('Checklist resetado.'); renderCards();
     });
 
+    // --- NOVO: BOTÃO ZERAR CONTADORES ---
+    function hasCountersNow(){
+        return item.checkboxCounters && Object.keys(item.checkboxCounters).length > 0;
+    }
+    const btnResetCounters = document.createElement('button'); 
+    btnResetCounters.id = 'btnResetCounters'; // ID para acharmos ele facilmente
+    btnResetCounters.className = 'tag-pill'; 
+    btnResetCounters.style.border = 'none'; 
+    btnResetCounters.style.background = '#8B6FD1'; // Roxo combinando com o contador
+    btnResetCounters.style.color = '#fff'; 
+    btnResetCounters.innerHTML = '🔄 Zerar Contadores'; 
+    btnResetCounters.style.display = (modoContador && hasCountersNow()) ? 'inline-flex' : 'none';
+    toolbar.appendChild(btnResetCounters);
+
+    btnResetCounters.addEventListener('click', async () => {
+        if (!confirm('Zerar todos os contadores desta nota? (O checklist normal não será afetado)')) return;
+        item.checkboxCounters = {}; // Apaga só os contadores
+        item.updatedAt = Date.now(); 
+        await dbPut(item);
+        const ram = allItems.find(i => i.id === item.id); 
+        if (ram) { ram.checkboxCounters = item.checkboxCounters; ram.updatedAt = item.updatedAt; }
+        renderContent(isCode); 
+        btnResetCounters.style.display = 'none'; 
+        showToast('Contadores zerados.'); 
+        renderCards();
+    });
+
     function getQuizQuestions(){
       const lines = item.content.split('\n'); const qs = []; let i = 0;
       while (i < lines.length){
@@ -3189,7 +3223,60 @@ let expandirTextoCompleto = null;
             textContainer.appendChild(label); 
             lineEls[currentIndex] = label;
 
+            // --- INÍCIO DA LÓGICA DO CONTADOR (NORMAL) ---
+            const renderBadge = () => {
+                let badge = label.querySelector('.counter-badge');
+                let count = item.checkboxCounters ? (item.checkboxCounters[currentIndex] || 0) : 0;
+                
+                // Só cria/mostra se o modo contador estiver LIGADO e tiver pontuação
+                if (modoContador && count > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.className = 'counter-badge tag-pill';
+                        badge.style.border = 'none'; badge.style.background = '#8B6FD1'; badge.style.color = '#fff'; badge.style.marginLeft = '8px'; badge.style.cursor = 'pointer'; badge.title = 'Clique para diminuir';
+                        badge.addEventListener('click', async (e) => {
+                            e.preventDefault(); e.stopPropagation();
+                            if (item.checkboxCounters && item.checkboxCounters[currentIndex] > 0) {
+                                item.checkboxCounters[currentIndex]--;
+                                if (item.checkboxCounters[currentIndex] === 0) delete item.checkboxCounters[currentIndex];
+                                item.updatedAt = Date.now(); await dbPut(item);
+                                renderBadge();
+                            }
+                        });
+                        label.appendChild(badge);
+                    }
+                    badge.style.display = ''; // Garante que está visível
+                    badge.textContent = `🔢 ${count}x`;
+                } else if (badge) {
+                    badge.style.display = 'none'; // Se o modo desligou, apenas esconde visualmente!
+                }
+
+                // Atualiza o botão de limpar contadores lá em cima
+                const btnResetC = document.getElementById('btnResetCounters');
+                if (btnResetC) {
+                    const temContador = item.checkboxCounters && Object.keys(item.checkboxCounters).length > 0;
+                    btnResetC.style.display = (modoContador && temContador) ? 'inline-flex' : 'none';
+                }
+            };
+            renderBadge();
+            // --- FIM DA LÓGICA DO CONTADOR ---
+
             cb.addEventListener('change', async () => {
+                // SE O MODO CONTADOR ESTIVER ATIVADO
+                if (modoContador) {
+                    cb.checked = !cb.checked; // MÁGICA: Cancela o clique visual, mantendo o estado original!
+                    if (!item.checkboxCounters) item.checkboxCounters = {};
+                    item.checkboxCounters[currentIndex] = (item.checkboxCounters[currentIndex] || 0) + 1;
+                    item.updatedAt = Date.now(); await dbPut(item);
+                    renderBadge(); // Atualiza o numerozinho
+                    
+                    if (isAudioEnabled && readCheckboxes && 'speechSynthesis' in window) {
+                        if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
+                        window.speechSynthesis.speak(new SpeechSynthesisUtterance(visibleText));
+                    }
+                    return; // Interrompe para não fazer o fluxo normal
+                }
+
                 span.style.textDecoration = cb.checked ? 'line-through' : 'none'; span.style.opacity = cb.checked ? '0.6' : '1';
                 const marker = cb.checked ? '[x]' : '[ ]'; const freshLines = item.content.split('\n');
                 
@@ -3373,7 +3460,56 @@ let expandirTextoCompleto = null;
                         }
                         //AQUI: Pinta o bloco a primeira vez
                         
+                        // --- INÍCIO DA LÓGICA DO CONTADOR (BLOCOS) ---
+                        const renderBadge = () => {
+                            let badge = label.querySelector('.counter-badge');
+                            let count = item.checkboxCounters ? (item.checkboxCounters[bIndex] || 0) : 0;
+                            
+                            if (modoContador && count > 0) {
+                                if (!badge) {
+                                    badge = document.createElement('span');
+                                    badge.className = 'counter-badge tag-pill';
+                                    badge.style.border = 'none'; badge.style.background = '#8B6FD1'; badge.style.color = '#fff'; badge.style.marginLeft = '8px'; badge.style.cursor = 'pointer'; badge.title = 'Clique para diminuir';
+                                    badge.addEventListener('click', async (e) => {
+                                        e.preventDefault(); e.stopPropagation();
+                                        if (item.checkboxCounters && item.checkboxCounters[bIndex] > 0) {
+                                            item.checkboxCounters[bIndex]--;
+                                            if (item.checkboxCounters[bIndex] === 0) delete item.checkboxCounters[bIndex];
+                                            item.updatedAt = Date.now(); await dbPut(item);
+                                            renderBadge();
+                                        }
+                                    });
+                                    label.appendChild(badge);
+                                }
+                                badge.style.display = '';
+                                badge.textContent = `🔢 ${count}x`;
+                            } else if (badge) {
+                                badge.style.display = 'none';
+                            }
+                            
+                            const btnResetC = document.getElementById('btnResetCounters');
+                            if (btnResetC) {
+                                const temContador = item.checkboxCounters && Object.keys(item.checkboxCounters).length > 0;
+                                btnResetC.style.display = (modoContador && temContador) ? 'inline-flex' : 'none';
+                            }
+                        };
+                        renderBadge();
+                        // --- FIM DA LÓGICA DO CONTADOR ---
+
                         cb.addEventListener('change', async () => {
+                            if (modoContador) {
+                                cb.checked = !cb.checked; // MÁGICA: Cancela o clique visual, mantendo o estado original!                                if (!item.checkboxCounters) item.checkboxCounters = {};
+                                item.checkboxCounters[bIndex] = (item.checkboxCounters[bIndex] || 0) + 1;
+                                item.updatedAt = Date.now(); await dbPut(item);
+                                renderBadge();
+                                
+                                if (isAudioEnabled && readCheckboxes && 'speechSynthesis' in window) {
+                                    if (window.stopActiveSpeech) window.stopActiveSpeech(); else window.speechSynthesis.cancel();
+                                    window.speechSynthesis.speak(new SpeechSynthesisUtterance(visibleText));
+                                }
+                                return;
+                            }
+
                             span.style.textDecoration = cb.checked ? 'line-through' : 'none'; span.style.opacity = cb.checked ? '0.6' : '1';
                             const marker = cb.checked ? '[x]' : '[ ]'; const freshLines = item.content.split('\n');
                             
@@ -4011,6 +4147,27 @@ modalImportChoice.addEventListener('click', (e) => {
       readCheckboxes = e.target.checked;
       localStorage.setItem('memorias_read_checkboxes', readCheckboxes);
       showToast(readCheckboxes ? '☑️ Lendo ao marcar checkbox.' : '☑️ Silêncio ao marcar checkbox.');
+    });
+  }
+  if (toggleModoContador) {
+    toggleModoContador.checked = modoContador;
+    toggleModoContador.addEventListener('change', (e) => {
+      modoContador = e.target.checked;
+      localStorage.setItem('memorias_modo_contador', modoContador);
+      showToast(modoContador ? '🔢 Modo Contador Ativado!' : '☑ Modo de Checklist Normal.');
+      
+      // Mágica: Se uma nota estiver aberta, esconde/mostra tudo ao vivo!
+      const viewBody = document.getElementById('viewBody');
+      if (viewBody) {
+          const badges = viewBody.querySelectorAll('.counter-badge');
+          badges.forEach(b => b.style.display = modoContador ? '' : 'none'); // Esconde só na tela
+          
+          const btnResetC = document.getElementById('btnResetCounters');
+          if (btnResetC) {
+              const temContador = viewingItem && viewingItem.checkboxCounters && Object.keys(viewingItem.checkboxCounters).length > 0;
+              btnResetC.style.display = (modoContador && temContador) ? 'inline-flex' : 'none';
+          }
+      }
     });
   }
   if (toggleSpeedrun) {
